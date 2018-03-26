@@ -1,0 +1,28 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Select CSV for Import</h2>
+        </div>
+        <div class="content">
+            <p>This import script allows you to pull in your editorial team from a CSV file. It should have the
+                following format:</p>
+            <p>firstname, middlename, lastname, email_address, department, institution, country</p>
+            <p>Here is an example line from a dummy csv:<br/>
+                Martin,Paul,Eve,mpeve@voyager.com,Science,USS Voyager,UK</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="file">
+                <button class="button"><i class="fa fa-upload"></i> Upload</button>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}

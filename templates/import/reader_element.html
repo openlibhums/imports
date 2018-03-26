@@ -1,0 +1,8 @@
+{% load humanize_text %}
+{% for row in reader %}
+    <tr>
+        {% for cell in row %}
+            {% if forloop.parentloop.counter == 1 %}<th>{{ cell|human }}{% else %}<td>{{ cell }}</td>{% endif %}
+        {% endfor %}
+    </tr>
+{% endfor %}

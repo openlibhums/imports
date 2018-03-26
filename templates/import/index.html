@@ -1,0 +1,77 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Select an Import Type</h2>
+        </div>
+        <div class="content">
+            <ul class="accordion" data-accordion data-allow-all-closed="true">
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Editorial Team Import</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>This import script allows you to pull in your editorial team from a CSV file. It should have the following format:</p>
+                        <p>firstname, middlename, lastname, email_address, department, institution, country</p>
+                        <p>Here is an example line from a dummy csv:<br />
+                        Martin,Paul,Eve,mpeve@voyager.com,Science,USS Voyager,UK</p>
+                        <a href="{% url 'imports_editorial_load' %}" class="button">Start Import</a>
+                    </div>
+                </li>
+
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Journal Contacts</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>This import script allows you to pull in your journal contacts from a CSV file. It should have the following format:</p>
+                        <p>name, email_address, role</p>
+                        <p>Here is an example line from a dummy csv:<br />
+                        Andy Byers,ajrb@voyager.com,Chief Engineer</p>
+                        <a href="#" class="button">Start Import</a>
+                    </div>
+                </li>
+
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Copyright, Submission, Publication Fees & Reviewer Guidelines</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>This import script allows you to update journal copyright notice, submission checklist, publication fee and reviewer guidelines in one go:</p>
+                        <p>journal_code, copyright_notice, submission_checklist, publication_fees, reviewer_guidelines</p>
+                        <a href="#" class="button">Start Import</a>
+                    </div>
+                </li>
+
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Default Review Form</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>This script isn't so much an import, but it will generate a basic review form for each active journal that does not have one already.</p>
+                        <a href="#" class="button">Start Import</a>
+                    </div>
+                </li>
+
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Bulk Load Favicon</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>Allows you to import one Favicon and load it to selected journals in one go.</p>
+                        <a href="#" class="button">Start Import</a>
+                    </div>
+                </li>
+
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Article Images</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>Allows you to supply a URL for an image, Janeway will download and mark it as the articles large image file.</p>
+                        <p>CSV format: id_type,id,url</p>
+                        <p>id,12,https://unsplash.com/photos/A8iLzX6OddM/download?force=true</p>
+                        <p>You <b>MUST</b> ensure you have a license to download the image, we recommend Unsplash, where Images are licensed similar to CC0. The URL <b>MUST</b> be directly to the image, not the landing page. On Unsplash you can get this
+                        by right clicking on the "Download free" button and selecting "Copy link address".</p>
+                        <a href="#" class="button">Start Import</a>
+                    </div>
+                </li>
+
+            </ul>
+        </div>
+    </div>
+
+{% endblock %}
