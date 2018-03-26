@@ -2,6 +2,11 @@
 
 {% block title %}Imports Plugin{% endblock %}
 {% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li><a href="{% url 'imports_load' %}">Editorial Loading</a></li>
+{% endblock %}
 
 {% block body %}
 

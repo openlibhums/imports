@@ -29,3 +29,18 @@ def import_editorial_team(request, reader):
             user=user,
             sequence=group.next_member_sequence()
         )
+
+
+def import_contacts_team(request, reader):
+    row_list = [row for row in reader]
+    row_list.remove(row_list[0])
+
+    for row in row_list:
+        core_models.Contacts.objects.get_or_create(
+            content_type=request.model_content_type,
+            object_id = request.journal.id,
+            name=row[0],
+            email=row[1],
+            role=row[2],
+            sequence=request.journal.next_contact_order()
+        )

@@ -26,31 +26,38 @@ def index(request):
 
 
 @staff_member_required
-def editorial_load(request):
+def import_load(request):
     """
     Allows a user to upload a csv for processing into Editorial Teams.
     :param request: HttpRequest
     :return: HttpResponse or, on post, HttpRedirect
     """
+    type = request.GET.get('type')
+
     if request.POST and request.FILES:
         file = request.FILES.get('file')
         filename, path = files.save_file_to_temp(file)
-        return redirect(reverse('imports_editorial_import', kwargs={'filename': filename}))
+        reverse_url = '{url}?type={type}'.format(url=reverse('imports_action', kwargs={'filename': filename}),
+                                                 type=type)
+        return redirect(reverse_url)
 
     template = 'import/editorial_load.html'
-    context = {}
+    context = {
+        'type': type,
+    }
 
     return render(request, template, context)
 
 
 @staff_member_required
-def editorial_import(request, filename):
+def import_action(request, filename):
     """
     Processes and displays the editorial import data
     :param request: HttpRequest
     :param filename: the name of a temp file
     :return: HttpResponse
     """
+    type = request.GET.get('type')
     path = files.get_temp_file_path_from_name(filename)
 
     if not os.path.exists(path):
@@ -60,7 +67,11 @@ def editorial_import(request, filename):
     reader = csv.reader(file)
 
     if request.POST:
-        utils.import_editorial_team(request, reader)
+        if type == 'editorial':
+            utils.import_editorial_team(request, reader)
+        elif type == 'contacts':
+            utils.import_contacts_team(request, reader)
+        files.unlink_temp_file(path)
 
     template = 'import/editorial_import.html'
     context = {
@@ -69,6 +80,4 @@ def editorial_import(request, filename):
     }
 
     return render(request, template, context)
-
-
 
