@@ -105,3 +105,22 @@ def review_forms(request):
 
     return render(request, template, context)
 
+
+@staff_member_required
+def favicon(request):
+    """
+    Lets a staff member bulk load a favicon onto multiple journals.
+    :param request: HttpRequest
+    :return: HttpResponse or HttpRedirect
+    """
+    journals = journal_models.Journal.objects.all()
+
+    if request.POST and request.FILES:
+        utils.load_favicons(request)
+        messages.add_message(request, messages.SUCCESS, 'Favicons loaded')
+        return redirect(reverse('imports_index'))
+
+    template = 'import/favicon.html'
+    context = {'journals': journals}
+
+    return render(request, template, context)

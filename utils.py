@@ -87,3 +87,13 @@ def generate_review_forms(request):
         )
 
         default_review_form.elements.add(main_element)
+
+
+def load_favicons(request):
+    journal_pks = request.POST.getlist('journals')
+    journals = [journal_models.Journal.objects.get(pk=pk) for pk in journal_pks]
+
+    for journal in journals:
+        journal.favicon = request.FILES.get('favicon')
+        journal.save()
+
