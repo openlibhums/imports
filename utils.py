@@ -1,5 +1,7 @@
 from core import models as core_models
 from journal import models as journal_models
+from utils import setting_handler
+from django.template.defaultfilters import linebreaksbr
 
 
 def import_editorial_team(request, reader):
@@ -50,6 +52,13 @@ def import_contacts_team(request, reader):
 def import_submission_settings(request, reader):
     row_list = [row for row in reader]
     row_list.remove(row_list[0])
+
+    for row in row_list:
+        journal = journal_models.Journal.objects.get(code=row[0])
+        setting_handler.save_setting('general', 'copyright_notice', journal, linebreaksbr(row[1]))
+        setting_handler.save_setting('general', 'submission_checklist', journal, linebreaksbr(row[2]))
+        setting_handler.save_setting('general', 'publication_fees', journal, linebreaksbr(row[3]))
+        setting_handler.save_setting('general', 'reviewer_guidelines', journal, linebreaksbr(row[4]))
 
 
 def generate_review_forms(request):
