@@ -9,6 +9,7 @@ from django.http import Http404
 
 from core import files
 from plugins.imports import utils
+from journal import models as journal_models
 
 
 @staff_member_required
@@ -71,13 +72,36 @@ def import_action(request, filename):
             utils.import_editorial_team(request, reader)
         elif type == 'contacts':
             utils.import_contacts_team(request, reader)
+        elif type == 'submission':
+            utils.import_submission_settings(request, reader)
         files.unlink_temp_file(path)
+        messages.add_message(request, messages.SUCCESS, 'Import complete')
+        return redirect(reverse('imports_index'))
 
     template = 'import/editorial_import.html'
     context = {
         'filename': filename,
         'reader': reader,
     }
+
+    return render(request, template, context)
+
+
+@staff_member_required
+def review_forms(request):
+    """
+    Allows staff to select a group of journals to have a default form generated for them.
+    :param request: HttpRequest
+    :return: HttpResponse or HttpRedirect
+    """
+    journals = journal_models.Journal.objects.all()
+
+    if request.POST:
+        utils.generate_review_forms(request)
+        return redirect(reverse('imports_index'))
+
+    template = 'import/review_forms.html'
+    context = {'journals': journals}
 
     return render(request, template, context)
 

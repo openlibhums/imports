@@ -1,4 +1,5 @@
 from core import models as core_models
+from journal import models as journal_models
 
 
 def import_editorial_team(request, reader):
@@ -44,3 +45,36 @@ def import_contacts_team(request, reader):
             role=row[2],
             sequence=request.journal.next_contact_order()
         )
+
+
+def import_submission_settings(request, reader):
+    row_list = [row for row in reader]
+    row_list.remove(row_list[0])
+
+
+def generate_review_forms(request):
+    from review import models as review_models
+
+    journal_pks = request.POST.getlist('journals')
+    journals = [journal_models.Journal.objects.get(pk=pk) for pk in journal_pks]
+
+    for journal in journals:
+
+        default_review_form = review_models.ReviewForm.objects.create(
+            journal=journal,
+            name='Default Form',
+            slug='default-form',
+            intro='Please complete the form below.',
+            thanks='Thank you for completing the review.'
+        )
+
+        main_element = review_models.ReviewFormElement.objects.create(
+            name='Review',
+            kind='textarea',
+            required=True,
+            order=1,
+            width='large-12 columns',
+            help_text='Please add as much detail as you can.'
+        )
+
+        default_review_form.elements.add(main_element)
