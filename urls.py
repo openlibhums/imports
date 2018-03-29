@@ -8,5 +8,6 @@ urlpatterns = [
     url(r'^process/(?P<filename>[\w.-]{0,256})$', views.import_action, name='imports_action'),
 
     url(r'^review_forms/$', views.review_forms, name='imports_review_forms'),
-    url(r'^favicon/$', views.favicon, name='imports_favicon')
+    url(r'^favicon/$', views.favicon, name='imports_favicon'),
+    url(r'^images/$', views.article_images, name='imports_article_images')
 ]

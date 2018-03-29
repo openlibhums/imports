@@ -124,3 +124,44 @@ def favicon(request):
     context = {'journals': journals}
 
     return render(request, template, context)
+
+
+@staff_member_required
+def article_images(request):
+    """
+    Lets staff upload a file to set an article's large image file.
+    :param request: HttpRequest
+    :return: HttpResponse or HttpRedirect
+    """
+
+    filename = request.GET.get('filename')
+    reader = None
+
+    if filename:
+        path = files.get_temp_file_path_from_name(filename)
+        file = open(path, 'r')
+        reader = csv.reader(file)
+
+    if request.POST and request.FILES.get('file'):
+        file = request.FILES.get('file')
+        filename, path = files.save_file_to_temp(file)
+        reverse_url = '{url}?filename={filename}'.format(url=reverse('imports_article_images'),
+                                                        filename=filename)
+        return redirect(reverse_url)
+
+    if request.POST and 'import' in request.POST:
+        errors = utils.load_article_images(request, reader)
+
+        if not errors:
+            messages.add_message(request, messages.SUCCESS, 'Article images loaded.')
+        else:
+            for error in errors:
+                messages.add_message(request, messages.WARNING, error)
+
+    template = 'import/article_images.html'
+    context = {
+        'filename': filename,
+        'reader': reader,
+    }
+
+    return render(request, template, context)

@@ -14,6 +14,7 @@
             <h2>Select an Import Type</h2>
         </div>
         <div class="content">
+            <p><strong>Please be aware that these import scripts are for advanced users, they are unrefined and raw.</strong></p>
             <ul class="accordion" data-accordion data-allow-all-closed="true">
                 <li class="accordion-item" data-accordion-item>
                     <a href="#" class="accordion-title">Editorial Team Import</a>
@@ -79,7 +80,7 @@
                             Images are licensed similar to CC0. The URL <b>MUST</b> be directly to the image, not the
                             landing page. On Unsplash you can get this
                             by right clicking on the "Download free" button and selecting "Copy link address".</p>
-                        <a href="#" class="button">Start Import</a>
+                        <a href="{% url 'imports_article_images' %}" class="button">Start Import</a>
                     </div>
                 </li>
 

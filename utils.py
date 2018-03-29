@@ -1,7 +1,15 @@
-from core import models as core_models
+import requests
+import os
+import re
+import uuid
+
+from django.template.defaultfilters import linebreaksbr
+from django.conf import settings
+
+from core import models as core_models, files
 from journal import models as journal_models
 from utils import setting_handler
-from django.template.defaultfilters import linebreaksbr
+from submission import models as submission_models
 
 
 def import_editorial_team(request, reader):
@@ -97,3 +105,36 @@ def load_favicons(request):
         journal.favicon = request.FILES.get('favicon')
         journal.save()
 
+
+def load_article_images(request, reader):
+    row_list = [row for row in reader]
+    row_list.remove(row_list[0])
+
+    for row in row_list:
+        article = submission_models.Article.get_article(request.journal, row[0], row[1])
+
+        image = requests.get(row[2], stream=True)
+        if image.status_code == 200:
+
+            content_disposition = image.headers['content-disposition']
+            filename = re.findall("filename=\"(.+)\"", content_disposition)[0]
+
+            name, extension = os.path.splitext(filename)
+            uuid_filename = '{0}{1}'.format(uuid.uuid4(), extension)
+
+            filepath = os.path.join(settings.BASE_DIR, 'files', 'articles', str(article.pk), uuid_filename)
+
+            with open(filepath, 'wb') as f:
+                for chunk in image:
+                    f.write(chunk)
+
+            new_file = core_models.File.objects.create(
+                article_id=article.pk,
+                mime_type=files.file_path_mime(filepath),
+                original_filename=filename,
+                uuid_filename=uuid_filename,
+                label='Large Image File',
+                privacy='public',
+            )
+            article.large_image_file = new_file
+            article.save()

@@ -1,0 +1,43 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li>Editorial Loading</li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Select CSV for Import</h2>
+        </div>
+        <div class="content">
+            <p>Upload your image csv here.</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="file">
+                <button class="button" name="upload"><i class="fa fa-upload"></i> Upload</button>
+            </form>
+
+            {% if filename %}
+                <div class="title-area">
+                    <h2>Processing {{ filename }}</h2>
+                </div>
+                <table>
+                    {% include "import/reader_element.html" with reader=reader %}
+                </table>
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <button name="import" class="button">Import</button>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}
