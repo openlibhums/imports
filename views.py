@@ -158,6 +158,8 @@ def article_images(request):
             for error in errors:
                 messages.add_message(request, messages.WARNING, error)
 
+        return redirect(reverse('import_index'))
+
     template = 'import/article_images.html'
     context = {
         'filename': filename,
