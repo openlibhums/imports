@@ -9,5 +9,5 @@ urlpatterns = [
 
     url(r'^review_forms/$', views.review_forms, name='imports_review_forms'),
     url(r'^favicon/$', views.favicon, name='imports_favicon'),
-    url(r'^images/$', views.article_images, name='imports_article_images')
+    url(r'^images/$', views.article_images, name='imports_article_images'),
 ]

@@ -74,6 +74,10 @@ def import_action(request, filename):
             utils.import_contacts_team(request, reader)
         elif type == 'submission':
             utils.import_submission_settings(request, reader)
+        elif type == 'article_metadata':
+            utils.import_article_metadata(request, reader)
+        else:
+            raise Http404
         files.unlink_temp_file(path)
         messages.add_message(request, messages.SUCCESS, 'Import complete')
         return redirect(reverse('imports_index'))
@@ -167,3 +171,4 @@ def article_images(request):
     }
 
     return render(request, template, context)
+
