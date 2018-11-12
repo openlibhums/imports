@@ -5,6 +5,7 @@ import uuid
 
 from django.conf import settings
 from django.db import transaction
+from django.utils.dateparse import parse_datetime, parse_date
 from django.template.defaultfilters import linebreaksbr
 
 from core import models as core_models, files
@@ -75,7 +76,7 @@ def import_article_metadata(request, reader):
     articles = {}
     for line in reader:
         article_id, title, vol_num, issue_num, subtitle, abstract, \
-                *author_fields = line
+            stage, date_accepted, date_published, doi, *author_fields = line
 
         #article import
         if title:
@@ -91,8 +92,14 @@ def import_article_metadata(request, reader):
                     title=title,
             )
             if created:
-                article.subtitle=subtitle
-                article.abstract=abstract
+                article.subtitle = subtitle
+                article.abstract = abstract
+                article.date_accepted = (parse_datetime(date_accepted)
+                        or parse_date(date_accepted))
+                article.date_published = (parse_datetime(date_published)
+                        or parse_date(date_published))
+                article.stage = stage
+                article.doi = doi
                 article.save()
                 issue.articles.add(article)
                 issue.save()
