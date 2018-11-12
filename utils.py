@@ -1,10 +1,12 @@
-import requests
 import os
 import re
+import requests
 import uuid
 
-from django.template.defaultfilters import linebreaksbr
 from django.conf import settings
+from django.db import transaction
+from django.utils.dateparse import parse_datetime, parse_date
+from django.template.defaultfilters import linebreaksbr
 
 from core import models as core_models, files
 from journal import models as journal_models
@@ -67,6 +69,56 @@ def import_submission_settings(request, reader):
         setting_handler.save_setting('general', 'submission_checklist', journal, linebreaksbr(row[2]))
         setting_handler.save_setting('general', 'publication_fees', journal, linebreaksbr(row[3]))
         setting_handler.save_setting('general', 'reviewer_guidelines', journal, linebreaksbr(row[4]))
+
+@transaction.atomic
+def import_article_metadata(request, reader):
+    next(reader) #skip headers
+    articles = {}
+    for line in reader:
+        article_id, title, vol_num, issue_num, subtitle, abstract, \
+            stage, date_accepted, date_published, doi, *author_fields = line
+
+        #article import
+        if title:
+            issue, created= journal_models.Issue.objects.get_or_create(
+                    journal=request.journal,
+                    volume=vol_num,
+                    issue=issue_num,
+            )
+            if created:
+                issue.save()
+            article, created = submission_models.Article.objects.get_or_create(
+                    journal=request.journal,
+                    title=title,
+            )
+            if created:
+                article.subtitle = subtitle
+                article.abstract = abstract
+                article.date_accepted = (parse_datetime(date_accepted)
+                        or parse_date(date_accepted))
+                article.date_published = (parse_datetime(date_published)
+                        or parse_date(date_published))
+                article.stage = stage
+                article.doi = doi
+                article.save()
+                issue.articles.add(article)
+                issue.save()
+            articles[article_id] = article
+
+        #author import
+        salutation, first_name, last_name, institution, email = author_fields
+        if not email:
+            email = "{}@{}.com".format(uuid.uuid4(), request.journal.code)
+        author, created = core_models.Account.objects.get_or_create(email=email)
+        if created:
+            author.salutation = salutation
+            author.first_name = first_name
+            author.last_name = last_name
+            author.institution = institution
+            author.save()
+            article = articles[article_id]
+            article.authors.add(author)
+            article.save()
 
 
 def generate_review_forms(request):
