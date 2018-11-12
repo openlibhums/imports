@@ -110,16 +110,16 @@ def import_article_metadata(request, reader):
         if not email:
             email = "{}@{}.com".format(uuid.uuid4(), request.journal.code)
         author, created = core_models.Account.objects.get_or_create(email=email)
+        article = articles[article_id]
         if created:
             author.salutation = salutation
             author.first_name = first_name
             author.last_name = last_name
             author.institution = institution
             author.save()
-            article = articles[article_id]
-            article.authors.add(author)
-            article.save()
-
+        article.authors.add(author)
+        article.save()
+        author.snapshot_self(article)
 
 def generate_review_forms(request):
     from review import models as review_models
