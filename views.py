@@ -172,3 +172,25 @@ def article_images(request):
 
     return render(request, template, context)
 
+
+@staff_member_required
+def csv_example(request):
+    """
+    Serves up an example metadata csv
+    :param request: HttpRequest
+    :return: CSV File
+    """
+    header_row = "Article identifier, Article title, Volume number, Issue number, Subtitle, Abstract, " \
+                 "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
+                 "Author first name, Author last name, Author Institution, Author Email".split(',')
+    example_row = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
+                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com".split(',')
+
+    filepath = files.get_temp_file_path_from_name('metadata.csv')
+
+    with open(filepath, "w") as f:
+        wr = csv.writer(f)
+        wr.writerow(header_row)
+        wr.writerow(example_row)
+
+        return files.serve_temp_file(filepath, 'metadata.csv')
