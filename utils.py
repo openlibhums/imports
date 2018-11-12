@@ -94,6 +94,8 @@ def import_article_metadata(request, reader):
                 article.subtitle=subtitle
                 article.abstract=abstract
                 article.save()
+                issue.articles.add(article)
+                issue.save()
             articles[article_id] = article
 
         #author import
@@ -107,6 +109,9 @@ def import_article_metadata(request, reader):
             author.last_name = last_name
             author.institution = institution
             author.save()
+            article = articles[article_id]
+            article.authors.add(author)
+            article.save()
 
 
 def generate_review_forms(request):
