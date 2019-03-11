@@ -180,7 +180,7 @@ def csv_example(request):
     :param request: HttpRequest
     :return: CSV File
     """
-    header_row = "Article identifier, Article title, Volume number, Issue number, Subtitle, Abstract, " \
+    header_row = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
                  "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
                  "Author first name, Author last name, Author Institution, Author Email".split(',')
     example_row = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
