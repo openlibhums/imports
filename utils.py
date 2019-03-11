@@ -70,26 +70,27 @@ def import_submission_settings(request, reader):
         setting_handler.save_setting('general', 'publication_fees', journal, linebreaksbr(row[3]))
         setting_handler.save_setting('general', 'reviewer_guidelines', journal, linebreaksbr(row[4]))
 
+
 @transaction.atomic
 def import_article_metadata(request, reader):
-    next(reader) #skip headers
+    next(reader)  # skip headers
     articles = {}
     for line in reader:
-        article_id, title, vol_num, issue_num, subtitle, abstract, \
+        article_id, title, section, vol_num, issue_num, subtitle, abstract, \
             stage, date_accepted, date_published, doi, *author_fields = line
 
-        #article import
+        # article import
         if title:
-            issue, created= journal_models.Issue.objects.get_or_create(
-                    journal=request.journal,
-                    volume=vol_num,
-                    issue=issue_num,
+            issue, created = journal_models.Issue.objects.get_or_create(
+                journal=request.journal,
+                volume=vol_num,
+                issue=issue_num,
             )
             if created:
                 issue.save()
             article, created = submission_models.Article.objects.get_or_create(
-                    journal=request.journal,
-                    title=title,
+                journal=request.journal,
+                title=title,
             )
             if created:
                 article.subtitle = subtitle
@@ -100,12 +101,15 @@ def import_article_metadata(request, reader):
                         or parse_date(date_published))
                 article.stage = stage
                 article.doi = doi
+                sec_obj, created = submission_models.Section.objects.language(
+                    'en').get_or_create(journal=request.journal, name=section)
+                article.section = sec_obj
                 article.save()
                 issue.articles.add(article)
                 issue.save()
             articles[article_id] = article
 
-        #author import
+        # author import
         salutation, first_name, last_name, institution, email = author_fields
         if not email:
             email = "{}@{}.com".format(uuid.uuid4(), request.journal.code)
@@ -117,9 +121,11 @@ def import_article_metadata(request, reader):
             author.last_name = last_name
             author.institution = institution
             author.save()
+
         article.authors.add(author)
         article.save()
         author.snapshot_self(article)
+
 
 def generate_review_forms(request):
     from review import models as review_models
