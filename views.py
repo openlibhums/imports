@@ -183,7 +183,7 @@ def csv_example(request):
     header_row = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
                  "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
                  "Author first name, Author last name, Author Institution, Author Email".split(',')
-    example_row = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
+    example_row = "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
                   "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com".split(',')
 
     filepath = files.get_temp_file_path_from_name('metadata.csv')
