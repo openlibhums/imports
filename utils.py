@@ -112,7 +112,7 @@ def import_article_metadata(request, reader):
         # author import
         *author_fields, is_corporate = author_fields
         article = articles[article_id]
-        if is_corporate == "Y":
+        if is_corporate in "Yy":
             import_corporate_author(author_fields, article)
         else:
             import_author(author_fields, article)
