@@ -60,23 +60,25 @@
                             following structure:</p>
                         <p><tt>Article identifier, Article title, Volume number, Issue number, Subtitle, Abstract,
                             publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, Author
-                            first name, Author last name, Author Institution, Author Email</tt></p>
+                            first name, Author last name, Author Institution, Author Email, Is Corporate(Y,N)</tt></p>
                         <p>Notes: date/time fields must be <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a>
                             compliant</p>
                         <p>e.g:</p>
                         <p><tt>1,some title,some section1,1,some subtitle,the
-                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com</tt>
+                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com,N</tt>
                         <p>
                         <p>If an article is associated with more than one author, rows for the additional authors don't
                             require the redundant metadata (apart from the article id) all the rows below would be
                             valid:
                         <p><tt>1,some title,1,1,some subtitle,the
-                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com</tt>
+                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com,N</tt>
                         <p>
                         <p><tt>1,some title,1,1,some subtitle,the
-                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,Byers,BirkbeckCTP,abyers@journal.com</tt>
+                            abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,Byers,BirkbeckCTP,abyers@journal.com,N</tt>
                         <p>
-                        <p><tt>1,,,,,,,,,,Prof,Martin Paul,Eve,BirkbeckCTP,meve@journal.com</tt>
+                        <p><tt>1,,,,,,,,,,Prof,Martin Paul,Eve,BirkbeckCTP,meve@journal.com,N</tt>
+                        <p>Corporate authors only require the 'Institution' column as well as flagging the 'Is Corporate' column with <tt>Y</tt>:</p>
+                        <p><tt>1,,,,,,,,,,,,,Center for Tecnology and publishing at Birkbeck,,Y</tt>
                         <p><a href="{% url 'imports_csv_example' %}">Download Example CSV</a></p>
                         <p>
                             <a href="{% url 'imports_load' %}?type=article_metadata" class="button">Start Import</a>
