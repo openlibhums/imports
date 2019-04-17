@@ -110,11 +110,18 @@ def import_article_metadata(request, reader):
             articles[article_id] = article
 
         # author import
+        *author_fields, is_corporate = author_fields
+        article = articles[article_id]
+        if is_corporate == "Y":
+            import_corporate_author(author_fields, article)
+        else:
+            import_author(author_fields, article)
+
+def import_author(author_fields, article):
         salutation, first_name, last_name, institution, email = author_fields
         if not email:
             email = "{}@{}.com".format(uuid.uuid4(), request.journal.code)
         author, created = core_models.Account.objects.get_or_create(email=email)
-        article = articles[article_id]
         if created:
             author.salutation = salutation
             author.first_name = first_name
@@ -125,6 +132,15 @@ def import_article_metadata(request, reader):
         article.authors.add(author)
         article.save()
         author.snapshot_self(article)
+
+
+def import_corporate_author(author_fields, article):
+        *_, institution, _email = author_fields
+        submission_models.FrozenAuthor.objects.get_or_create(
+            article=article,
+            is_corporate=True,
+            institution=institution,
+        )
 
 
 def generate_review_forms(request):
