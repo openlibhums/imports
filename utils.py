@@ -75,6 +75,10 @@ def import_submission_settings(request, reader):
 def import_article_metadata(request, reader):
     next(reader)  # skip headers
     articles = {}
+    issue_type = journal_models.IssueType.objects.get(
+        code="issue",
+        journal=request.journal,
+    )
     for line in reader:
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
             stage, date_accepted, date_published, doi, *author_fields = line
@@ -87,6 +91,7 @@ def import_article_metadata(request, reader):
                 issue=issue_num,
             )
             if created:
+                issue.issue_type = issue_type
                 issue.save()
             article, created = submission_models.Article.objects.get_or_create(
                 journal=request.journal,
