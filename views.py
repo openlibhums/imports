@@ -236,6 +236,7 @@ def wordpress_posts(request, import_id):
 
     if request.POST:
         ids_to_import = request.POST.getlist('post')
+        logic.import_posts(ids_to_import, posts)
 
     template = 'import/wordpress_posts.html'
     context = {

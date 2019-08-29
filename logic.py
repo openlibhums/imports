@@ -18,3 +18,9 @@ def get_posts(details):
     posts = wp.call(GetPosts())
 
     return posts
+
+
+def import_posts(posts_to_import, posts):
+    for post in posts:
+        if post.id in posts_to_import:
+            pass
