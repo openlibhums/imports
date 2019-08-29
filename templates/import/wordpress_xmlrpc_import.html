@@ -1,0 +1,63 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li>Wordpress XMLRPC Import</li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Import from Wordpress</h2>
+        </div>
+        <div class="content">
+            <div class="row expanded">
+                <div class="large-6 columns">
+                    <p>Each journal that you select will have a single element
+                        for generated.</p>
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form|foundation }}
+                        <div class="row expanded">
+                            <div class="large-12 columns">
+                                <button class="button"><i
+                                        class="fa fa-download"></i>
+                                    Import
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block js %}
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.default.min.css"
+          integrity="sha256-ibvTNlNAB4VMqE5uFlnBME6hlparj5sEr1ovZ3B/bNA="
+          crossorigin="anonymous"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"
+            integrity="sha256-+C0A5Ilqmu4QcSPxrlGpaZxJ04VjsRjKu+G82kl5UJk="
+            crossorigin="anonymous"></script>
+
+    <script>
+        $('#id_user').selectize({
+            create: true,
+            sortField: 'text'
+        });
+    </script>
+    <style>
+        .help-text {
+            padding-top: 15px;
+        }
+    </style>
+
+{% endblock js %}

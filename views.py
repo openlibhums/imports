@@ -1,14 +1,14 @@
 import csv
 import os
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404
 
 from core import files
-from plugins.imports import utils
+from plugins.imports import utils, forms, logic, models
 from journal import models as journal_models
 
 
@@ -194,3 +194,49 @@ def csv_example(request):
         wr.writerow(example_row)
 
         return files.serve_temp_file(filepath, 'metadata.csv')
+
+
+@staff_member_required
+def wordpress_xmlrpc_import(request):
+    """
+    Pulls in posts from a Wordpress site over XMLRPC
+    :param request: HttpRequest
+    :return: HttpResponse
+    """
+    form = forms.WordpressForm()
+
+    if request.POST:
+        form = forms.WordpressForm(request.POST)
+
+        if form.is_valid():
+            new_import = form.save()
+            return redirect(
+                reverse(
+                    'wordpress_posts',
+                    kwargs={'import_id': new_import.pk},
+                )
+            )
+
+    template = 'import/wordpress_xmlrpc_import.html'
+    context = {
+        'form': form,
+    }
+
+    return render(request, template, context)
+
+
+@staff_member_required
+def wordpress_posts(request, import_id):
+    import_object = get_object_or_404(
+        models.WordPressImport,
+        pk=import_id,
+    )
+
+    posts = logic.get_posts(import_object)
+
+    template = 'import/wordpress_posts.html'
+    context = {
+        'posts': posts,
+    }
+
+    return render(request, template, context)

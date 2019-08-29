@@ -10,7 +10,11 @@ from utils import models
 
 
 def install():
-    new_plugin, created = models.Plugin.objects.get_or_create(name=SHORT_NAME, version=VERSION, enabled=True)
+    new_plugin, created = models.Plugin.objects.get_or_create(
+        name=SHORT_NAME,
+        enabled=True,
+        defaults={'version': VERSION},
+    )
 
     if created:
         print('Plugin {0} installed.'.format(PLUGIN_NAME))
@@ -19,6 +23,7 @@ def install():
 
 
 def hook_registry():
-    # On site load, the load function is run for each installed plugin to generate
+    # On site load, the load function is run for each
+    # installed plugin to generate
     # a list of hooks.
     return {}

@@ -1,0 +1,32 @@
+{% extends "admin/core/base.html" %}
+{% load foundation %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li>Wordpress Posts</li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Import from Wordpress</h2>
+        </div>
+        <div class="content">
+            <table class="table">
+                <tr>
+                    <th>Title</th>
+                </tr>
+                {% for post in posts %}
+                <tr>
+                    <td>{{ post.title }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
