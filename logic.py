@@ -1,8 +1,10 @@
-from wordpress_xmlrpc import Client, WordPressPost
-from wordpress_xmlrpc.methods.posts import GetPosts, NewPost
-from wordpress_xmlrpc.methods.users import GetUserInfo
+from wordpress_xmlrpc import Client
+from wordpress_xmlrpc.methods.posts import GetPosts
+
+from utils.function_cache import cache
 
 
+@cache(60)
 def get_posts(details):
     xmlrpc_url = '{base_url}{slash}xmlrpc.php'.format(
         base_url=details.url,

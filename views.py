@@ -234,6 +234,9 @@ def wordpress_posts(request, import_id):
 
     posts = logic.get_posts(import_object)
 
+    if request.POST:
+        ids_to_import = request.POST.getlist('post')
+
     template = 'import/wordpress_posts.html'
     context = {
         'posts': posts,

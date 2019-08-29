@@ -16,8 +16,12 @@
             <h2>Import from Wordpress</h2>
         </div>
         <div class="content">
+            <form method="POST">
+            {% csrf_token %}
             <table class="table">
                 <tr>
+                    <th></th>
+                    <th>ID</th>
                     <th>Title</th>
                     <th>Date</th>
                     <th>Status</th>
@@ -26,6 +30,8 @@
                 </tr>
                 {% for post in posts %}
                     <tr>
+                        <td><input type="checkbox" name="post" value="{{ post.id }}"></td>
+                        <td>{{ post.id }}</td>
                         <td>{{ post.title }}</td>
                         <td>{{ post.date }}</td>
                         <td>{{ post.post_status }}</td>
@@ -37,6 +43,8 @@
                     </tr>
                 {% endfor %}
             </table>
+            <button name="import" class="button">Import</button>
+            </form>
         </div>
     </div>
 
