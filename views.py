@@ -236,7 +236,18 @@ def wordpress_posts(request, import_id):
 
     if request.POST:
         ids_to_import = request.POST.getlist('post')
-        logic.import_posts(ids_to_import, posts)
+        logic.import_posts(ids_to_import, posts, request, import_object)
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            'Import complete, deleting details.'
+        )
+
+        return redirect(
+            reverse(
+                'wordpress_xmlrpc_import'
+            )
+        )
 
     template = 'import/wordpress_posts.html'
     context = {

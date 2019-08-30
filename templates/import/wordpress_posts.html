@@ -20,7 +20,7 @@
             {% csrf_token %}
             <table class="table">
                 <tr>
-                    <th></th>
+                    <th><input type="checkbox" onClick="toggle(this)" /></th>
                     <th>ID</th>
                     <th>Title</th>
                     <th>Date</th>
@@ -48,4 +48,15 @@
         </div>
     </div>
 
+{% endblock %}
+
+{% block js %}
+    <script language="JavaScript">
+        function toggle(source) {
+            checkboxes = document.getElementsByName('post');
+            for (var i = 0, n = checkboxes.length; i < n; i++) {
+                checkboxes[i].checked = source.checked;
+            }
+        }
+    </script>
 {% endblock %}
