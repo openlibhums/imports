@@ -231,8 +231,18 @@ def wordpress_posts(request, import_id):
         models.WordPressImport,
         pk=import_id,
     )
+    posts = list()
+    offset = 0
+    increment = 20
 
-    posts = logic.get_posts(import_object)
+    while True:
+        new_posts = logic.get_posts(import_object, increment, offset)
+        posts.extend(new_posts)
+        if len(new_posts) == 0:
+            break
+
+        offset = offset + increment
+        print(offset, posts)
 
     if request.POST:
         ids_to_import = request.POST.getlist('post')

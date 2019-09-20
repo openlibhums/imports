@@ -18,7 +18,7 @@
         <div class="content">
             <form method="POST">
             {% csrf_token %}
-            <table class="table">
+            <table class="table scroll">
                 <tr>
                     <th><input type="checkbox" onClick="toggle(this)" /></th>
                     <th>ID</th>
@@ -26,7 +26,7 @@
                     <th>Date</th>
                     <th>Status</th>
                     <th>Terms</th>
-                    <th width="50%">Content</th>
+                    <th width="25%">Content</th>
                 </tr>
                 {% for post in posts %}
                     <tr>
