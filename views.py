@@ -21,7 +21,11 @@ def index(request):
     """
 
     template = "import/index.html"
-    context = {}
+    context = {
+        'mauro': utils.CSV_MAURO,
+        'martin': utils.CSV_MARTIN,
+        'andy': utils.CSV_ANDY,
+    }
 
     return render(request, template, context)
 
@@ -180,18 +184,12 @@ def csv_example(request):
     :param request: HttpRequest
     :return: CSV File
     """
-    header_row = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
-                 "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
-                 "Author first name, Author last name, Author Institution, Author Email, Is Corporate (Y/N)".split(',')
-    example_row = "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
-                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Sanchez,BirkbeckCTP,msanchez@journal.com,N".split(',')
-
     filepath = files.get_temp_file_path_from_name('metadata.csv')
 
     with open(filepath, "w") as f:
         wr = csv.writer(f)
-        wr.writerow(header_row)
-        wr.writerow(example_row)
+        wr.writerow(utils.CSV_HEADER_ROW.split(","))
+        wr.writerow(utils.CSV_MAURO.split(","))
 
         return files.serve_temp_file(filepath, 'metadata.csv')
 
