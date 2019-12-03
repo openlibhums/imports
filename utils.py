@@ -83,12 +83,11 @@ def import_article_metadata(request, reader):
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
             stage, date_accepted, date_published, doi, *author_fields = line
 
-        # article import
         if title:
             issue, created = journal_models.Issue.objects.get_or_create(
                 journal=request.journal,
-                volume=vol_num,
-                issue=issue_num,
+                volume=vol_num or 0,
+                issue=issue_num or 0,
             )
             if created:
                 issue.issue_type = issue_type
@@ -123,13 +122,14 @@ def import_article_metadata(request, reader):
             import_author(author_fields, article)
 
 def import_author(author_fields, article):
-        salutation, first_name, last_name, institution, email = author_fields
+        salutation, first_name, middle_name, last_name, institution, email = author_fields
         if not email:
-            email = "{}@{}.com".format(uuid.uuid4(), request.journal.code)
+            email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
         author, created = core_models.Account.objects.get_or_create(email=email)
         if created:
             author.salutation = salutation
             author.first_name = first_name
+            author.middle_name = middle_name
             author.last_name = last_name
             author.institution = institution
             author.save()
