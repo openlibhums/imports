@@ -31,7 +31,7 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None):
     jats_soup = BeautifulSoup((jats_contents), 'lxml')
     metadata_soup = jats_soup.find("article-meta")
 
-    #Gather metadata
+    # Gather metadata
     meta = {}
     meta["title"] = get_jats_title(metadata_soup)
     meta["abstract"] = get_jats_abstract(metadata_soup)
@@ -180,7 +180,7 @@ def get_jats_authors(soup, author_notes=None):
 
 
 def save_article(journal, metadata, issue=None):
-    with transaction.atomic() as txn:
+    with transaction.atomic():
         section, _ = submission_models.Section.objects \
             .language(settings.LANGUAGE_CODE).get_or_create(
                 journal=journal,
@@ -195,6 +195,7 @@ def save_article(journal, metadata, issue=None):
             date_published=metadata["date_published"],
             date_accepted=metadata["date_submitted"],
             date_submitted=metadata["date_submitted"],
+            stage=submission_models.STAGE_PUBLISHED,
             is_import=True,
         )
         article.section = section
@@ -243,7 +244,7 @@ def save_article(journal, metadata, issue=None):
                 defaults={"issue_type": issue_type}
             )
         issue.articles.add(article)
-        article.primary_issue=issue
+        article.primary_issue = issue
         article.save()
 
         return article
