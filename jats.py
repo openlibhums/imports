@@ -162,19 +162,20 @@ def get_jats_authors(soup, author_notes=None):
         institution = None
         if author.find("aff"):
             institution = author.find("aff").text
-        author_data = {
-            "first_name": author.find("given-names").text,
-            "last_name": author.find("surname").text,
-            "email": author.find("email") or default_email(author),
-            "correspondence": False,
-            "institution": institution,
-        }
-        if author.attrs.get("corresp") == "yes" and author_notes:
-            author_data["correspondence"] = True
-            corresp_email = author_notes.find("email")
-            if corresp_email:
-                author_data["email"] = corresp_email.text
-        authors.append(author_data)
+        if author.find("surname"):
+            author_data = {
+                "first_name": author.find("given-names").text,
+                "last_name": author.find("surname").text,
+                "email": author.find("email") or default_email(author),
+                "correspondence": False,
+                "institution": institution,
+            }
+            if author.attrs.get("corresp") == "yes" and author_notes:
+                author_data["correspondence"] = True
+                corresp_email = author_notes.find("email")
+                if corresp_email:
+                    author_data["email"] = corresp_email.text
+            authors.append(author_data)
     return authors
 
 
