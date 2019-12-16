@@ -23,13 +23,15 @@ class DummyRequest():
         self.user = user
 
 
-def import_jats_article(jats_contents, journal, persist=True, filename=None):
+def import_jats_article(jats_contents, journal, persist=True, filename=None, owner=None):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
     :param journal: Journal in which to import the article
     """
     jats_soup = BeautifulSoup((jats_contents), 'lxml')
     metadata_soup = jats_soup.find("article-meta")
+    if not owner
+        owner = Account.objects.get(pk=1)
 
     # Gather metadata
     meta = {}
@@ -58,11 +60,10 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None):
         return meta
     else:
         # Persist Article
-        article = save_article(journal, meta)
+        article = save_article(journal, meta, owner=owner)
         # Save Galleys
         xml_file = ContentFile(jats_contents.encode("utf-8"))
         xml_file.name = filename or uuid.uuid4()
-        owner = Account.objects.get(pk=1)
         request = DummyRequest(owner)
         save_galley(article, request, xml_file, True, "XML")
 
@@ -179,7 +180,7 @@ def get_jats_authors(soup, author_notes=None):
     return authors
 
 
-def save_article(journal, metadata, issue=None):
+def save_article(journal, metadata, issue=None, owner=None):
     with transaction.atomic():
         section, _ = submission_models.Section.objects \
             .language(settings.LANGUAGE_CODE).get_or_create(
@@ -197,6 +198,7 @@ def save_article(journal, metadata, issue=None):
             date_submitted=metadata["date_submitted"],
             stage=submission_models.STAGE_PUBLISHED,
             is_import=True,
+            owner=owner.
         )
         article.section = section
         article.save()
