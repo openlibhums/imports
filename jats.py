@@ -30,7 +30,7 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None, own
     """
     jats_soup = BeautifulSoup((jats_contents), 'lxml')
     metadata_soup = jats_soup.find("article-meta")
-    if not owner
+    if not owner:
         owner = Account.objects.get(pk=1)
 
     # Gather metadata
@@ -198,7 +198,7 @@ def save_article(journal, metadata, issue=None, owner=None):
             date_submitted=metadata["date_submitted"],
             stage=submission_models.STAGE_PUBLISHED,
             is_import=True,
-            owner=owner.
+            owner=owner,
         )
         article.section = section
         article.save()
