@@ -52,7 +52,10 @@ def import_reviewers(request, reader):
 
 
 def import_user(request, row, reset_pwd=False):
-    country = core_models.Country.objects.get(code=row[6])
+    try:
+        country = core_models.Country.objects.get(code=row[6])
+    except core_models.Country.DoesNotExist:
+        country = None
     user, created = core_models.Account.objects.get_or_create(
         username=row[3],
         email=row[3],
