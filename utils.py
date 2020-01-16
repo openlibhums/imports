@@ -30,7 +30,7 @@ def import_editorial_team(request, reader):
 
     for row in row_list:
         group, c = core_models.EditorialGroup.objects.get_or_create(
-            name=row[7],
+            name=row[8],
             journal=request.journal,
             defaults={'sequence': request.journal.next_group_order()})
         user, _ = import_user(request, row)
@@ -53,18 +53,19 @@ def import_reviewers(request, reader):
 
 def import_user(request, row, reset_pwd=False):
     try:
-        country = core_models.Country.objects.get(code=row[6])
+        country = core_models.Country.objects.get(code=row[7])
     except core_models.Country.DoesNotExist:
         country = None
     user, created = core_models.Account.objects.get_or_create(
-        username=row[3],
-        email=row[3],
+        username=row[4],
+        email=row[4],
         defaults={
-            'first_name': row[0],
-            'middle_name': row[1],
-            'last_name': row[2],
-            'department': row[4],
-            'institution': row[5],
+            'salutation': row[0],
+            'first_name': row[1],
+            'middle_name': row[2],
+            'last_name': row[3],
+            'department': row[5],
+            'institution': row[6],
             'country': country,
         }
     )
