@@ -69,7 +69,7 @@ def import_user(request, row, reset_pwd=False):
             'country': country,
         }
     )
-    if not created and reset_pwd:
+    if created and reset_pwd:
         core_logic.start_reset_process(request, user)
 
     return user, created
