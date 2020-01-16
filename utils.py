@@ -32,25 +32,42 @@ def import_editorial_team(request, reader):
             name=row[7],
             journal=request.journal,
             defaults={'sequence': request.journal.next_group_order()})
-        country = core_models.Country.objects.get(code=row[6])
-        user, c = core_models.Account.objects.get_or_create(
-            username=row[3],
-            email=row[3],
-            defaults={
-                'first_name': row[0],
-                'middle_name': row[1],
-                'last_name': row[2],
-                'department': row[4],
-                'institution': row[5],
-                'country': country,
-            }
-        )
+        user, _ = import_user(request, row)
 
         core_models.EditorialGroupMember.objects.get_or_create(
             group=group,
             user=user,
             sequence=group.next_member_sequence()
         )
+
+def import_reviewers(request, reader):
+    row_list = [row for row in reader]
+    row_list.remove(row_list[0])
+
+    for row in row_list:
+        user, _ = import_user(request, row, reset_pwd=True)
+        if not user.is_reviewer(request):
+            user.add_account_role('reviewer', request.journal)
+
+
+def import_user(request, row, reset_pwd=False):
+    country = core_models.Country.objects.get(code=row[6])
+    user, c = core_models.Account.objects.get_or_create(
+        username=row[3],
+        email=row[3],
+        defaults={
+            'first_name': row[0],
+            'middle_name': row[1],
+            'last_name': row[2],
+            'department': row[4],
+            'institution': row[5],
+            'country': country,
+        }
+    )
+    if created and reset_pwd:
+        core_logic.start_reset_process(request, user)
+
+    return user, created
 
 
 def import_contacts_team(request, reader):
