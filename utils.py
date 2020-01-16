@@ -9,6 +9,7 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.template.defaultfilters import linebreaksbr
 
 from core import models as core_models, files
+from core import logic as core_logic
 from journal import models as journal_models
 from utils import setting_handler
 from submission import models as submission_models
@@ -52,7 +53,7 @@ def import_reviewers(request, reader):
 
 def import_user(request, row, reset_pwd=False):
     country = core_models.Country.objects.get(code=row[6])
-    user, c = core_models.Account.objects.get_or_create(
+    user, created = core_models.Account.objects.get_or_create(
         username=row[3],
         email=row[3],
         defaults={
@@ -64,7 +65,7 @@ def import_user(request, row, reset_pwd=False):
             'country': country,
         }
     )
-    if created and reset_pwd:
+    if not created and reset_pwd:
         core_logic.start_reset_process(request, user)
 
     return user, created

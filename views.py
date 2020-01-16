@@ -74,6 +74,8 @@ def import_action(request, filename):
     if request.POST:
         if type == 'editorial':
             utils.import_editorial_team(request, reader)
+        if type == 'reviewers':
+            utils.import_reviewers(request, reader)
         elif type == 'contacts':
             utils.import_contacts_team(request, reader)
         elif type == 'submission':

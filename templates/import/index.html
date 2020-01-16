@@ -28,6 +28,16 @@
                         <a href="{% url 'imports_load' %}?type=editorial" class="button">Start Import</a>
                     </div>
                 </li>
+                <li class="accordion-item" data-accordion-item>
+                    <a href="#" class="accordion-title">Reviewers Import</a>
+                    <div class="accordion-content" data-tab-content>
+                        <p>This import script allows you to import your pool of reviewers from a CSV file with the following structure:</p>
+                        <p>firstname, middlename, lastname, email_address, department, institution, country</p>
+                        <p>Here is an example line from a dummy csv:<br/>
+                            Martin,Paul,Eve,mpeve@voyager.com,Science,USS Voyager,UK</p>
+                        <a href="{% url 'imports_load' %}?type=reviewers" class="button">Start Import</a>
+                    </div>
+                </li>
 
                 <li class="accordion-item" data-accordion-item>
                     <a href="#" class="accordion-title">Journal Contacts</a>

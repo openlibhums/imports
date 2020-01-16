@@ -19,6 +19,8 @@
                 {% include "import/editorial_description.html" %}
             {% elif type == 'contacts' %}
                 {% include "import/contacts_description.html" %}
+            {% elif type == 'reviewers' %}
+                {% include "import/reviewers_description.html" %}
             {% endif %}
 
             <form method="POST" enctype="multipart/form-data">
