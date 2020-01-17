@@ -1,7 +1,7 @@
 PLUGIN_NAME = 'Import Plugin'
 DESCRIPTION = 'This plugin is a collection of import scripts.'
-AUTHOR = 'Andy Byers'
-VERSION = '1.2'
+AUTHOR = 'Birkbeck Centre for Technology and Publishing'
+VERSION = '1.3'
 SHORT_NAME = 'imports'
 MANAGER_URL = 'imports_index'
 JANEWAY_VERSION = "1.3.6"
