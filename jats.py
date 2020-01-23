@@ -215,7 +215,7 @@ def save_article(journal, metadata, issue=None, owner=None):
                 identifier=metadata["identifiers"]["pubid"],
                 defaults={"article": article},
             )
-        for author in metadata["authors"]:
+        for idx, author in enumerate(metadata["authors"]):
             account, _ = Account.objects.get_or_create(
                 email=author["email"],
                 defaults={
@@ -225,6 +225,12 @@ def save_article(journal, metadata, issue=None, owner=None):
                 }
             )
             article.authors.add(account)
+            author_order, created = submission_models.ArticleAuthorOrder \
+                .objects.get_or_create(article=article, author=author)
+            if created:
+                author_order.order = idx
+                author_order.save()
+
             if author["correspondence"]:
                 article.correspondence_author = account
             article.save()
