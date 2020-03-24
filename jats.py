@@ -221,12 +221,12 @@ def save_article(journal, metadata, issue=None, owner=None):
                 defaults={
                     "first_name": author["first_name"],
                     "last_name": author["last_name"],
-                    "institution": author["institution"],
+                    "institution": author["institution"] or journal.name,
                 }
             )
             article.authors.add(account)
             author_order, created = submission_models.ArticleAuthorOrder \
-                .objects.get_or_create(article=article, author=author)
+                .objects.get_or_create(article=article, author=account)
             if created:
                 author_order.order = idx
                 author_order.save()
