@@ -5,8 +5,8 @@ import requests
 
 
 class OJSJanewayClient():
-    PLUGIN_PATH = '/manage/janeway'
-    AUTH_PATH = '/login/'
+    PLUGIN_PATH = '/janeway'
+    AUTH_PATH = '/login/signIn'
     PUBLISHED_QS = urlencode({'request_type': 'published'})
     HEADERS = {
         "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
@@ -42,33 +42,26 @@ class OJSJanewayClient():
     def login(self, username=None, password=None):
         # Fetch Login page
         auth_url = self.journal_url + self.AUTH_PATH
-        login_response = self.fetch(auth_url)
-        csrf_token = get_soup_value_by_name(
-            login_response.content, "csrfmiddlewaretoken", "input")
         req_body = {
             "username": self._auth_dict.get("username") or self.username,
             "password": self._auth_dict.get("password") or self.password,
-            "login": "login",
-            "csrfmiddlewaretoken": csrf_token,
+            "source": "",
         }
-        req_headers = {"Referer": auth_url }
+        req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        import pdb;pdb.set_trace()
         response = self.post(auth_url, headers=req_headers, body=req_body)
         self.authenticated = True
 
     def get_published_articles(self):
-        request_url = self.journal_url + self.PLUGIN_PATH + self.PUBLISHED_QS
+        request_url = (self.journal_url
+            + self.PLUGIN_PATH
+            + "?%s" % self.PUBLISHED_QS
+        )
         response = self.fetch(request_url)
         return response
 
 
 def import_articles(journal_url, ojs_username, ojs_password, journal):
     client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
-
-
-def get_soup_value_by_name(content, name, tag=None):
-    soup = BeautifulSoup(content, 'lxml')
-    found = soup.find(tag, {'name': name})
-    if found:
-        return found.get('value', None)
-    return None
+    content = client.get_published_articles()
 
