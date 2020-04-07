@@ -1,8 +1,8 @@
 from dateutil import parser as dateparser
 import os
 from urllib.parse import urlencode
+import uuid
 
-from bs4 import BeautifulSoup
 from django.core.files.base import ContentFile
 from django.utils import timezone
 import requests
@@ -22,6 +22,12 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+REVIEW_RECOMMENDATION = {
+    '2': 'minor_revisions',
+    '3': 'major_revisions',
+    '5': 'reject',
+    '1': 'accept'
+}
 
 class OJSJanewayClient():
     PLUGIN_PATH = '/janeway'
@@ -101,30 +107,43 @@ def import_articles(journal_url, ojs_username, ojs_password, journal):
     client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
     review_articles = client.get_articles("published")
     for article in review_articles:
-        create_article_with_review_content(article, journal, client)
+        upsert_article_metadata(article, journal, client)
+    logger.info("Imported article with article ID %d" % article.pk)
 
 
-def create_article_with_review_content(article_dict, journal, client):
-    """Copied from core imports library, adjusted to use the client
-
-    https://github.com/BirkbeckCTP/janeway/blob/ \
-        e89886d3791d4eaba6b5bb7b0cf047473bca33fb/src/utils/importers/up.py#L580
-    """
+def upsert_article_metadata(article_dict, journal, client):
+    """ Creates or updates an article record given the OJS metadata"""
     date_started = timezone.make_aware(
         dateparser.parse(article_dict.get('date_submitted')))
 
-    # Create a base article
-    article =submission_models.Article(
-        journal=journal,
-        title=article_dict.get('title'),
-        abstract=article_dict.get('abstract'),
-        language=article_dict.get('language'),
-        stage=submission_models.STAGE_UNDER_REVIEW,
-        is_import=True,
-        date_submitted=date_started,
-    )
+    # Get or create article, looking up by OJS ID or DOI
 
-    article.save()
+    if identifiers_models.Identifier.objects.filter(
+        id_type="pubid",
+        identifier = article_dict["ojs_id"],
+        article__journal=journal,
+    ).exists():
+        article = identifiers_models.Identifier.objects.get(
+            id_type="pubid",
+            identifier = article_dict["ojs_id"],
+            article__journal=journal,
+        ).article
+    else:
+        article = submission_models.Article(
+            journal=journal,
+            title=article_dict.get('title'),
+            abstract=article_dict.get('abstract'),
+            language=article_dict.get('language'),
+            stage=submission_models.STAGE_UNASSIGNED,
+            is_import=True,
+            date_submitted=date_started,
+        )
+        article.save()
+        identifiers_models.Identifier.objects.create(
+            id_type="pubid",
+            identifier = article_dict["ojs_id"],
+            article=article,
+        )
 
     # Check for editors and assign them as section editors.
     editors = article_dict.get('editors', [])
@@ -139,9 +158,6 @@ def create_article_with_review_content(article_dict, journal, client):
         except Exception as e:
             logger.error('Editor account was not found.')
             logger.exception(e)
-
-    # Add a new review round
-    round = review_models.ReviewRound.objects.create(article=article, round_number=1)
 
     # Add keywords
     keywords = article_dict.get('keywords')
@@ -198,17 +214,23 @@ def create_article_with_review_content(article_dict, journal, client):
 
         article.save()
 
+
+def handle_review_data(article_dict, article, client):
+    # Add a new review round
+    round = review_models.ReviewRound.objects.create(article=article, round_number=1)
+
     # Attempt to get the default review form
     form = setting_handler.get_setting(
         'general',
         'default_review_form',
-        journal,
+        article.journal,
         create=True,
     ).processed_value
 
     if not form:
         try:
-            form = review_models.ReviewForm.objects.filter(journal=journal)[0]
+            form = review_models.ReviewForm.objects.filter(
+                journal=article.journal)[0]
         except Exception:
             form = None
             logger.error(
@@ -238,12 +260,10 @@ def create_article_with_review_content(article_dict, journal, client):
         # If the review was declined, setup a date declined date stamp
         review.get('declined')
         if review.get('declined') == '1':
-            date_declined = date_confirmed
             date_accepted = None
             date_complete = date_confirmed
         else:
             date_accepted = date_confirmed
-            date_declined = None
 
         new_review = review_models.ReviewAssignment.objects.create(
             article=article,
@@ -263,7 +283,8 @@ def create_article_with_review_content(article_dict, journal, client):
             new_review.is_complete = True
 
         if review.get('recommendation'):
-            new_review.decision = map_review_recommendation(review.get('recommendation'))
+            new_review.decision = REVIEW_RECOMMENDATION[
+                review['recommendation']]
 
         review_file_url = review.get("review_file_url")
         if review_file_url:
@@ -309,7 +330,6 @@ def create_article_with_review_content(article_dict, journal, client):
 
     article.save()
     round.save()
-    logger.info("Imported article with article ID %d" % article.pk)
 
     return article
 
