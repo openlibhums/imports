@@ -177,12 +177,10 @@ def upsert_article_metadata(article_dict, journal, client):
         article.correspondence_author = article.owner
 
         # Get or create the article's section
-        try:
-            section = submission_models.Section.objects.language().fallbacks(
-                'en'
-            ).get(journal=journal, name=article_dict.get('section'))
-        except submission_models.Section.DoesNotExist:
-            section = None
+        section_name = article_dict.get('section', 'Article')
+        section, _ = submission_models.Section.objects.language(
+            settings.LANGUAGE_CODE
+        ).get_or_create(journal=journal, name=section_name)
 
         article.section = section
 
