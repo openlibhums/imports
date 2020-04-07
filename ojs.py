@@ -3,6 +3,7 @@ import os
 from urllib.parse import urlencode
 import uuid
 
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils import timezone
 import requests
@@ -106,8 +107,8 @@ class OJSJanewayClient():
 def import_articles(journal_url, ojs_username, ojs_password, journal):
     client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
     review_articles = client.get_articles("published")
-    for article in review_articles:
-        upsert_article_metadata(article, journal, client)
+    for article_dict in review_articles:
+        article = upsert_article_metadata(article_dict, journal, client)
     logger.info("Imported article with article ID %d" % article.pk)
 
 
@@ -171,7 +172,7 @@ def upsert_article_metadata(article_dict, journal, client):
     for author in article_dict.get('authors'):
         try:
             author_record = core_models.Account.objects.get(
-                email=author.get('email'))
+                email=author.get('email').lower())
         except core_models.Account.DoesNotExist:
             author_record = core_models.Account.objects.create(
                 email=author.get('email'),
@@ -199,7 +200,7 @@ def upsert_article_metadata(article_dict, journal, client):
 
         # Set the primary author
         article.owner = core_models.Account.objects.get(
-            email=article_dict.get('correspondence_author'))
+            email=article_dict.get('correspondence_author').lower())
         article.correspondence_author = article.owner
 
         # Get or create the article's section
@@ -213,6 +214,8 @@ def upsert_article_metadata(article_dict, journal, client):
         article.section = section
 
         article.save()
+
+        return article
 
 
 def handle_review_data(article_dict, article, client):
@@ -241,10 +244,11 @@ def handle_review_data(article_dict, article, client):
 
     for review in article_dict.get('reviews'):
         try:
-            reviewer = core_models.Account.objects.get(email=review.get('email'))
+            reviewer = core_models.Account.objects.get(
+                email=review.get('email').lower())
         except core_models.Account.DoesNotExist:
             reviewer = core_models.Account.objects.create(
-                email=review.get('email'),
+                email=review.get('email').lower(),
                 first_name=review.get('first_name'),
                 last_name=review.get('last_name'),
             )
