@@ -117,34 +117,7 @@ def upsert_article_metadata(article_dict, journal, client):
     date_started = timezone.make_aware(
         dateparser.parse(article_dict.get('date_submitted')))
 
-    # Get or create article, looking up by OJS ID or DOI
-
-    if identifiers_models.Identifier.objects.filter(
-        id_type="pubid",
-        identifier = article_dict["ojs_id"],
-        article__journal=journal,
-    ).exists():
-        article = identifiers_models.Identifier.objects.get(
-            id_type="pubid",
-            identifier = article_dict["ojs_id"],
-            article__journal=journal,
-        ).article
-    else:
-        article = submission_models.Article(
-            journal=journal,
-            title=article_dict.get('title'),
-            abstract=article_dict.get('abstract'),
-            language=article_dict.get('language'),
-            stage=submission_models.STAGE_UNASSIGNED,
-            is_import=True,
-            date_submitted=date_started,
-        )
-        article.save()
-        identifiers_models.Identifier.objects.create(
-            id_type="pubid",
-            identifier = article_dict["ojs_id"],
-            article=article,
-        )
+    article = get_or_create_article(article_dict, journal)
 
     # Check for editors and assign them as section editors.
     editors = article_dict.get('editors', [])
@@ -338,3 +311,52 @@ def handle_review_data(article_dict, article, client):
     return article
 
 
+def get_or_create_article(article_dict, journal):
+    """Get or create article, looking up by OJS ID or DOI"""
+    doi = article_dict.get("doi")
+    ojs_id = article_dict["ojs_id"]
+
+    if doi and identifier_models.Ientifier.objects.filter(
+        id_type="doi",
+        identifier = doi,
+        article__journal=journal,
+    ).exists():
+        article = identifiers_models.Identifier.objects.get(
+            id_type="doi",
+            identifier = doi,
+            article__journal=journal,
+        ).article
+    elif identifiers_models.Identifier.objects.filter(
+        id_type="pubid",
+        identifier = ojs_id,
+        article__journal=journal,
+    ).exists():
+        article = identifiers_models.Identifier.objects.get(
+            id_type="pubid",
+            identifier = ojs_id,
+            article__journal=journal,
+        ).article
+    else:
+        article = submission_models.Article(
+            journal=journal,
+            title=article_dict.get('title'),
+            abstract=article_dict.get('abstract'),
+            language=article_dict.get('language'),
+            stage=submission_models.STAGE_UNASSIGNED,
+            is_import=True,
+            date_submitted=date_started,
+        )
+        article.save()
+        if doi:
+            identifiers_models.Identifier.objects.create(
+                id_type="doi",
+                identifier = doi,
+                article=article,
+            )
+        identifiers_models.Identifier.objects.create(
+            id_type="pubid",
+            identifier = ojs_id,
+            article=article,
+        )
+
+    return article
