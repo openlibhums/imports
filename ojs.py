@@ -173,7 +173,9 @@ def handle_article_metadata(article_dict, journal, client):
 
 def handle_review_data(article_dict, article, client):
     # Add a new review round
-    round = review_models.ReviewRound.objects.create(article=article, round_number=1)
+    round, _= review_models.ReviewRound.objects.get_or_create(
+        article=article, round_number=1,
+    )
 
     # Attempt to get the default review form
     form = setting_handler.get_setting(
@@ -213,10 +215,7 @@ def handle_review_data(article_dict, article, client):
         else:
             date_accepted = date_confirmed
 
-        new_review = review_models.ReviewAssignment.objects.create(
-            article=article,
-            reviewer=reviewer,
-            review_round=round,
+        review_defaults = dict(
             review_type='traditional',
             visibility='double-blind',
             date_due=date_due,
@@ -225,6 +224,12 @@ def handle_review_data(article_dict, article, client):
             date_accepted=date_accepted,
             access_code=uuid.uuid4(),
             form=form
+        )
+        new_review, _= review_models.ReviewAssignment.objects.get_or_create(
+            article=article,
+            reviewer=reviewer,
+            review_round=round,
+            defaults=review_defaults,
         )
 
         if review.get('declined') or review.get('recommendation'):
