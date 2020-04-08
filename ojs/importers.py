@@ -1,29 +1,21 @@
-from dateutil import parser as dateparser
-import os
-from urllib.parse import urlencode
 import uuid
 
+from dateutil import parser as dateparser
 from django.conf import settings
-from django.core.files.base import ContentFile
 from django.utils import timezone
-import requests
 
 from core import models as core_models, files as core_files
 from copyediting import models as copyediting_models
+from identifiers import models as identifiers_models
 from journal import models as journal_models
 from production import models as production_models
-from submission import models as submission_models
-from identifiers import models as identifiers_models
 from review import models as review_models
-from utils import (
-    models as utils_models,
-    setting_handler,
-    shared as utils_shared,
-)
-from utils import shared as utils_shared
+from submission import models as submission_models
+from utils import setting_handler
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 REVIEW_RECOMMENDATION = {
     '2': 'minor_revisions',
@@ -31,96 +23,6 @@ REVIEW_RECOMMENDATION = {
     '5': 'reject',
     '1': 'accept'
 }
-
-class OJSJanewayClient():
-    PLUGIN_PATH = '/janeway'
-    AUTH_PATH = '/login/signIn'
-    HEADERS = {
-        "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/39.0.2171.95 Safari/537.36"
-    }
-    SUPPORTED_STAGES = {
-        'published',
-        'in_editing',
-        'in_review',
-    }
-
-    def __init__(self, journal_url, username=None, password=None, session=None):
-        """"A Client for the OJS Janeway plugin API"""
-        self.journal_url = journal_url
-        self._auth_dict = {}
-        self.session = session or requests.Session()
-        self.session.headers.update(**self.HEADERS)
-        self.authenticated = False
-        if username and password:
-            self._auth_dict = {
-                'username': username,
-                'password': password,
-            }
-            self.login()
-
-    def fetch(self, request_url, headers=None, stream=False):
-        response = self.session.get(
-            request_url, headers=headers, stream=stream)
-        return response
-
-    def fetch_file(self, url, filename=None):
-        response = self.fetch(url, stream=True)
-        blob = response.content
-        content_file = ContentFile(blob)
-        if filename:
-            _, extension = os.path.splitext(url)
-            content_file.name = filename + extension
-        return content_file
-
-    def post(self, request_url, headers=None, body=None):
-        if not headers:
-            headers = {}
-        response = self.session.post(request_url, headers=headers, data=body)
-        return response
-
-    def login(self, username=None, password=None):
-        # Fetch Login page
-        auth_url = self.journal_url + self.AUTH_PATH
-        req_body = {
-            "username": self._auth_dict.get("username") or self.username,
-            "password": self._auth_dict.get("password") or self.password,
-            "source": "",
-        }
-        req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        response = self.post(auth_url, headers=req_headers, body=req_body)
-        self.authenticated = True
-
-    def get_articles(self, stage):
-        if stage not in self.SUPPORTED_STAGES:
-            raise NameError("Stage %s not supported", (stage))
-        request_url = (
-            self.journal_url
-            + self.PLUGIN_PATH
-            + "?%s" % urlencode({"request_type": stage})
-        )
-        response = self.fetch(request_url)
-        data = response.json()
-        for article in data:
-            yield article
-
-
-def import_articles(journal_url, ojs_username, ojs_password, journal):
-    client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
-    review_articles = client.get_articles("published")
-    for article_dict in review_articles:
-        article = import_article_metadata(article_dict, journal, client)
-
-        import_review_data(article_dict, article, client)
-        import_copyediting(article_dict, article, client)
-        import_publication(article_dict, article, client)
-
-        stage = calculate_article_stage(article_dict, article)
-        article.stage = stage
-        article.save()
-
-        logger.info("Imported article with article ID %d" % article.pk)
 
 
 def import_article_metadata(article_dict, journal, client):
@@ -134,7 +36,8 @@ def import_article_metadata(article_dict, journal, client):
         try:
             account = core_models.Account.objects.get(email=editor)
             account.add_account_role('section-editor', journal)
-            review_models.EditorAssignment.objects.create(article=article, editor=account, editor_type='section-editor')
+            review_models.EditorAssignment.objects.create(
+                article=article, editor=account, editor_type='section-editor')
             logger.info(
                 'Editor %s added to article %s' % (editor.email, article.pk))
         except Exception as e:
@@ -181,7 +84,7 @@ def import_article_metadata(article_dict, journal, client):
 
 def import_review_data(article_dict, article, client):
     # Add a new review round
-    round, _= review_models.ReviewRound.objects.get_or_create(
+    round, _ = review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
     )
 
@@ -208,11 +111,15 @@ def import_review_data(article_dict, article, client):
         reviewer = get_or_create_account(review)
 
         # Parse the dates
-        date_requested = timezone.make_aware(dateparser.parse(review.get('date_requested')))
-        date_due = timezone.make_aware(dateparser.parse(review.get('date_due')))
-        date_complete = timezone.make_aware(dateparser.parse(review.get('date_complete'))) if review.get(
+        date_requested = timezone.make_aware(
+            dateparser.parse(review.get('date_requested')))
+        date_due = timezone.make_aware(
+            dateparser.parse(review.get('date_due')))
+        date_complete = timezone.make_aware(
+            dateparser.parse(review.get('date_complete'))) if review.get(
             'date_complete') else None
-        date_confirmed = timezone.make_aware(dateparser.parse(review.get('date_confirmed'))) if review.get(
+        date_confirmed = timezone.make_aware(
+            dateparser.parse(review.get('date_confirmed'))) if review.get(
             'date_confirmed') else None
 
         # If the review was declined, setup a date declined date stamp
@@ -233,7 +140,7 @@ def import_review_data(article_dict, article, client):
             access_code=uuid.uuid4(),
             form=form
         )
-        new_review, _= review_models.ReviewAssignment.objects.get_or_create(
+        new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
             article=article,
             reviewer=reviewer,
             review_round=round,
@@ -280,7 +187,6 @@ def import_review_data(article_dict, article, client):
         manuscript, article, article.owner, label="Manuscript")
     article.manuscript_files.add(ms_file)
 
-
     # Get Supp Files
     if article_dict.get('supp_files'):
         for supp in article_dict.get('supp_files'):
@@ -306,22 +212,24 @@ def import_copyediting(article_dict, article, client):
         if initial:
             initial_copyeditor = core_models.Account.objects.get(
                 email=initial.get('email').lower())
-            initial_decision = True if (initial.get('underway') or initial.get('complete')) else False
+            initial_decision = True if (
+                initial.get('underway') or initial.get('complete')) else False
 
             assigned = attempt_to_make_timezone_aware(initial.get('notified'))
             underway = attempt_to_make_timezone_aware(initial.get('underway'))
             complete = attempt_to_make_timezone_aware(initial.get('complete'))
 
-            copyedit_assignment = copyediting_models.CopyeditAssignment.objects.create(
-                article=article,
-                copyeditor=initial_copyeditor,
-                assigned=assigned,
-                notified=True,
-                decision=initial_decision,
-                date_decided=underway if underway else complete,
-                copyeditor_completed=complete,
-                copyedit_accepted=complete
-            )
+            copyedit_assignment = copyediting_models\
+                .CopyeditAssignment.objects.create(
+                    article=article,
+                    copyeditor=initial_copyeditor,
+                    assigned=assigned,
+                    notified=True,
+                    decision=initial_decision,
+                    date_decided=underway if underway else complete,
+                    copyeditor_completed=complete,
+                    copyedit_accepted=complete
+                )
 
             copyedit_file_url = initial.get("file")
             if copyedit_file_url:
@@ -333,8 +241,10 @@ def import_copyediting(article_dict, article, client):
 
             if initial and author.get('notified'):
                 logger.info('Adding author review.')
-                assigned = attempt_to_make_timezone_aware(author.get('notified'))
-                complete = attempt_to_make_timezone_aware(author.get('complete'))
+                assigned = attempt_to_make_timezone_aware(
+                    author.get('notified'))
+                complete = attempt_to_make_timezone_aware(
+                    author.get('complete'))
 
                 author_review = copyediting_models.AuthorReview.objects.create(
                     author=article.owner,
@@ -357,22 +267,26 @@ def import_copyediting(article_dict, article, client):
             if final and initial_copyeditor and final.get('notified'):
                 logger.info('Adding final copyedit assignment.')
 
-                assigned = attempt_to_make_timezone_aware(initial.get('notified'))
-                underway = attempt_to_make_timezone_aware(initial.get('underway'))
-                complete = attempt_to_make_timezone_aware(initial.get('complete'))
+                assigned = attempt_to_make_timezone_aware(
+                    initial.get('notified'))
+                underway = attempt_to_make_timezone_aware(
+                    initial.get('underway'))
+                complete = attempt_to_make_timezone_aware(
+                    initial.get('complete'))
 
                 final_decision = True if underway or complete else False
 
-                final_assignment = copyediting_models.CopyeditAssignment.objects.create(
-                    article=article,
-                    copyeditor=initial_copyeditor,
-                    assigned=assigned,
-                    notified=True,
-                    decision=final_decision,
-                    date_decided=underway if underway else complete,
-                    copyeditor_completed=complete,
-                    copyedit_accepted=complete,
-                )
+                final_assignment = copyediting_models.\
+                    CopyeditAssignment.objects.create(
+                        article=article,
+                        copyeditor=initial_copyeditor,
+                        assigned=assigned,
+                        notified=True,
+                        decision=final_decision,
+                        date_decided=underway if underway else complete,
+                        copyeditor_completed=complete,
+                        copyedit_accepted=complete,
+                    )
                 final_file_url = final.get("file")
                 if final_file_url:
                     fetched_final = client.fetch_file(final_file_url)
@@ -398,10 +312,11 @@ def import_typesetting(article_dict, article, client):
             assigned=timezone.now(),
             notified=True
         )
-        assignment, _ = production_models.ProductionAssignment.objects.get_or_create(
-            article=article,
-            defaults=assignment_defaults,
-        )
+        assignment, _ = production_models.\
+            ProductionAssignment.objects.get_or_create(
+                article=article,
+                defaults=assignment_defaults,
+            )
 
         assigned = attempt_to_make_timezone_aware(layout.get('notified'))
         accepted = attempt_to_make_timezone_aware(layout.get('underway'))
@@ -427,7 +342,6 @@ def import_publication(article_dict, article, client):
     if pub_data and pub_data.get("issue_number"):
         issue_num = int(pub_data.get("issue_number", 1))
         vol_num = int(pub_data.get("issue_volume", 1))
-        issue_year = int(pub_data.get("issue_year", timezone.now().year))
         date_published = attempt_to_make_timezone_aware(
             pub_data.get("date_published"),
         )
@@ -455,6 +369,33 @@ def import_publication(article_dict, article, client):
             article.save()
 
 
+def import_galleys(article, layout_dict, client):
+    galleys = list()
+
+    if layout_dict.get('galleys'):
+
+        for galley in layout_dict.get('galleys'):
+            logger.info(
+                'Adding Galley with label {label}'.format(
+                    label=galley.get('label')
+                )
+            )
+            remote_file = client.fetch_file(
+                galley.get("file"), galley.get("label"))
+            galley_file = core_files.save_file_to_article(
+                remote_file, article, article.owner, label=galley.get("label"))
+
+            new_galley, c = core_models.Galley.objects.get_or_create(
+                article=article,
+                file=galley_file,
+                defaults={"label": galley.get("label")},
+            )
+            if c:
+                galleys.append(new_galley)
+
+    return galleys
+
+
 def calculate_article_stage(article_dict, article):
 
     if article_dict.get('publication') and article.date_published:
@@ -466,11 +407,12 @@ def calculate_article_stage(article_dict, article):
     elif article_dict.get("copyediting"):
         stage = submission_models.STAGE_AUTHOR_COPYEDITING
     elif article_dict.get("review_file_url") or article_dict.get("reviews"):
-        stage=submission_models.STAGE_UNDER_REVIEW
+        stage = submission_models.STAGE_UNDER_REVIEW
     else:
         stage = submission_models.STAGE_UNASSIGNED
 
     return stage
+
 
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
@@ -482,22 +424,22 @@ def get_or_create_article(article_dict, journal):
 
     if doi and identifiers_models.Ientifier.objects.filter(
         id_type="doi",
-        identifier = doi,
+        identifier=doi,
         article__journal=journal,
     ).exists():
         article = identifiers_models.Identifier.objects.get(
             id_type="doi",
-            identifier = doi,
+            identifier=doi,
             article__journal=journal,
         ).article
     elif identifiers_models.Identifier.objects.filter(
         id_type="pubid",
-        identifier = ojs_id,
+        identifier=ojs_id,
         article__journal=journal,
     ).exists():
         article = identifiers_models.Identifier.objects.get(
             id_type="pubid",
-            identifier = ojs_id,
+            identifier=ojs_id,
             article__journal=journal,
         ).article
     else:
@@ -514,16 +456,17 @@ def get_or_create_article(article_dict, journal):
         if doi:
             identifiers_models.Identifier.objects.create(
                 id_type="doi",
-                identifier = doi,
+                identifier=doi,
                 article=article,
             )
         identifiers_models.Identifier.objects.create(
             id_type="pubid",
-            identifier = ojs_id,
+            identifier=ojs_id,
             article=article,
         )
 
     return article
+
 
 def get_or_create_account(data, roles=None):
     """ Gets or creates an account for the given OJS user data"""
@@ -550,36 +493,10 @@ def get_or_create_account(data, roles=None):
 
     return account
 
+
 def attempt_to_make_timezone_aware(datetime):
     if datetime:
         dt = dateparser.parse(datetime)
         return timezone.make_aware(dt)
     else:
         return None
-
-
-def import_galleys(article, layout_dict, client):
-    galleys = list()
-
-    if layout_dict.get('galleys'):
-
-        for galley in layout_dict.get('galleys'):
-            logger.info(
-                'Adding Galley with label {label}'.format(
-                    label=galley.get('label')
-                )
-            )
-            remote_file = client.fetch_file(galley.get("file"), galley.get("label"))
-            galley_file = core_files.save_file_to_article(
-                remote_file, article, article.owner, label=galley.get("label"))
-
-
-            new_galley, c = core_models.Galley.objects.get_or_create(
-                article=article,
-                file=galley_file,
-                defaults={"label":galley.get("label")},
-            )
-            if c:
-                galleys.append(new_galley)
-
-    return galleys

@@ -1,6 +1,5 @@
 import getpass
 from journal import models
-from core.models import Account
 
 from django.core.management.base import BaseCommand
 from plugins.imports import ojs
@@ -16,7 +15,6 @@ class Command(BaseCommand):
         parser.add_argument('ojs_username')
         parser.add_argument('journal_code')
         parser.add_argument('--ojs_password', default=None)
-        parser.add_argument('--owner_id', default=1)
         parser.add_argument('--dry-run', action="store_true", default=False)
 
     def handle(self, *args, **options):
@@ -24,9 +22,10 @@ class Command(BaseCommand):
         if not options["ojs_password"]:
             password = getpass.getpass(
                 "Enter password for user %s: " % options["ojs_username"])
-        owner = Account.objects.get(pk=options["owner_id"])
-        ojs.import_articles(
+        client = ojs.OJSJanewayClient(
             options["ojs_journal_url"],
             options["ojs_username"],
             options["ojs_password"] or password,
-            journal)
+        )
+
+        ojs.import_articles(client, journal)
