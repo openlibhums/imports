@@ -143,26 +143,8 @@ def handle_article_metadata(article_dict, journal, client):
 
     # Add authors
     for author in article_dict.get('authors'):
-        try:
-            author_record = core_models.Account.objects.get(
-                email=author.get('email').lower())
-        except core_models.Account.DoesNotExist:
-            author_record = core_models.Account.objects.create(
-                email=author.get('email'),
-                first_name=author.get('first_name'),
-                last_name=author.get('last_name'),
-                institution=author.get('affiliation', ""),
-                biography=author.get('bio'),
-            )
+        author_record = get_or_create_account(author)
 
-        # If we have a country, fetch its record
-        if author.get('country'):
-            try:
-                country = core_models.Country.objects.get(code=author.get('country'))
-                author_record.country = country
-                author_record.save()
-            except core_models.Country.DoesNotExist:
-                pass
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
         submission_models.ArticleAuthorOrder.objects.create(
@@ -213,15 +195,7 @@ def handle_review_data(article_dict, article, client):
             raise
 
     for review in article_dict.get('reviews'):
-        try:
-            reviewer = core_models.Account.objects.get(
-                email=review.get('email').lower())
-        except core_models.Account.DoesNotExist:
-            reviewer = core_models.Account.objects.create(
-                email=review.get('email').lower(),
-                first_name=review.get('first_name'),
-                last_name=review.get('last_name'),
-            )
+        reviewer = get_or_create_account(review)
 
         # Parse the dates
         date_requested = timezone.make_aware(dateparser.parse(review.get('date_requested')))
@@ -449,6 +423,30 @@ def get_or_create_article(article_dict, journal):
 
     return article
 
+def get_or_create_account(data, roles=None):
+    """ Gets or creates an account for the given OJS user data"""
+    try:
+        account = core_models.Account.objects.get(
+            email__iexact=data["email"])
+    except core_models.Account.DoesNotExist:
+        account = core_models.Account.objects.create(
+            email=data.get('email'),
+            first_name=data.get('first_name'),
+            last_name=data.get('last_name'),
+            institution=data.get('affiliation', ""),
+            biography=data.get('bio'),
+        )
+
+    if data.get('country'):
+        try:
+            country = core_models.Country.objects.get(
+                code=data.get('country'))
+            account.country = country
+            account.save()
+        except core_models.Country.DoesNotExist:
+            pass
+
+    return account
 
 def attempt_to_make_timezone_aware(datetime):
     if datetime:
