@@ -110,13 +110,20 @@ def import_articles(journal_url, ojs_username, ojs_password, journal):
     client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
     review_articles = client.get_articles("published")
     for article_dict in review_articles:
-        article = handle_article_metadata(article_dict, journal, client)
-        handle_review_data(article_dict, article, client)
-        handle_copyediting(article_dict, article, client)
+        article = import_article_metadata(article_dict, journal, client)
+
+        import_review_data(article_dict, article, client)
+        import_copyediting(article_dict, article, client)
+        import_publication(article_dict, article, client)
+
+        stage = calculate_article_stage(article_dict, article)
+        article.stage = stage
+        article.save()
+
         logger.info("Imported article with article ID %d" % article.pk)
 
 
-def handle_article_metadata(article_dict, journal, client):
+def import_article_metadata(article_dict, journal, client):
     """ Creates or updates an article record given the OJS metadata"""
     article = get_or_create_article(article_dict, journal)
 
@@ -172,7 +179,7 @@ def handle_article_metadata(article_dict, journal, client):
         return article
 
 
-def handle_review_data(article_dict, article, client):
+def import_review_data(article_dict, article, client):
     # Add a new review round
     round, _= review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
@@ -288,7 +295,7 @@ def handle_review_data(article_dict, article, client):
     return article
 
 
-def handle_copyediting(article_dict, article, client):
+def import_copyediting(article_dict, article, client):
     copyediting = article_dict.get('copyediting', None)
 
     if copyediting:
@@ -376,7 +383,7 @@ def handle_copyediting(article_dict, article, client):
                     final_assignment.copyeditor_files.add(final_file)
 
 
-def handle_typesetting(article_dict, article, client):
+def import_typesetting(article_dict, article, client):
     layout = article_dict.get('layout')
     task = None
 
@@ -414,6 +421,56 @@ def handle_typesetting(article_dict, article, client):
         for galley in galleys:
             task.galleys_loaded.add(galley.file)
 
+
+def import_publication(article_dict, article, client):
+    pub_data = article_dict.get("publication")
+    if pub_data and pub_data.get("issue_number"):
+        issue_num = int(pub_data.get("issue_number", 1))
+        vol_num = int(pub_data.get("issue_volume", 1))
+        issue_year = int(pub_data.get("issue_year", timezone.now().year))
+        date_published = attempt_to_make_timezone_aware(
+            pub_data.get("date_published"),
+        )
+
+        issue, created = journal_models.Issue.objects.get_or_create(
+            journal=article.journal,
+            volume=vol_num,
+            issue=issue_num,
+            issue_title=pub_data.get("issue_title"),
+            defaults={"date": date_published},
+        )
+        if created:
+            issue_type = journal_models.IssueType.objects.get(
+                code="issue", journal=article.journal)
+            issue.issue_type = issue_type
+            issue.save()
+            logger.info("Created new issue {}".format(issue))
+
+        article.primary_issue = issue
+        article.save()
+        issue.articles.add(article)
+
+        if date_published:
+            article.date_published = date_published
+            article.save()
+
+
+def calculate_article_stage(article_dict, article):
+
+    if article_dict.get('publication') and article.date_published:
+        stage = submission_models.STAGE_PUBLISHED
+    elif article_dict.get("proofing"):
+        stage = submission_models.STAGE_PROOFING
+    elif article_dict.get("layout") and article_dict["layout"].get("galleys"):
+        stage = submission_models.STAGE_TYPESETTING
+    elif article_dict.get("copyediting"):
+        stage = submission_models.STAGE_AUTHOR_COPYEDITING
+    elif article_dict.get("review_file_url") or article_dict.get("reviews"):
+        stage=submission_models.STAGE_UNDER_REVIEW
+    else:
+        stage = submission_models.STAGE_UNASSIGNED
+
+    return stage
 
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
