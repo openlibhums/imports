@@ -11,6 +11,7 @@ import requests
 from core import models as core_models, files as core_files
 from copyediting import models as copyediting_models
 from journal import models as journal_models
+from production import models as production_models
 from submission import models as submission_models
 from identifiers import models as identifiers_models
 from review import models as review_models
@@ -112,7 +113,7 @@ def import_articles(journal_url, ojs_username, ojs_password, journal):
         article = handle_article_metadata(article_dict, journal, client)
         handle_review_data(article_dict, article, client)
         handle_copyediting(article_dict, article, client)
-    logger.info("Imported article with article ID %d" % article.pk)
+        logger.info("Imported article with article ID %d" % article.pk)
 
 
 def handle_article_metadata(article_dict, journal, client):
@@ -375,6 +376,45 @@ def handle_copyediting(article_dict, article, client):
                     final_assignment.copyeditor_files.add(final_file)
 
 
+def handle_typesetting(article_dict, article, client):
+    layout = article_dict.get('layout')
+    task = None
+
+    if layout.get('email'):
+        typesetter = core_models.Account.objects.get(
+            email__iexact=layout.get('email'))
+
+        logger.info(
+            'Adding typesetter {name}'.format(name=typesetter.full_name()))
+
+        assignment_defaults = dict(
+            assigned=timezone.now(),
+            notified=True
+        )
+        assignment, _ = production_models.ProductionAssignment.objects.get_or_create(
+            article=article,
+            defaults=assignment_defaults,
+        )
+
+        assigned = attempt_to_make_timezone_aware(layout.get('notified'))
+        accepted = attempt_to_make_timezone_aware(layout.get('underway'))
+        complete = attempt_to_make_timezone_aware(layout.get('complete'))
+
+        task, _ = production_models.TypesetTask.objects.get_or_create(
+            assignment=assignment,
+            typesetter=typesetter,
+            assigned=assigned,
+            accepted=accepted,
+            completed=complete,
+        )
+
+    galleys = import_galleys(article, layout, client)
+
+    if task and galleys:
+        for galley in galleys:
+            task.galleys_loaded.add(galley.file)
+
+
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
     date_started = timezone.make_aware(
@@ -461,3 +501,28 @@ def attempt_to_make_timezone_aware(datetime):
         return None
 
 
+def import_galleys(article, layout_dict, client):
+    galleys = list()
+
+    if layout_dict.get('galleys'):
+
+        for galley in layout_dict.get('galleys'):
+            logger.info(
+                'Adding Galley with label {label}'.format(
+                    label=galley.get('label')
+                )
+            )
+            remote_file = client.fetch_file(galley.get("file"), galley.get("label"))
+            galley_file = core_files.save_file_to_article(
+                remote_file, article, article.owner, label=galley.get("label"))
+
+
+            new_galley, c = core_models.Galley.objects.get_or_create(
+                article=article,
+                file=galley_file,
+                defaults={"label":galley.get("label")},
+            )
+            if c:
+                galleys.append(new_galley)
+
+    return galleys
