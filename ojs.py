@@ -9,6 +9,7 @@ from django.utils import timezone
 import requests
 
 from core import models as core_models, files as core_files
+from copyediting import models as copyediting_models
 from journal import models as journal_models
 from submission import models as submission_models
 from identifiers import models as identifiers_models
@@ -108,15 +109,14 @@ def import_articles(journal_url, ojs_username, ojs_password, journal):
     client = OJSJanewayClient(journal_url, ojs_username, ojs_password)
     review_articles = client.get_articles("published")
     for article_dict in review_articles:
-        article = upsert_article_metadata(article_dict, journal, client)
+        article = handle_article_metadata(article_dict, journal, client)
+        handle_review_data(article_dict, article, client)
+        handle_copyediting(article_dict, article, client)
     logger.info("Imported article with article ID %d" % article.pk)
 
 
-def upsert_article_metadata(article_dict, journal, client):
+def handle_article_metadata(article_dict, journal, client):
     """ Creates or updates an article record given the OJS metadata"""
-    date_started = timezone.make_aware(
-        dateparser.parse(article_dict.get('date_submitted')))
-
     article = get_or_create_article(article_dict, journal)
 
     # Check for editors and assign them as section editors.
@@ -198,7 +198,6 @@ def handle_review_data(article_dict, article, client):
         'general',
         'default_review_form',
         article.journal,
-        create=True,
     ).processed_value
 
     if not form:
@@ -309,12 +308,103 @@ def handle_review_data(article_dict, article, client):
     return article
 
 
+def handle_copyediting(article_dict, article, client):
+    copyediting = article_dict.get('copyediting', None)
+
+    if copyediting:
+        initial = copyediting.get('initial')
+        author = copyediting.get('author')
+        final = copyediting.get('final')
+
+        if initial:
+            initial_copyeditor = core_models.Account.objects.get(
+                email=initial.get('email').lower())
+            initial_decision = True if (initial.get('underway') or initial.get('complete')) else False
+
+            assigned = attempt_to_make_timezone_aware(initial.get('notified'))
+            underway = attempt_to_make_timezone_aware(initial.get('underway'))
+            complete = attempt_to_make_timezone_aware(initial.get('complete'))
+
+            copyedit_assignment = copyediting_models.CopyeditAssignment.objects.create(
+                article=article,
+                copyeditor=initial_copyeditor,
+                assigned=assigned,
+                notified=True,
+                decision=initial_decision,
+                date_decided=underway if underway else complete,
+                copyeditor_completed=complete,
+                copyedit_accepted=complete
+            )
+
+            copyedit_file_url = initial.get("file")
+            if copyedit_file_url:
+                fetched_copyedit_file = client.fetch_file(copyedit_file_url)
+                copyedit_file = core_files.save_file_to_article(
+                    fetched_copyedit_file, article, initial_copyeditor,
+                    label="Copyedited File")
+                copyedit_assignment.copyeditor_files.add(copyedit_file)
+
+            if initial and author.get('notified'):
+                logger.info('Adding author review.')
+                assigned = attempt_to_make_timezone_aware(author.get('notified'))
+                complete = attempt_to_make_timezone_aware(author.get('complete'))
+
+                author_review = copyediting_models.AuthorReview.objects.create(
+                    author=article.owner,
+                    assignment=copyedit_assignment,
+                    assigned=assigned,
+                    notified=True,
+                    decision='accept',
+                    date_decided=complete,
+                )
+
+                author_file_url = author.get("file")
+                if author_file_url:
+                    fetched_review = client.fetch_file(author_file_url)
+                    author_review_file = core_files.save_file_to_article(
+                        fetched_review, article, article.owner,
+                        label="Author Review File",
+                    )
+                    author_review.files_updated.add(author_review_file)
+
+            if final and initial_copyeditor and final.get('notified'):
+                logger.info('Adding final copyedit assignment.')
+
+                assigned = attempt_to_make_timezone_aware(initial.get('notified'))
+                underway = attempt_to_make_timezone_aware(initial.get('underway'))
+                complete = attempt_to_make_timezone_aware(initial.get('complete'))
+
+                final_decision = True if underway or complete else False
+
+                final_assignment = copyediting_models.CopyeditAssignment.objects.create(
+                    article=article,
+                    copyeditor=initial_copyeditor,
+                    assigned=assigned,
+                    notified=True,
+                    decision=final_decision,
+                    date_decided=underway if underway else complete,
+                    copyeditor_completed=complete,
+                    copyedit_accepted=complete,
+                )
+                final_file_url = final.get("file")
+                if final_file_url:
+                    fetched_final = client.fetch_file(final_file_url)
+                    final_file = core_files.save_file_to_article(
+                        fetched_final, article, initial_copyeditor,
+                        label="Final File",
+                    )
+                    final_assignment.copyeditor_files.add(final_file)
+
+
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
+    date_started = timezone.make_aware(
+        dateparser.parse(article_dict.get('date_submitted')))
+
     doi = article_dict.get("doi")
     ojs_id = article_dict["ojs_id"]
 
-    if doi and identifier_models.Ientifier.objects.filter(
+    if doi and identifiers_models.Ientifier.objects.filter(
         id_type="doi",
         identifier = doi,
         article__journal=journal,
@@ -358,3 +448,13 @@ def get_or_create_article(article_dict, journal):
         )
 
     return article
+
+
+def attempt_to_make_timezone_aware(datetime):
+    if datetime:
+        dt = dateparser.parse(datetime)
+        return timezone.make_aware(dt)
+    else:
+        return None
+
+
