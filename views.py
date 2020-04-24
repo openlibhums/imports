@@ -55,6 +55,18 @@ def import_load(request):
 
 
 @staff_member_required
+def csv_metadata_import(request, filename=None):
+    """
+    Allows importing article metadata from a source csv file
+    :param file_name: The filename identifying an import already started
+    """
+
+    template = 'import/csv_metadata_import.html'
+    context = {}
+    return render(request, template, context)
+
+
+@staff_member_required
 def import_action(request, filename):
     """
     Processes and displays the editorial import data
@@ -94,6 +106,13 @@ def import_action(request, filename):
         'reader': reader,
     }
 
+    return render(request, template, context)
+
+
+@staff_member_required
+def import_jats(request):
+    template="import/import_jats.html"
+    context = {}
     return render(request, template, context)
 
 

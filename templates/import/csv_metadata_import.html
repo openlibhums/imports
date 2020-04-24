@@ -1,0 +1,35 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li>Editorial Loading</li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Select CSV for Import</h2>
+        </div>
+        <div class="content">
+            {% if type == 'editorial' %}
+                {% include "import/editorial_description.html" %}
+            {% elif type == 'contacts' %}
+                {% include "import/contacts_description.html" %}
+            {% elif type == 'reviewers' %}
+                {% include "import/reviewers_description.html" %}
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="file">
+                <button class="button"><i class="fa fa-upload"></i> Upload</button>
+            </form>
+
+        </div>
+    </div>
+
+{% endblock %}
