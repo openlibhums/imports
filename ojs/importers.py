@@ -27,7 +27,11 @@ REVIEW_RECOMMENDATION = {
 
 def import_article_metadata(article_dict, journal, client):
     """ Creates or updates an article record given the OJS metadata"""
-    article = get_or_create_article(article_dict, journal)
+    article, created = get_or_create_article(article_dict, journal)
+    if created:
+        logger.debug("Created article %d" % article.pk)
+    else:
+        logger.debug("Updating article %d" % article.pk)
 
     # Check for editors and assign them as section editors.
     editors = article_dict.get('editors', [])
@@ -68,18 +72,35 @@ def import_article_metadata(article_dict, journal, client):
         article.owner = core_models.Account.objects.get(
             email=article_dict.get('correspondence_author').lower())
         article.correspondence_author = article.owner
-
-        # Get or create the article's section
-        section_name = article_dict.get('section', 'Article')
-        section, _ = submission_models.Section.objects.language(
-            settings.LANGUAGE_CODE
-        ).get_or_create(journal=journal, name=section_name)
-
-        article.section = section
-
         article.save()
 
-        return article
+    # Get or create the article's section
+    section_name = article_dict.get('section', 'Article')
+    section, _ = submission_models.Section.objects.language(
+        settings.LANGUAGE_CODE
+    ).get_or_create(journal=journal, name=section_name)
+
+    article.section = section
+    article.save()
+
+    # Set the license
+    license_url = article_dict.get("license", "")
+    try:
+        article.license = submission_models.Licence.objects.get(
+                journal=article.journal,
+                url=license_url,
+        )
+    except submission_models.Licence.DoesNotExist:
+        try:
+            article.license = submission_models.Licence.objects.get(
+                    journal=article.journal,
+                    short_name="Copyright",
+            )
+        except submission_models.Licence.DoesNotExist:
+            logger.error("No license could be parsed from: %s" % license_url)
+    article.save()
+
+    return article
 
 
 def import_review_data(article_dict, article, client):
@@ -416,6 +437,7 @@ def calculate_article_stage(article_dict, article):
 
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
+    created = False
     date_started = timezone.make_aware(
         dateparser.parse(article_dict.get('date_submitted')))
 
@@ -443,6 +465,7 @@ def get_or_create_article(article_dict, journal):
             article__journal=journal,
         ).article
     else:
+        created = True
         article = submission_models.Article(
             journal=journal,
             title=article_dict.get('title'),
@@ -465,7 +488,7 @@ def get_or_create_article(article_dict, journal):
             article=article,
         )
 
-    return article
+    return article, created
 
 
 def get_or_create_account(data, roles=None):
