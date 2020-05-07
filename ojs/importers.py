@@ -8,6 +8,7 @@ from core import models as core_models, files as core_files
 from copyediting import models as copyediting_models
 from identifiers import models as identifiers_models
 from journal import models as journal_models
+from metrics import models as metrics_models
 from production import models as production_models
 from review import models as review_models
 from submission import models as submission_models
@@ -178,11 +179,14 @@ def import_review_data(article_dict, article, client):
         review_file_url = review.get("review_file_url")
         if review_file_url:
             fetched_review_file = client.fetch_file(review_file_url)
-            review_file = core_files.save_file_to_article(
-                fetched_review_file, article, reviewer, label="Review File")
+            if fetched_review_file:
+                review_file = core_files.save_file_to_article(
+                    fetched_review_file, article, reviewer,
+                    label="Review File",
+                )
 
-            new_review.review_file = review_file
-            round.review_files.add(review_file)
+                new_review.review_file = review_file
+                round.review_files.add(review_file)
 
         elif review.get('comments'):
             filepath = core_files.create_temp_file(
@@ -204,17 +208,19 @@ def import_review_data(article_dict, article, client):
     # Get MS File
     manuscript_file_url = article_dict.get("manuscript_file_url")
     manuscript = client.fetch_file(manuscript_file_url, "manuscript")
-    ms_file = core_files.save_file_to_article(
-        manuscript, article, article.owner, label="Manuscript")
-    article.manuscript_files.add(ms_file)
+    if manuscript:
+        ms_file = core_files.save_file_to_article(
+            manuscript, article, article.owner, label="Manuscript")
+        article.manuscript_files.add(ms_file)
 
     # Get Supp Files
     if article_dict.get('supp_files'):
         for supp in article_dict.get('supp_files'):
             supp = client.fetch_file(supp["url"], supp["title"])
-            ms_file = core_files.save_file_to_article(
-                supp, article, article.owner, label="Supplementary File")
-            article.data_figure_files.add(supp)
+            if supp:
+                ms_file = core_files.save_file_to_article(
+                    supp, article, article.owner, label="Supplementary File")
+                article.data_figure_files.add(supp)
 
     article.save()
     round.save()
@@ -255,10 +261,11 @@ def import_copyediting(article_dict, article, client):
             copyedit_file_url = initial.get("file")
             if copyedit_file_url:
                 fetched_copyedit_file = client.fetch_file(copyedit_file_url)
-                copyedit_file = core_files.save_file_to_article(
-                    fetched_copyedit_file, article, initial_copyeditor,
-                    label="Copyedited File")
-                copyedit_assignment.copyeditor_files.add(copyedit_file)
+                if fetched_copyedit_file:
+                    copyedit_file = core_files.save_file_to_article(
+                        fetched_copyedit_file, article, initial_copyeditor,
+                        label="Copyedited File")
+                    copyedit_assignment.copyeditor_files.add(copyedit_file)
 
             if initial and author.get('notified'):
                 logger.info('Adding author review.')
@@ -279,11 +286,12 @@ def import_copyediting(article_dict, article, client):
                 author_file_url = author.get("file")
                 if author_file_url:
                     fetched_review = client.fetch_file(author_file_url)
-                    author_review_file = core_files.save_file_to_article(
-                        fetched_review, article, article.owner,
-                        label="Author Review File",
-                    )
-                    author_review.files_updated.add(author_review_file)
+                    if fetched_review:
+                        author_review_file = core_files.save_file_to_article(
+                            fetched_review, article, article.owner,
+                            label="Author Review File",
+                        )
+                        author_review.files_updated.add(author_review_file)
 
             if final and initial_copyeditor and final.get('notified'):
                 logger.info('Adding final copyedit assignment.')
@@ -311,11 +319,12 @@ def import_copyediting(article_dict, article, client):
                 final_file_url = final.get("file")
                 if final_file_url:
                     fetched_final = client.fetch_file(final_file_url)
-                    final_file = core_files.save_file_to_article(
-                        fetched_final, article, initial_copyeditor,
-                        label="Final File",
-                    )
-                    final_assignment.copyeditor_files.add(final_file)
+                    if fetched_final:
+                        final_file = core_files.save_file_to_article(
+                            fetched_final, article, initial_copyeditor,
+                            label="Final File",
+                        )
+                        final_assignment.copyeditor_files.add(final_file)
 
 
 def import_typesetting(article_dict, article, client):
@@ -359,42 +368,93 @@ def import_typesetting(article_dict, article, client):
 
 
 def import_publication(article_dict, article, client):
+    """ Imports an article-issue relationship
+    If the issue doesn't exist yet, it gets created
+    """
     pub_data = article_dict.get("publication")
-    if pub_data and pub_data.get("issue_number"):
-        issue_num = int(pub_data.get("issue_number", 1))
-        vol_num = int(pub_data.get("issue_volume", 1))
-        date_published = attempt_to_make_timezone_aware(
-            pub_data.get("date_published"),
-        )
-
-        issue, created = journal_models.Issue.objects.get_or_create(
-            journal=article.journal,
-            volume=vol_num,
-            issue=issue_num,
-            issue_title=pub_data.get("issue_title"),
-            defaults={"date": date_published},
-        )
-        if created:
-            issue_type = journal_models.IssueType.objects.get(
-                code="issue", journal=article.journal)
-            issue.issue_type = issue_type
-            issue.save()
-            logger.info("Created new issue {}".format(issue))
+    if pub_data and pub_data.get("number"):
+        issue = get_or_create_issue(pub_data, article.journal)
 
         article.primary_issue = issue
         article.save()
         issue.articles.add(article)
 
-        if date_published:
-            article.date_published = date_published
+        if issue.date and not article.date_published:
+            article.date_published = issue.date
             article.save()
+
+
+def import_issue_metadata(issue_dict, client, journal):
+    issue = get_or_create_issue(issue_dict, journal)
+    issue.order = int(issue_dict.get("sequence", 0))
+
+    # Handle cover
+    if issue_dict.get("cover") and not issue.cover_image:
+        issue_cover = client.fetch_file(issue_dict["cover"])
+        issue.cover_image = issue_cover
+    issue.save()
+
+    # Handle Section orderings
+    for section_order, section_dict in enumerate(
+        issue_dict.get("sections", []), 1
+    ):
+        section_name = section_dict["title"]
+        section, _ = submission_models.Section.objects.language(
+            settings.LANGUAGE_CODE
+        ).get_or_create(journal=journal, name=section_name)
+        journal_models.SectionOrdering.objects.get_or_create(
+            issue=issue,
+            section=section,
+            defaults={"order": section_order}
+        )
+
+        for order, article_dict in enumerate(section_dict.get("articles", [])):
+            import_article_section(article_dict, issue, section, order)
+
+    return issue
+
+def import_article_section(article_section_dict, issue, section, order):
+    ojs_id = article_section_dict["id"]
+    try:
+        article = identifiers_models.Identifier.objects.get(
+            id_type="pubid",
+            identifier=ojs_id,
+            article__journal=section.journal,
+        ).article
+    except identifiers_models.Identifier.DoesNotExist:
+        logger.warning(
+            "Article section record for unimported article with OJS id "
+            "%s" % ojs_id,
+        )
+    else:
+        article.section = section
+        pages = article_section_dict["pages"]
+        # pages is a string describing a range: "3-19"
+        # or just a string describing the start page: "3"
+        if pages:
+            if "-" in pages:
+                start_page, _ = article_section_dict["pages"].split("-")
+            else:
+                start_page = pages
+            try:
+                article.page_numbers = int(start_page)
+            except ValueError:
+                logger.warning("Can't import pages value: %s" % pages)
+
+        article.save()
+
+        ordering, _ = journal_models.ArticleOrdering.objects.get_or_create(
+            issue=issue,
+            article=article,
+            section=section,
+        )
+        ordering.order = order
 
 
 def import_galleys(article, layout_dict, client):
     galleys = list()
 
     if layout_dict.get('galleys'):
-
         for galley in layout_dict.get('galleys'):
             logger.info(
                 'Adding Galley with label {label}'.format(
@@ -491,6 +551,31 @@ def get_or_create_article(article_dict, journal):
     return article, created
 
 
+def import_article_metrics(ojs_id, journal, views=0, downloads=0):
+    try:
+        article = identifiers_models.Identifier.objects.get(
+            id_type="pubid",
+            identifier=ojs_id,
+            article__journal=journal,
+        ).article
+    except identifiers_models.Identifier.DoesNotExist:
+        logger.warning(
+            "Article metric record for unimported article with OJS id "
+            "%s" % ojs_id,
+        )
+        return
+
+    metric, _= metrics_models.HistoricArticleAccess.objects.get_or_create(
+        article=article,
+        defaults={"downloads": 0, "views": 0}
+    )
+    if views:
+        metric.views = views
+    if downloads:
+        metric.downloads = downloads
+    metric.save()
+
+
 def get_or_create_account(data, roles=None):
     """ Gets or creates an account for the given OJS user data"""
     try:
@@ -515,6 +600,34 @@ def get_or_create_account(data, roles=None):
             pass
 
     return account
+
+
+def get_or_create_issue(issue_data, journal):
+    issue_num = int(issue_data.get("number", 1))
+    vol_num = int(issue_data.get("volume", 1))
+    date_published = attempt_to_make_timezone_aware(
+        issue_data.get("date_published"),
+    )
+
+    issue, created = journal_models.Issue.objects.get_or_create(
+        journal=journal,
+        volume=vol_num,
+        issue=issue_num,
+        defaults={
+            "date": date_published,
+            "issue_title": issue_data.get("title"),
+        },
+    )
+    if created:
+        issue_type = journal_models.IssueType.objects.get(
+            code="issue", journal=journal)
+        issue.issue_type = issue_type
+        if issue_dict.get("description"):
+            issue.issue_description = issue_dict["description"]
+        issue.save()
+        logger.info("Created new issue {}".format(issue))
+
+    return issue
 
 
 def attempt_to_make_timezone_aware(datetime):

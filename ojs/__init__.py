@@ -1,3 +1,6 @@
-from plugins.imports.ojs.main import import_articles
+from plugins.imports.ojs.main import (
+    import_articles,
+    import_issues,
+    import_metrics,
+)
 from plugins.imports.ojs.clients import OJSJanewayClient
-

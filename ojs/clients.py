@@ -2,11 +2,16 @@ import requests
 import os
 from django.core.files.base import ContentFile
 from urllib.parse import urlencode
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class OJSJanewayClient():
     PLUGIN_PATH = '/janeway'
     AUTH_PATH = '/login/signIn'
+    ISSUES_PATH = "/issues"
+    METRICS_PATH = "/metrics"
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -33,15 +38,26 @@ class OJSJanewayClient():
             self.login()
 
     def fetch(self, request_url, headers=None, stream=False):
-        return self.session.get(request_url, headers=headers, stream=stream)
+        resp = self.session.get(request_url, headers=headers, stream=stream)
+        if not resp.ok:
+            resp.raise_for_status()
+        return resp
 
-    def fetch_file(self, url, filename=None):
-        response = self.fetch(url, stream=True)
+    def fetch_file(self, url, filename=None, extension=None):
+        try:
+            response = self.fetch(url, stream=True)
+        except requests.exceptions.HTTPError as e:
+            logger.error(e)
+            return
+
         blob = response.content
         content_file = ContentFile(blob)
         if filename:
-            _, extension = os.path.splitext(url)
+            if not extension:
+                _, extension = os.path.splitext(url)
             content_file.name = filename + extension
+        else:
+            content_file.name = os.path.basename(url)
         return content_file
 
     def post(self, request_url, headers=None, body=None):
@@ -74,3 +90,37 @@ class OJSJanewayClient():
         data = response.json()
         for article in data:
             yield article
+
+    def get_issues(self):
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + self.ISSUES_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for issue in data:
+            yield issue
+
+    def get_metrics(self):
+        """ Retrievesd the metrics as exposed by the Janeway Plugin for OJS
+        :return: A mapping from metric type to a list of ojs ids and metric
+            values e.g:
+            {"views": [
+                {"id": "12345",
+                "count": "419"}
+            ],
+            "downloads": [
+                {"id": "12345",
+                "count": "235"}
+            ]}
+        """
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + self.METRICS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+
+        return data

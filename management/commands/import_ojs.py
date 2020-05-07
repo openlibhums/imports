@@ -29,3 +29,5 @@ class Command(BaseCommand):
         )
 
         ojs.import_articles(client, journal)
+        ojs.import_issues(client, journal)
+        ojs.import_metrics(client, journal)
