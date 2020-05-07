@@ -47,8 +47,8 @@ def import_article_metadata(article_dict, journal, client):
     # Add keywords
     keywords = article_dict.get('keywords')
     if keywords:
-        for keyword in keywords.split(';'):
-            word, created = submission_models.Keyword.objects.get_or_create(
+        for keyword in keywords:
+            word, _ = submission_models.Keyword.objects.get_or_create(
                 word=keyword)
             article.keywords.add(word)
 
