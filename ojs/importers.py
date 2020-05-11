@@ -25,6 +25,27 @@ REVIEW_RECOMMENDATION = {
     '1': 'accept'
 }
 
+ROLES = {
+    "user.role.editor":         "editor",
+    "user.role.manager":        "editor",
+    "user.role.reviewer":       "reviewer",
+    "user.role.layoutEditor":   "typesetter",
+    "user.role.copyeditor":     "copyeditor",
+    "user.role.sectionEditor":  "section-editor",
+    "user.role.proofreader":    "proofreader",
+}
+
+
+SALUTATIONS = {
+    "Doctor": "Dr",
+}
+
+GALLEY_TYPES = {
+    "PDF":  "pdf",
+    "XML":  "xml",
+    "HTML": "html",
+}
+
 
 def import_article_metadata(article_dict, journal, client):
     """ Creates or updates an article record given the OJS metadata"""
@@ -413,6 +434,7 @@ def import_issue_metadata(issue_dict, client, journal):
 
     return issue
 
+
 def import_article_section(article_section_dict, issue, section, order):
     ojs_id = article_section_dict["id"]
     try:
@@ -576,7 +598,17 @@ def import_article_metrics(ojs_id, journal, views=0, downloads=0):
     metric.save()
 
 
-def get_or_create_account(data, roles=None):
+def import_user_metadata(user_data, journal):
+    account = get_or_create_account(user_data)
+    for ojs_role in user_data.get("roles"):
+        janeway_role = ROLES.get(ojs_role)
+        if janeway_role:
+            account.add_account_role(janeway_role, journal)
+
+    account.add_account_role("author", journal)
+
+
+def get_or_create_account(data):
     """ Gets or creates an account for the given OJS user data"""
     try:
         account = core_models.Account.objects.get(
@@ -584,11 +616,15 @@ def get_or_create_account(data, roles=None):
     except core_models.Account.DoesNotExist:
         account = core_models.Account.objects.create(
             email=data.get('email'),
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
-            institution=data.get('affiliation', ""),
-            biography=data.get('bio'),
         )
+
+    account.salutation = SALUTATIONS.get(data.get("salutation"), data.get("salutation"))
+    account.first_name = data.get('first_name')
+    account.middle_name = data.get('middle_name')
+    account.last_name = data.get('last_name')
+    account.institution = data.get('affiliation', '')
+    account.biography = data.get('bio')
+    account.orcid = data.get("orcid")
 
     if data.get('country'):
         try:
@@ -599,6 +635,7 @@ def get_or_create_account(data, roles=None):
         except core_models.Country.DoesNotExist:
             pass
 
+    account.save()
     return account
 
 

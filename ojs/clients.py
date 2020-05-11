@@ -11,6 +11,7 @@ class OJSJanewayClient():
     PLUGIN_PATH = '/janeway'
     AUTH_PATH = '/login/signIn'
     ISSUES_PATH = "/issues"
+    USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
@@ -101,6 +102,17 @@ class OJSJanewayClient():
         data = response.json()
         for issue in data:
             yield issue
+
+    def get_users(self):
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + self.USERS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for user in data:
+            yield user
 
     def get_metrics(self):
         """ Retrievesd the metrics as exposed by the Janeway Plugin for OJS

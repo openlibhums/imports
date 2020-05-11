@@ -28,6 +28,7 @@ class Command(BaseCommand):
             options["ojs_password"] or password,
         )
 
+        ojs.import_users(client, journal)
         ojs.import_articles(client, journal)
         ojs.import_issues(client, journal)
         ojs.import_metrics(client, journal)

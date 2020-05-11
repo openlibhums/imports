@@ -6,6 +6,7 @@ from plugins.imports.ojs.importers import (
     import_issue_metadata,
     import_publication,
     import_review_data,
+    import_user_metadata,
 )
 from utils.logger import get_logger
 
@@ -46,3 +47,8 @@ def import_metrics(ojs_client, journal):
             article_downloads["id"], journal,
             downloads=int(article_downloads["count"]),
         )
+
+
+def import_users(ojs_client, journal):
+    for user in ojs_client.get_users():
+        import_user_metadata(user, journal)
