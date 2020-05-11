@@ -3,6 +3,7 @@ from plugins.imports.ojs.importers import (
     import_article_metadata,
     import_article_metrics,
     import_copyediting,
+    import_typesetting,
     import_issue_metadata,
     import_publication,
     import_review_data,
@@ -20,6 +21,7 @@ def import_articles(ojs_client, journal):
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
+        import_typesetting(article_dict, article, ojs_client)
         import_publication(article_dict, article, ojs_client)
 
         stage = calculate_article_stage(article_dict, article)

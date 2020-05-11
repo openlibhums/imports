@@ -486,8 +486,11 @@ def import_galleys(article, layout_dict, client):
 
             new_galley, c = core_models.Galley.objects.get_or_create(
                 article=article,
-                file=galley_file,
-                defaults={"label": galley.get("label")},
+                type=GALLEY_TYPES.get(galley.get("label", "other")),
+                defaults={
+                    "label": galley.get("label"),
+                    "file": galley_file,
+                },
             )
             if c:
                 galleys.append(new_galley)
@@ -614,7 +617,7 @@ def get_or_create_account(data):
             email=data.get('email'),
         )
 
-    account.salutation = SALUTATIONS.get(data.get("salutation"), data.get("salutation"))
+    account.salutation = data.get("salutation")
     account.first_name = data.get('first_name')
     account.middle_name = data.get('middle_name')
     account.last_name = data.get('last_name')
