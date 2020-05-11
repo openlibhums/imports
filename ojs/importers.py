@@ -36,10 +36,6 @@ ROLES = {
 }
 
 
-SALUTATIONS = {
-    "Doctor": "Dr",
-}
-
 GALLEY_TYPES = {
     "PDF":  "pdf",
     "XML":  "xml",
@@ -439,7 +435,7 @@ def import_article_section(article_section_dict, issue, section, order):
     ojs_id = article_section_dict["id"]
     try:
         article = identifiers_models.Identifier.objects.get(
-            id_type="pubid",
+            id_type="ojs_id",
             identifier=ojs_id,
             article__journal=section.journal,
         ).article
@@ -537,12 +533,12 @@ def get_or_create_article(article_dict, journal):
             article__journal=journal,
         ).article
     elif identifiers_models.Identifier.objects.filter(
-        id_type="pubid",
+        id_type="ojs_id",
         identifier=ojs_id,
         article__journal=journal,
     ).exists():
         article = identifiers_models.Identifier.objects.get(
-            id_type="pubid",
+            id_type="ojs_id",
             identifier=ojs_id,
             article__journal=journal,
         ).article
@@ -565,7 +561,7 @@ def get_or_create_article(article_dict, journal):
                 article=article,
             )
         identifiers_models.Identifier.objects.create(
-            id_type="pubid",
+            id_type="ojs_id",
             identifier=ojs_id,
             article=article,
         )
@@ -576,7 +572,7 @@ def get_or_create_article(article_dict, journal):
 def import_article_metrics(ojs_id, journal, views=0, downloads=0):
     try:
         article = identifiers_models.Identifier.objects.get(
-            id_type="pubid",
+            id_type="ojs_id",
             identifier=ojs_id,
             article__journal=journal,
         ).article
@@ -587,7 +583,7 @@ def import_article_metrics(ojs_id, journal, views=0, downloads=0):
         )
         return
 
-    metric, _= metrics_models.HistoricArticleAccess.objects.get_or_create(
+    metric, _ = metrics_models.HistoricArticleAccess.objects.get_or_create(
         article=article,
         defaults={"downloads": 0, "views": 0}
     )
@@ -659,8 +655,8 @@ def get_or_create_issue(issue_data, journal):
         issue_type = journal_models.IssueType.objects.get(
             code="issue", journal=journal)
         issue.issue_type = issue_type
-        if issue_dict.get("description"):
-            issue.issue_description = issue_dict["description"]
+        if issue_data.get("description"):
+            issue.issue_description = issue_data["description"]
         issue.save()
         logger.info("Created new issue {}".format(issue))
 
