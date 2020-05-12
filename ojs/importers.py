@@ -70,9 +70,10 @@ def import_article_metadata(article_dict, journal, client):
     keywords = article_dict.get('keywords')
     if keywords:
         for keyword in keywords:
-            word, _ = submission_models.Keyword.objects.get_or_create(
-                word=keyword)
-            article.keywords.add(word)
+            if keyword:
+                word, _ = submission_models.Keyword.objects.get_or_create(
+                    word=keyword)
+                article.keywords.add(word)
 
     # Add authors
     for author in sorted(article_dict.get('authors'),
