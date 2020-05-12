@@ -75,22 +75,24 @@ def import_article_metadata(article_dict, journal, client):
             article.keywords.add(word)
 
     # Add authors
-    for author in article_dict.get('authors'):
+    for author in sorted(article_dict.get('authors'),
+                         key=lambda x: x.get("sequence")):
         author_record = get_or_create_account(author)
 
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
-        submission_models.ArticleAuthorOrder.objects.create(
+        order, _ = submission_models.ArticleAuthorOrder.objects.get_or_create(
             article=article,
             author=author_record,
-            order=article.next_author_sort()
         )
+        order.order = author.get("sequence", 999)
+        author_record.snapshot_self(article)
 
-        # Set the primary author
-        article.owner = core_models.Account.objects.get(
-            email=article_dict.get('correspondence_author').lower())
-        article.correspondence_author = article.owner
-        article.save()
+    # Set the primary author
+    article.owner = core_models.Account.objects.get(
+        email=article_dict.get('correspondence_author').lower())
+    article.correspondence_author = article.owner
+    article.save()
 
     # Get or create the article's section
     section_name = article_dict.get('section', 'Article')
