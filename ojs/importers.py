@@ -608,6 +608,8 @@ def import_user_metadata(user_data, journal):
             account.add_account_role(janeway_role, journal)
 
     account.add_account_role("author", journal)
+    account.is_active = True
+    account.save()
 
 
 def get_or_create_account(data):
