@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from plugins.imports.csv import fields
+from plugins.imports.csv import fields, CSVMeta
 
 
 class TestCSVModel():
@@ -54,3 +54,20 @@ class TestCSVFields(TestCase):
         self.assertNotEqual(field.validate(), None,
                             msg="%s should not validate as an EmailField value"
                             "" % field.value)
+
+class TestCSVMeta(TestCase):
+
+    def test_row_type(self):
+        class TestCSV(metaclass=CSVMeta):
+            test_field = fields.Field()
+
+        test_csv = TestCSV()
+        self.assertTrue(hasattr(test_csv, "row_type"))
+
+    def test_row_slots(self):
+        class TestCSV(metaclass=CSVMeta):
+            test_field = fields.Field()
+
+        test_csv = TestCSV()
+        row = test_csv.row_type()
+        self.assertTupleEqual(("test_field",), row.__slots__)
