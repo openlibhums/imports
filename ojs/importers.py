@@ -449,19 +449,7 @@ def import_article_section(article_section_dict, issue, section, order):
         )
     else:
         article.section = section
-        pages = article_section_dict["pages"]
-        # pages is a string describing a range: "3-19"
-        # or just a string describing the start page: "3"
-        if pages:
-            if "-" in pages:
-                start_page, _ = article_section_dict["pages"].split("-")
-            else:
-                start_page = pages
-            try:
-                article.page_numbers = int(start_page)
-            except ValueError:
-                logger.warning("Can't import pages value: %s" % pages)
-
+        article.page_numbers = article_section_dict.get("pages")
         article.save()
 
         ordering, _ = journal_models.ArticleOrdering.objects.get_or_create(
