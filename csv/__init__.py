@@ -1,60 +1,81 @@
 from collections import OrderedDict
-from itertools import chain
+from itertools import chain, cycle
 
-try:
-    from django.db import models as django_models
-except ImportError:
-    django_models = False
+from django.db import models as django_models
 
 from plugins.imports.csv import fields
+from plugins.imports.csv.exceptions import ValidationError
 
-class CSVTableMeta(type):
+
+class BaseRow():
+    __slots__ = []
+
+    def __init__(self, *args):
+        if not args:
+            args = cycle((None,))
+        for slot, value in zip(self.__slots__, args):
+            setattr(self, slot, value)
+
+    def validate(self, validators):
+        for slot in self.__slots__:
+            slot_validators = validators.get(slot)
+            for validator in slot_validators:
+                err = validator(getattr(self, slot, default=None))
+                if err:
+                    raise ValidationError(err) #TODO handle multierror
+
+
+class CSVMeta(type):
     def __new__(meta, name, bases, attrs):
-        current_fields = []
-        for name, attr in attrs.items():
-            if isinstance(attr, fields.Field):
-                current_fields.append((attr, name))
-                attrs.pop(name)
-        attrs["_fields"] = OrderedDict(current_fields)
-        klass = super().__new__(meta, name, bases, attrs)
+        slots = tuple(
+            name for name, attr in attrs.items()
+            if isinstance(attr, fields.Field)
+        )
+        row_type = type(name + "Row", (BaseRow,), {"__slots__": slots})
+        attrs["row_type"] = row_type
+        klass = super(CSVMeta, meta).__new__(meta, name, bases, attrs)
         return klass
 
-class BaseCSVTable():
-    __metaclass__ = CSVTableMeta
-    def __init__(self, *args, **kwargs):
-        if not data:
-            data = {}
-        for name, attr in self._fields.items():
-            setattr(self, name, kwargs.get(name))
 
-    def validate(self):
+class CSV(metaclass=CSVMeta):
+    def __init__(self, rows=(), *args, **kwargs):
+        self._rows = [self.row_type(row) for row in rows]
+        self._changed_rows = {}
+        self._new_rows = []
+
+    def add_row(self, row_data):
+        self._new_rows.append = self.row_type(row_data)
+
+    def validate_row(self):
         errors = []
-        for name, attr in self._fields.items():
-            err = attr.validate(getattr(self, name))
-            if err:
-                errors.append(err)
+        for row in self._rows:
+            row_errors = {}
+            for name in row.__slots__:
+                value = getattr(row, name)
+                field = getattr(self, name)
+                err = field.validate(value)
+                if err:
+                    row_errors[name] = ValidationError(err)
+            errors.append(row_errors)
 
         if errors:
-            raise Exception("ERROR")  # TODO ValidationError
+            raise ValidationError(error_list)
+
+    @classmethod
+    def from_csv_path(cls, csv_path):
+        """Instantiates the object  against the values in the given csv
+        :param csv_path: The path to a UTF-8 encoded CSV
+        :return CSV: An instance of this model
+        """
+        with open(csv_path, "r") as csv_file:
+            pass
 
 
-class Example(BaseCSVTable):
-    some_field = fields.StringField(max_length=255)
-
-class CSVTable(BaseCSVTable):
-    def from_csv(cls, path, csv_parser=None):
-        pass
-        # TODO
-
-
-if django_models:
-    class CSVTableModelMeta(type):
-
+    class CSVModelMeta(type):
         def __init__(cls, *args, **kwargs):
             super(*args, **kwargs).__init__(*args, **kwargs)
-            for
 
-        @staticmethod
+        @classmethod
         def fields_from_model(cls, model, fields=(), exclude=()):
             """
             Calculates the CSV Fields that map to the fiven model
@@ -94,15 +115,14 @@ if django_models:
 
             return OrderedDict(model_fields)
 
-
-    class CSVTableModel(BaseCSVTable):
+    class CSVModel(CSV):
         """ Generates a CSV Model from a django model
 
         Mimics the behaviour of how django FormModels are generated
         from an input model by mapping the form fields into their corresponding
         CSV Fields
         """
-        __metaclass__ = CSVTableModelMeta
+        __metaclass__ = CSVModelMeta
 
         FIELD_MAP = {
             django_models.CharField: fields.StringField,
@@ -113,4 +133,3 @@ if django_models:
 
         def __init__(self, model_instance=None, *args, **kwargs):
             pass  # TODO
-
