@@ -111,23 +111,31 @@ def import_article_metadata(request, reader):
         journal=request.journal,
     )
     for line in reader:
+        line_id = line[0]
+        article = articles.get(line_id)
+        article = import_article_row(line, request.journal, issue_type, article)
+        articles[line_id] = article
+    return articles
+
+def import_article_row(row, journal, issue_type, article=None):
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, date_accepted, date_published, doi, *author_fields = line
+            stage, date_accepted, date_published, doi, *author_fields = row
 
         if title:
             issue, created = journal_models.Issue.objects.get_or_create(
-                journal=request.journal,
+                journal=journal,
                 volume=vol_num or 0,
                 issue=issue_num or 0,
             )
             if created:
                 issue.issue_type = issue_type
                 issue.save()
-            article, created = submission_models.Article.objects.get_or_create(
-                journal=request.journal,
-                title=title,
-            )
-            if created:
+
+            if not article:
+                article = submission_models.Article.objects.create(
+                    journal=journal,
+                    title=title,
+                )
                 article.subtitle = subtitle
                 article.abstract = abstract
                 article.date_accepted = (parse_datetime(date_accepted)
@@ -137,20 +145,19 @@ def import_article_metadata(request, reader):
                 article.stage = stage
                 article.doi = doi
                 sec_obj, created = submission_models.Section.objects.language(
-                    'en').get_or_create(journal=request.journal, name=section)
+                    'en').get_or_create(journal=journal, name=section)
                 article.section = sec_obj
                 article.save()
                 issue.articles.add(article)
                 issue.save()
-            articles[article_id] = article
 
         # author import
         *author_fields, is_corporate = author_fields
-        article = articles[article_id]
         if is_corporate in "Yy":
             import_corporate_author(author_fields, article)
         else:
             import_author(author_fields, article)
+        return article
 
 def import_author(author_fields, article):
         salutation, first_name, middle_name, last_name, institution, email = author_fields
