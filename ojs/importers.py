@@ -76,6 +76,7 @@ def import_article_metadata(article_dict, journal, client):
                 article.keywords.add(word)
 
     # Add authors
+    emails = set()
     for author in sorted(article_dict.get('authors'),
                          key=lambda x: x.get("sequence")):
         author_record = get_or_create_account(author)
@@ -87,7 +88,7 @@ def import_article_metadata(article_dict, journal, client):
             author=author_record,
         )
         order.order = author.get("sequence", 999)
-        author_record.snapshot_self(article)
+        create_frozen_record(author_record, article, emails)
 
     # Set the primary author
     article.owner = core_models.Account.objects.get(
@@ -104,24 +105,64 @@ def import_article_metadata(article_dict, journal, client):
     article.section = section
     article.save()
 
-    # Set the license
-    license_url = article_dict.get("license", "")
-    try:
-        article.license = submission_models.Licence.objects.get(
-                journal=article.journal,
-                url=license_url,
-        )
-    except submission_models.Licence.DoesNotExist:
+    # Set the license if it hasn't been set yet
+    if not article.license:
+        license_url = article_dict.get("license", "")
         try:
             article.license = submission_models.Licence.objects.get(
                     journal=article.journal,
-                    short_name="Copyright",
+                    url=license_url,
             )
         except submission_models.Licence.DoesNotExist:
-            logger.error("No license could be parsed from: %s" % license_url)
-    article.save()
+            try:
+                article.license = submission_models.Licence.objects.get(
+                        journal=article.journal,
+                        short_name="Copyright",
+                )
+            except submission_models.Licence.DoesNotExist:
+                logger.error(
+                    "No license could be parsed from: %s" % license_url)
+        article.save()
 
     return article
+
+
+def create_frozen_record(author, article, emails=None):
+    """ Creates a frozen record for the article from author metadata
+
+    We create a frozen record that is not linked to a user
+    account. This is because email addresses are not unique for author
+    records on OJS, so there will be only a single account for all those
+    authors which would then update itself instead of creating a new record
+    :param author: an instance of core.models.Account
+    :param article: an instance of submission.models.Article
+    :param emails: a set cotaining the author emails seen in this article
+    """
+    if emails and author.email in emails:
+        # Copy behaviour of snapshot_self, without liking acccount
+        try:
+            order = submission_models.ArticleAuthorOrder.objects.get(
+                article=article, author=author).order
+        except submission_models.ArticleAuthorOrder.DoesNotExist:
+            order = 1
+
+        frozen_dict = {
+            'article': article,
+            'first_name': author.first_name,
+            'middle_name': author.middle_name,
+            'last_name': author.last_name,
+            'institution': author.institution,
+            'department': author.department,
+            'order': order,
+        }
+
+        submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
+
+    elif emails:
+        author.snapshot_self(article)
+        emails.add(author.email)
+    else:
+        author.snapshot_self(article)
 
 
 def import_review_data(article_dict, article, client):
