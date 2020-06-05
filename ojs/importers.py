@@ -281,7 +281,7 @@ def import_review_data(article_dict, article, client):
             if supp:
                 ms_file = core_files.save_file_to_article(
                     supp, article, article.owner, label="Supplementary File")
-                article.data_figure_files.add(supp)
+                article.data_figure_files.add(ms_file)
 
     article.save()
     round.save()
