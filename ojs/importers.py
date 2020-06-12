@@ -655,6 +655,9 @@ def get_or_create_account(data):
         )
 
     account.salutation = data.get("salutation")
+    if account.salutation and len(account.salutation) > 9:
+        # OJS does not sanitise this field.
+        account.salutation = None
     account.first_name = data.get('first_name')
     account.middle_name = data.get('middle_name')
     account.last_name = data.get('last_name')
