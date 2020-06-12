@@ -412,6 +412,8 @@ def import_typesetting(article_dict, article, client):
         assigned = attempt_to_make_timezone_aware(layout.get('notified'))
         accepted = attempt_to_make_timezone_aware(layout.get('underway'))
         complete = attempt_to_make_timezone_aware(layout.get('complete'))
+        if not assigned:
+            assigned = article.date_submitted
 
         task, _ = production_models.TypesetTask.objects.get_or_create(
             assignment=assignment,
