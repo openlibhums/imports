@@ -45,11 +45,12 @@ GALLEY_TYPES = {
 
 def import_article_metadata(article_dict, journal, client):
     """ Creates or updates an article record given the OJS metadata"""
+    logger.info("Processing OJS ID %s" % article_dict["ojs_id"])
     article, created = get_or_create_article(article_dict, journal)
     if created:
-        logger.debug("Created article %d" % article.pk)
+        logger.info("Created article %d" % article.pk)
     else:
-        logger.debug("Updating article %d" % article.pk)
+        logger.info("Updating article %d" % article.pk)
 
     # Check for editors and assign them as section editors.
     editors = article_dict.get('editors', [])
