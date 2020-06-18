@@ -79,7 +79,7 @@ def import_article_metadata(article_dict, journal, client):
     # Add authors
     emails = set()
     for author in sorted(article_dict.get('authors'),
-                         key=lambda x: x.get("sequence")):
+                         key=lambda x: x.get("sequence", 1)):
         author_record = get_or_create_account(author)
 
         # Add authors to m2m and create an order record
@@ -263,7 +263,7 @@ def import_review_data(article_dict, article, client):
             )
 
             new_review.review_file = comment_file
-            round.review_files.add(review_file)
+            round.review_files.add(comment_file)
 
         new_review.save()
 
