@@ -85,7 +85,7 @@ class OJSJanewayClient():
         request_url = (
             self.journal_url
             + self.PLUGIN_PATH
-            + "?%s" % urlencode({"request_type": stage})
+            #+ "?%s" % urlencode({"request_type": stage})
         )
         response = self.fetch(request_url)
         data = response.json()
@@ -136,3 +136,37 @@ class OJSJanewayClient():
         data = response.json()
 
         return data
+
+
+class UPJanewayClient(OJSJanewayClient):
+    """ A client for interacting with UPs JMS which is OJS based
+
+    JMS is based on OJS 2.4.3. All endpoints are compatible with
+    the implementation of the OJSClient except for metrics. The
+    other deviation is the authentication system which is not OJS
+    based, although an OJS session can be retrieved.
+    """
+    PLUGIN_PATH = '/jms/janeway'
+    AUTH_PATH = '/author/login'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def login(self, username=None, password=None):
+        # Fetch Login page
+        auth_url = self.journal_url + self.AUTH_PATH
+        self.set_csrftoken(auth_url)
+        req_body = {
+            "username": self._auth_dict.get("username") or username,
+            "password": self._auth_dict.get("password") or password,
+            "login": 'login',
+            'csrfmiddlewaretoken': self.session.cookies["csrftoken"],
+        }
+        req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        self.post(auth_url, headers=req_headers, body=req_body)
+        self.authenticated = True
+
+    def set_csrftoken(self, url):
+        logger.debug("Setting CSRFTOKEN for url:%s " % url)
+        response = self.fetch(url)
+
