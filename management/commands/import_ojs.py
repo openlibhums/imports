@@ -16,7 +16,7 @@ class Command(BaseCommand):
         parser.add_argument('journal_code')
         parser.add_argument('--ojs_password', default=None)
         parser.add_argument('--dry-run', action="store_true", default=False)
-        parser.add_argument('--editorial', action="store_true", default=False
+        parser.add_argument('--editorial', action="store_true", default=False,
                             help="Imports only content in the editorial flow")
 
     def handle(self, *args, **options):

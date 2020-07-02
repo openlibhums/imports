@@ -85,7 +85,7 @@ class OJSJanewayClient():
         request_url = (
             self.journal_url
             + self.PLUGIN_PATH
-            #+ "?%s" % urlencode({"request_type": stage})
+            + "?%s" % urlencode({"request_type": stage})
         )
         response = self.fetch(request_url)
         data = response.json()
