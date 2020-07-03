@@ -54,6 +54,8 @@ class OJSJanewayClient():
         blob = response.content
         content_file = ContentFile(blob)
         if filename:
+            if len(filename) >= 60:
+                filename = filename[:60]
             if not extension:
                 _, extension = os.path.splitext(url)
             content_file.name = filename + extension

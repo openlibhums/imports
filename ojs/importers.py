@@ -17,12 +17,23 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+"""
+REVIEW RECOMMENDATIONS FROM OJS
+define('SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT', 1);
+define('SUBMISSION_REVIEWER_RECOMMENDATION_PENDING_REVISIONS', 2);
+define('SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE', 3);
+define('SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE', 4);
+define('SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE', 5);
+define('SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS', 6);
+"""
 
 REVIEW_RECOMMENDATION = {
     '2': 'minor_revisions',
+    '6': 'minor_revisions',
     '3': 'major_revisions',
+    '4': 'reject',
     '5': 'reject',
-    '1': 'accept'
+    '1': 'accept',
 }
 
 ROLES = {
@@ -93,7 +104,7 @@ def import_article_metadata(article_dict, journal, client):
 
     # Set the primary author
     article.owner = core_models.Account.objects.get(
-        email=article_dict.get('correspondence_author').lower())
+        email=article_dict.get('correspondence_author'))
     article.correspondence_author = article.owner
     article.save()
 
@@ -300,7 +311,7 @@ def import_copyediting(article_dict, article, client):
 
         if initial:
             initial_copyeditor = core_models.Account.objects.get(
-                email=initial.get('email').lower())
+                email=initial.get('email'))
             initial_decision = True if (
                 initial.get('underway') or initial.get('complete')) else False
 
@@ -395,7 +406,7 @@ def import_typesetting(article_dict, article, client):
 
     if layout.get('email'):
         typesetter = core_models.Account.objects.get(
-            email__iexact=layout.get('email'))
+            email=layout.get('email'))
 
         logger.info(
             'Adding typesetter {name}'.format(name=typesetter.full_name()))
@@ -521,7 +532,7 @@ def import_galleys(article, layout_dict, client):
 
             new_galley, c = core_models.Galley.objects.get_or_create(
                 article=article,
-                type=GALLEY_TYPES.get(galley.get("label", "other")),
+                type=GALLEY_TYPES.get(galley.get("label"), "other"),
                 defaults={
                     "label": galley.get("label"),
                     "file": galley_file,
@@ -560,7 +571,7 @@ def get_or_create_article(article_dict, journal):
     doi = article_dict.get("doi")
     ojs_id = article_dict["ojs_id"]
 
-    if doi and identifiers_models.Ientifier.objects.filter(
+    if doi and identifiers_models.Identifier.objects.filter(
         id_type="doi",
         identifier=doi,
         article__journal=journal,
@@ -648,11 +659,16 @@ def get_or_create_account(data):
     """ Gets or creates an account for the given OJS user data"""
     try:
         account = core_models.Account.objects.get(
-            email__iexact=data["email"])
+            email=data["email"])
     except core_models.Account.DoesNotExist:
-        account = core_models.Account.objects.create(
-            email=data.get('email'),
-        )
+        try:
+            account = core_models.Account.objects.create(
+                email=data.get('email'),
+            )
+        except Exception as e:
+            #Most likely due to a problem with case
+            account = core_models.Account.objects.get(
+                email=data["email"].lower())
 
     account.salutation = data.get("salutation")
     if account.salutation and len(account.salutation) > 9:
