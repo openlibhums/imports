@@ -68,7 +68,7 @@ def import_article_metadata(article_dict, journal, client):
 
     for editor in editors:
         try:
-            account = core_models.Account.objects.get(email=editor)
+            account = core_models.Account.objects.get(email__iexact=editor)
             account.add_account_role('section-editor', journal)
             review_models.EditorAssignment.objects.create(
                 article=article, editor=account, editor_type='section-editor')
@@ -104,7 +104,7 @@ def import_article_metadata(article_dict, journal, client):
 
     # Set the primary author
     article.owner = core_models.Account.objects.get(
-        email=article_dict.get('correspondence_author'))
+        email__iexact=article_dict.get('correspondence_author'))
     article.correspondence_author = article.owner
     article.save()
 
@@ -311,7 +311,7 @@ def import_copyediting(article_dict, article, client):
 
         if initial:
             initial_copyeditor = core_models.Account.objects.get(
-                email=initial.get('email'))
+                email__iexact=initial.get('email'))
             initial_decision = True if (
                 initial.get('underway') or initial.get('complete')) else False
 
@@ -406,7 +406,7 @@ def import_typesetting(article_dict, article, client):
 
     if layout.get('email'):
         typesetter = core_models.Account.objects.get(
-            email=layout.get('email'))
+            email__iexact=layout.get('email'))
 
         logger.info(
             'Adding typesetter {name}'.format(name=typesetter.full_name()))
@@ -668,7 +668,7 @@ def get_or_create_account(data):
         except Exception as e:
             #Most likely due to a problem with case
             account = core_models.Account.objects.get(
-                email=data["email"].lower())
+                email__iexact=data["email"])
 
     account.salutation = data.get("salutation")
     if account.salutation and len(account.salutation) > 9:
