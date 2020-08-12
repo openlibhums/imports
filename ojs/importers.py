@@ -525,6 +525,9 @@ def import_galleys(article, layout_dict, client):
                     label=galley.get('label')
                 )
             )
+            if not galley.get("file") or galley["file"] == "None":
+                logger.warning("Can't fetch galley: %s", galley)
+                continue
             remote_file = client.fetch_file(
                 galley.get("file"), galley.get("label"))
             galley_file = core_files.save_file_to_article(
