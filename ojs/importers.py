@@ -163,7 +163,7 @@ def create_frozen_record(author, article, emails=None):
             'first_name': author.first_name,
             'middle_name': author.middle_name,
             'last_name': author.last_name,
-            'institution': author.institution,
+            'institution': author.institution or '',
             'department': author.department,
             'order': order,
         }
@@ -680,7 +680,7 @@ def get_or_create_account(data):
     account.first_name = data.get('first_name')
     account.middle_name = data.get('middle_name')
     account.last_name = data.get('last_name')
-    account.institution = data.get('affiliation', '')
+    account.institution = data.get('affiliation', ' ') or ' '
     account.biography = data.get('bio')
     account.orcid = data.get("orcid")
 
