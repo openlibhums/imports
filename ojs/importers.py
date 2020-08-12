@@ -323,7 +323,7 @@ def import_copyediting(article_dict, article, client):
                 .CopyeditAssignment.objects.create(
                     article=article,
                     copyeditor=initial_copyeditor,
-                    assigned=assigned,
+                    assigned=assigned or timezone.now(),
                     notified=True,
                     decision=initial_decision,
                     date_decided=underway if underway else complete,
