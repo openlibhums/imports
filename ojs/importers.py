@@ -709,7 +709,7 @@ def get_or_create_issue(issue_data, journal):
         volume=vol_num,
         issue=issue_num,
         defaults={
-            "date": date_published,
+            "date": date_published or timezone.now(),
             "issue_title": issue_data.get("title"),
         },
     )
