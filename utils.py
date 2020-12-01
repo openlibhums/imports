@@ -1,3 +1,4 @@
+import csv
 import os
 import re
 import requests
@@ -12,8 +13,12 @@ from core import models as core_models, files
 from core import logic as core_logic
 from journal import models as journal_models
 from utils import setting_handler
+from utils.logger import get_logger
 from submission import models as submission_models
 
+logger = get_logger(__name__)
+
+TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
                  "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
@@ -23,6 +28,7 @@ CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-
                   "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,msanchez@journal.com,N"
 CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,meve@journal.com,N"
 CSV_ANDY = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,abyers@journal.com,N"
+
 
 def import_editorial_team(request, reader):
     row_list = [row for row in reader]
@@ -40,6 +46,7 @@ def import_editorial_team(request, reader):
             user=user,
             sequence=group.next_member_sequence()
         )
+
 
 def import_reviewers(request, reader):
     row_list = [row for row in reader]
@@ -102,54 +109,72 @@ def import_submission_settings(request, reader):
         setting_handler.save_setting('general', 'reviewer_guidelines', journal, linebreaksbr(row[4]))
 
 
-@transaction.atomic
 def import_article_metadata(request, reader):
-    next(reader)  # skip headers
+    headers = next(reader)  # skip headers
+    errors = {}
+    uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
+    path = files.get_temp_file_path_from_name(uuid_filename)
+    error_file = open(path, "w")
+    error_writer = csv.writer(error_file)
+    error_writer.writerow(headers)
+    logger.info("Writing CSV import errors to %s", path)
+
     articles = {}
     issue_type = journal_models.IssueType.objects.get(
         code="issue",
         journal=request.journal,
     )
-    for line in reader:
+    # we skipped line 1 (headers) so we start at 2
+    for i, line in enumerate(reader, start=2):
         line_id = line[0]
         article = articles.get(line_id)
-        article = import_article_row(line, request.journal, issue_type, article)
+        try:
+            article = import_article_row(
+                line, request.journal, issue_type, article)
+        except Exception as e:
+            errors[i] = e
+            error_writer.writerow(line)
         articles[line_id] = article
-    return articles
+    error_file.close()
+    return articles, errors, uuid_filename
 
+
+@transaction.atomic
 def import_article_row(row, journal, issue_type, article=None):
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
             stage, date_accepted, date_published, doi, *author_fields = row
 
-        if title:
-            issue, created = journal_models.Issue.objects.get_or_create(
-                journal=journal,
-                volume=vol_num or 0,
-                issue=issue_num or 0,
-            )
-            if created:
-                issue.issue_type = issue_type
-                issue.save()
+        issue, created = journal_models.Issue.objects.get_or_create(
+            journal=journal,
+            volume=vol_num or 0,
+            issue=issue_num or 0,
+        )
+        if created:
+            issue.issue_type = issue_type
+            issue.save()
 
-            if not article:
-                article = submission_models.Article.objects.create(
-                    journal=journal,
-                    title=title,
-                )
-                article.subtitle = subtitle
-                article.abstract = abstract
-                article.date_accepted = (parse_datetime(date_accepted)
-                        or parse_date(date_accepted))
-                article.date_published = (parse_datetime(date_published)
-                        or parse_date(date_published))
-                article.stage = stage
-                article.doi = doi
-                sec_obj, created = submission_models.Section.objects.language(
-                    'en').get_or_create(journal=journal, name=section)
-                article.section = sec_obj
-                article.save()
-                issue.articles.add(article)
-                issue.save()
+        if not article:
+            if not title:
+                # New article row found with no author
+                raise ValueError("Row refers to an unknown article")
+            article = submission_models.Article.objects.create(
+                journal=journal,
+                title=title,
+            )
+            article.subtitle = subtitle
+            article.abstract = abstract
+            article.date_accepted = (parse_datetime(date_accepted)
+                    or parse_date(date_accepted))
+            article.date_published = (parse_datetime(date_published)
+                    or parse_date(date_published))
+            article.stage = stage
+            article.doi = doi
+            sec_obj, created = submission_models.Section.objects.language(
+                'en').get_or_create(journal=journal, name=section)
+            article.section = sec_obj
+            article.save()
+            issue.articles.add(article)
+            issue.save()
 
         # author import
         *author_fields, is_corporate = author_fields
@@ -157,7 +182,9 @@ def import_article_row(row, journal, issue_type, article=None):
             import_corporate_author(author_fields, article)
         else:
             import_author(author_fields, article)
+
         return article
+
 
 def import_author(author_fields, article):
         salutation, first_name, middle_name, last_name, institution, email = author_fields
