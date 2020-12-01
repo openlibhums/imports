@@ -64,6 +64,7 @@ def import_action(request, filename):
     """
     type = request.GET.get('type')
     path = files.get_temp_file_path_from_name(filename)
+    errors = error_file = None
 
     if not os.path.exists(path):
         raise Http404()
@@ -81,17 +82,21 @@ def import_action(request, filename):
         elif type == 'submission':
             utils.import_submission_settings(request, reader)
         elif type == 'article_metadata':
-            utils.import_article_metadata(request, reader)
+            _, errors, error_file  = utils.import_article_metadata(
+                request, reader)
         else:
             raise Http404
         files.unlink_temp_file(path)
         messages.add_message(request, messages.SUCCESS, 'Import complete')
-        return redirect(reverse('imports_index'))
+        if not errors:
+            return redirect(reverse('imports_index'))
 
     template = 'import/editorial_import.html'
     context = {
         'filename': filename,
         'reader': reader,
+        'errors': errors ,
+        'error_file': error_file,
     }
 
     return render(request, template, context)
@@ -194,6 +199,16 @@ def csv_example(request):
         wr.writerow(utils.CSV_MAURO.split(","))
 
         return files.serve_temp_file(filepath, 'metadata.csv')
+
+
+@staff_member_required
+def serve_failed_rows(request, tmp_file_name):
+    if not tmp_file_name.startswith(utils.TMP_PREFIX):
+        raise Http404
+    filepath = files.get_temp_file_path_from_name(tmp_file_name)
+    if not os.path.exists(filepath):
+        raise Http404
+    return files.serve_temp_file(filepath, 'failed_rows.csv')
 
 
 @staff_member_required
