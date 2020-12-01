@@ -41,6 +41,7 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None, own
     meta["keywords"] = get_jats_keywords(metadata_soup)
     meta["section_name"] = get_jats_section_name(jats_soup)
     meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
+    meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
     history_soup = metadata_soup.find("history")
