@@ -25,9 +25,16 @@ CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number,
                  "Author first name,Author Middle Name, Author last name, Author Institution, Author Email, Is Corporate (Y/N)"
 
 CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
-                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,msanchez@journal.com,N"
-CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,meve@journal.com,N"
-CSV_ANDY = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,abyers@journal.com,N"
+                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,msanchez@journal.com,N" \
+    "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images/fig1.png|file:///path/to/images/fig2.png"
+CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,abyers@journal.com,N,,,,"
+
+
+class DummyRequest():
+    """ Used as to mimic request interface for `save_galley`"""
+    def __init__(self, user):
+        self.user = user
 
 
 def import_editorial_team(request, reader):
