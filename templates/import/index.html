@@ -68,12 +68,15 @@
                     <div class="accordion-content" data-tab-content>
                         <p>This import script allows you to insert article metadata from a source CSV file with the
                             following structure:</p>
-                        <p><tt>Article identifier, Article title, Volume number, Issue number, Subtitle, Abstract,
-                            publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, Author
-                            first name, Author Middle name, Author last name, Author Institution, Author Email, Is Corporate(Y,N)</tt></p>
-                        <p>Notes: date/time fields must be <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a>
-                            compliant</p>
-                        <p>e.g:</p>
+                        <p><tt>{{ article_metadata_headers }} </tt></p>
+                        <p>Notes:
+                          <ul>
+                            <li>Date/time fields must be <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a> compliant</li>
+                            <li>Files must be declared as file URIs and point to a location readable by Janeway</li>
+                            <li>Multiple figures can be declared, separated by a pipe ("|") character </li>
+                         </ul>
+                        </p>
+                        <p>Example:</p>
                         <p><tt>{{ mauro }}</tt>
                         <p>
                         <p>If an article is associated with more than one author, rows for the additional authors don't
@@ -86,9 +89,9 @@
                         <p><tt>{{ martin }}</tt>
                         <p>Corporate authors only require the 'Institution' column as well as flagging the 'Is Corporate' column with <tt>Y</tt>:</p>
                         <p><tt>1,,,,,,,,,,,,,Center for Tecnology and publishing at Birkbeck,,Y</tt>
-                        <p><a href="{% url 'imports_csv_example' %}">Download Example CSV</a></p>
                         <p>
-                            <a href="{% url 'imports_load' %}?type=article_metadata" class="button">Start Import</a>
+                          <a class="button success" href="{% url 'imports_csv_example' %}">Download Example CSV</a>
+                          <a href="{% url 'imports_load' %}?type=article_metadata" class="button">Start Import</a>
                     </div>
                 </li>
 
