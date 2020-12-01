@@ -10,6 +10,21 @@
 
 {% block body %}
 
+    {% if errors %}
+    <div class="box">
+        <div class="title-area">
+            <h2>Errors found</h2>
+        </div>
+            {% if error_file %}
+                <p><a class="button alert" href="{% url 'imports_failed_rows' error_file %}"><span class="fa fa-download"></span> Download CSV with failed rows</a></p>
+            {% endif %}
+              {% for line_no, error in errors.items %}
+              <div class="callout alert"><p>Line {{ line_no }}: {{ error }}</p></div>
+              {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="box">
         <div class="title-area">
             <h2>Processing {{ filename }}</h2>
@@ -18,10 +33,12 @@
             <table>
                 {% include "import/reader_element.html" with reader=reader %}
             </table>
+            {% if not errors %}
             <form method="POST">
                 {% csrf_token %}
                 <button name="submit" class="button">Import</button>
             </form>
+            {% endif %}
         </div>
     </div>
 
