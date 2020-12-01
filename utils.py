@@ -22,6 +22,7 @@ from utils.logic import get_current_request
 
 logger = get_logger(__name__)
 
+
 TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
@@ -40,6 +41,7 @@ class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
     def __init__(self, user):
         self.user = user
+
 
 
 def import_editorial_team(request, reader):
@@ -195,6 +197,7 @@ def import_article_row(row, journal, issue_type, article=None):
             import_corporate_author(author_fields, article)
         else:
             import_author(author_fields, article)
+
 
         #files import
         for uri in (pdf, html, xml):
