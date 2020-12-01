@@ -232,7 +232,6 @@ def import_corporate_author(author_fields, article):
 
 
 def import_galley_from_uri(article, uri, figures_uri=None):
-    import pdb; pdb.set_trace()  # XXX BREAKPOINT
     parsed = urlparse(uri)
     django_file = None
     if parsed.scheme == "file":
