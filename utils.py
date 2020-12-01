@@ -2,19 +2,23 @@ import csv
 import os
 import re
 import requests
+from urllib.parse import urlparse, unquote
 import uuid
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import transaction
-from django.utils.dateparse import parse_datetime, parse_date
 from django.template.defaultfilters import linebreaksbr
+from django.utils.dateparse import parse_datetime, parse_date
 
 from core import models as core_models, files
 from core import logic as core_logic
 from journal import models as journal_models
+from production.logic import handle_zipped_galley_images, save_galley
+from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
-from submission import models as submission_models
+from utils.logic import get_current_request
 
 logger = get_logger(__name__)
 
@@ -22,7 +26,8 @@ TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
                  "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
-                 "Author first name,Author Middle Name, Author last name, Author Institution, Author Email, Is Corporate (Y/N)"
+                 "Author first name,Author Middle Name, Author last name, Author Institution, Author Email, Is Corporate (Y/N), " \
+                 "PDF URI,XML URI, HTML URI, Figures URIs(pipe separated '|')"
 
 CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
                   "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,msanchez@journal.com,N" \
@@ -148,8 +153,9 @@ def import_article_metadata(request, reader):
 
 @transaction.atomic
 def import_article_row(row, journal, issue_type, article=None):
+        *a_row, pdf, xml, html, figures = row
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, date_accepted, date_published, doi, *author_fields = row
+            stage, date_accepted, date_published, doi, *author_fields = a_row
 
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
@@ -190,6 +196,11 @@ def import_article_row(row, journal, issue_type, article=None):
         else:
             import_author(author_fields, article)
 
+        #files import
+        for uri in (pdf, html, xml):
+            if uri:
+                import_galley_from_uri(article, uri, figures)
+
         return article
 
 
@@ -219,6 +230,39 @@ def import_corporate_author(author_fields, article):
             institution=institution,
         )
 
+
+def import_galley_from_uri(article, uri, figures_uri=None):
+    import pdb; pdb.set_trace()  # XXX BREAKPOINT
+    parsed = urlparse(uri)
+    django_file = None
+    if parsed.scheme == "file":
+        if parsed.netloc:
+            raise ValueError("Netlocs are not supported %s" % parsed.netloc)
+        path = unquote(parsed.path)
+        blob = read_local_file(path)
+        django_file = ContentFile(blob)
+        django_file.name = os.path.basename(path)
+    else:
+        raise NotImplementedError("Scheme not supported: %s" % parsed.scheme)
+
+    if django_file:
+        request = get_current_request()
+        if request and request.user.is_authenticated():
+            owner = request.user
+        else:
+            owner = core_models.Account.objects.filter(
+                is_superuser=True).first()
+            request = DummyRequest(user=owner)
+        galley = save_galley(article, request, django_file, True)
+        if figures_uri and galley.label in {"XML", "HTML"}:
+            figures_path = unquote(urlparse(figures_uri).path)
+            handle_zipped_galley_images(figures_path, galley, request)
+
+
+def read_local_file(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return f.read()
 
 def generate_review_forms(request):
     from review import models as review_models
