@@ -27,14 +27,14 @@ TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
                  "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
-                 "Author first name,Author Middle Name, Author last name, Author Institution, Author Email, Is Corporate (Y/N), " \
+                 "Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
                  "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
 CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
-                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,msanchez@journal.com,N," \
-    "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images/fig1.png|file:///path/to/images/fig2.png"
-CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,meve@journal.com,N,,,,"
-CSV_ANDY = "1,some title,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,abyers@journal.com,N,,,,"
+                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
+    "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images.zip"
+CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
 class DummyRequest():
@@ -208,7 +208,8 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-        salutation, first_name, middle_name, last_name, institution, email = author_fields
+        import pdb; pdb.set_trace()  # XXX BREAKPOINT
+        salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
         if not email:
             email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
         author, created = core_models.Account.objects.get_or_create(email=email)
@@ -218,6 +219,7 @@ def import_author(author_fields, article):
             author.middle_name = middle_name
             author.last_name = last_name
             author.institution = institution
+            author.biography = bio or None
             author.save()
 
         article.authors.add(author)
@@ -226,7 +228,8 @@ def import_author(author_fields, article):
 
 
 def import_corporate_author(author_fields, article):
-        *_, institution, _email = author_fields
+        import pdb; pdb.set_trace()  # XXX BREAKPOINT
+        *_, institution,_bio, _email = author_fields
         submission_models.FrozenAuthor.objects.get_or_create(
             article=article,
             is_corporate=True,
