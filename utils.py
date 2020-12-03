@@ -208,7 +208,6 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
         if not email:
             email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
@@ -228,7 +227,6 @@ def import_author(author_fields, article):
 
 
 def import_corporate_author(author_fields, article):
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         *_, institution,_bio, _email = author_fields
         submission_models.FrozenAuthor.objects.get_or_create(
             article=article,
