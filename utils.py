@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_datetime, parse_date
 
 from core import models as core_models, files
 from core import logic as core_logic
+from identifiers import models as id_models
 from journal import models as journal_models
 from production.logic import handle_zipped_galley_images, save_galley
 from submission import models as submission_models
@@ -183,13 +184,14 @@ def import_article_row(row, journal, issue_type, article=None):
             article.date_published = (parse_datetime(date_published)
                     or parse_date(date_published))
             article.stage = stage
-            article.doi = doi
             sec_obj, created = submission_models.Section.objects.language(
                 'en').get_or_create(journal=journal, name=section)
             article.section = sec_obj
             article.save()
             issue.articles.add(article)
             issue.save()
+            id_models.Identifier.objects.create(
+                id_type='doi', identifier=doi, article=article)
 
         # author import
         *author_fields, is_corporate = author_fields
