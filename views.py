@@ -22,6 +22,7 @@ def index(request):
 
     template = "import/index.html"
     context = {
+        'article_metadata_headers': utils.CSV_HEADER_ROW,
         'mauro': utils.CSV_MAURO,
         'martin': utils.CSV_MARTIN,
         'andy': utils.CSV_ANDY,

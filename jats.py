@@ -14,13 +14,8 @@ from core.models import Account
 from identifiers.models import Identifier
 from journal import models as journal_models
 from production.logic import save_galley
+from plugins.imports.utils import DummyRequest
 from submission import models as submission_models
-
-
-class DummyRequest():
-    """ Used as to mimic request interface for `save_galley`"""
-    def __init__(self, user):
-        self.user = user
 
 
 def import_jats_article(jats_contents, journal, persist=True, filename=None, owner=None):

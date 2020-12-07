@@ -4,7 +4,7 @@ AUTHOR = 'Birkbeck Centre for Technology and Publishing'
 VERSION = '1.3'
 SHORT_NAME = 'imports'
 MANAGER_URL = 'imports_index'
-JANEWAY_VERSION = "1.3.6"
+JANEWAY_VERSION = "1.3.8"
 
 from utils import models
 
