@@ -27,15 +27,15 @@ logger = get_logger(__name__)
 TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
-                 "publication stage, date/time accepted, date/time publishded , DOI, Author Salutation, " \
+                 "publication stage, keywords, date/time accepted, date/time publishded , DOI, Author Salutation, " \
                  "Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
                  "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
-CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00," \
+CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
                   "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
     "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images.zip"
-CSV_MARTIN = "1,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
-CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
+CSV_MARTIN = "1,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
 class DummyRequest():
@@ -158,8 +158,7 @@ def import_article_metadata(request, reader):
 def import_article_row(row, journal, issue_type, article=None):
         *a_row, pdf, xml, html, figures = row
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, date_accepted, date_published, doi, *author_fields = a_row
-
+            stage, keywords, date_accepted, date_published, doi, *author_fields = a_row
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=vol_num or 0,
@@ -187,6 +186,14 @@ def import_article_row(row, journal, issue_type, article=None):
             sec_obj, created = submission_models.Section.objects.language(
                 'en').get_or_create(journal=journal, name=section)
             article.section = sec_obj
+
+            split_keywords = keywords.split("|")
+            for kw in split_keywords:
+                new_key = submission_models.Keyword.objects.create(
+                    word = kw
+                )
+                article.keywords.add(new_key)
+
             article.save()
             issue.articles.add(article)
             issue.save()
