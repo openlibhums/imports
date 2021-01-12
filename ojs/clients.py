@@ -30,6 +30,7 @@ class OJSJanewayClient():
         self._auth_dict = {}
         self.session = session or requests.Session()
         self.session.headers.update(**self.HEADERS)
+        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         self.authenticated = False
         if user and password:
             self._auth_dict = {
@@ -78,6 +79,7 @@ class OJSJanewayClient():
             "source": "",
         }
         req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         self.post(auth_url, headers=req_headers, body=req_body)
         self.authenticated = True
 
