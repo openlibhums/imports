@@ -189,8 +189,12 @@ def import_review_data(article_dict, article, client):
         'default_review_form',
         article.journal,
     ).processed_value
+    if form:
+        form = review_models.ReviewForm.objects.get(
+            id=form,
+        )
 
-    if not form:
+    else:
         try:
             form = review_models.ReviewForm.objects.filter(
                 journal=article.journal)[0]
