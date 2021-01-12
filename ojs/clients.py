@@ -1,7 +1,7 @@
 import requests
 import os
 from django.core.files.base import ContentFile
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,7 +30,6 @@ class OJSJanewayClient():
         self._auth_dict = {}
         self.session = session or requests.Session()
         self.session.headers.update(**self.HEADERS)
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         self.authenticated = False
         if user and password:
             self._auth_dict = {
@@ -79,7 +78,6 @@ class OJSJanewayClient():
             "source": "",
         }
         req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         self.post(auth_url, headers=req_headers, body=req_body)
         self.authenticated = True
 
@@ -151,7 +149,10 @@ class UPJanewayClient(OJSJanewayClient):
     based, although an OJS session can be retrieved.
     """
     PLUGIN_PATH = '/jms/janeway'
-    AUTH_PATH = '/author/login'
+    AUTH_PATH = '/author/login/'
+    LOGIN_HEADERS = {
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -166,7 +167,11 @@ class UPJanewayClient(OJSJanewayClient):
             "login": 'login',
             'csrfmiddlewaretoken': self.session.cookies["csrftoken"],
         }
-        req_headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        req_headers = dict(
+            self.LOGIN_HEADERS,
+            Host=strip_scheme(self.journal_url),
+            Referer=auth_url,
+        )
         self.post(auth_url, headers=req_headers, body=req_body)
         self.authenticated = True
 
@@ -174,3 +179,8 @@ class UPJanewayClient(OJSJanewayClient):
         logger.debug("Setting CSRFTOKEN for url:%s " % url)
         response = self.fetch(url)
 
+
+def strip_scheme(url):
+    parsed = urlparse(url)
+    scheme = "%s://" % parsed.scheme
+    return parsed.geturl().replace(scheme, '', 1)
