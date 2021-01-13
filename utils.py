@@ -341,3 +341,10 @@ def load_article_images(request, reader):
             )
             article.large_image_file = new_file
             article.save()
+
+
+def orcid_from_url(orcid_url):
+    try:
+        return orcid_url.split("orcid.org/")[-1]
+    except (AttributeError, ValueError, TypeError, IndexError):
+        raise ValueError("%s is not a valid orcid URL" % orcid_url)

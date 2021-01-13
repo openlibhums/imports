@@ -15,6 +15,8 @@ from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
 
+from plugins.imports import utils
+
 logger = get_logger(__name__)
 
 """
@@ -686,7 +688,8 @@ def get_or_create_account(data):
     account.last_name = data.get('last_name')
     account.institution = data.get('affiliation', ' ') or ' '
     account.biography = data.get('bio')
-    account.orcid = data.get("orcid")
+    account.orcid = extract_orcid(data.get("orcid"))
+
 
     if data.get('country'):
         try:
@@ -735,3 +738,17 @@ def attempt_to_make_timezone_aware(datetime):
         return timezone.make_aware(dt)
     else:
         return None
+
+def extract_orcid(raw_orcid_data):
+    """ Extracts the orcid from the given raw data from the API
+    :param raw_oricid_data: A dict from lang code to orcid URL or actual orcid
+    """
+    if raw_orcid_data:
+        for lang, value in raw_orcid_data.items():
+            if value:
+                # ORCID might be in URL format
+                try:
+                    return utils.orcid_from_url(value)
+                except ValueError:
+                    return value
+    return None
