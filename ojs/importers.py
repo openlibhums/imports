@@ -681,11 +681,8 @@ def get_or_create_account(data):
             )
         except Exception as e:
             #Most likely due to a problem with case
-            try:
-                account = core_models.Account.objects.get(
-                email__iexact=email)
-            except:
-                import pdb;pdb.set_trace()
+            account = core_models.Account.objects.get(
+            email__iexact=email)
 
     account.salutation = data.get("salutation")
     if account.salutation and len(account.salutation) > 9:
