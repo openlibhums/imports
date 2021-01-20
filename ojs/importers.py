@@ -70,6 +70,7 @@ def import_article_metadata(article_dict, journal, client):
 
     for editor in editors:
         try:
+            editor = clean_email(editor)
             account = core_models.Account.objects.get(email__iexact=editor)
             account.add_account_role('section-editor', journal)
             review_models.EditorAssignment.objects.create(
@@ -105,8 +106,9 @@ def import_article_metadata(article_dict, journal, client):
         create_frozen_record(author_record, article, emails)
 
     # Set the primary author
+    email = clean_email(article_dict.get('correspondence_author'))
     article.owner = core_models.Account.objects.get(
-        email__iexact=article_dict.get('correspondence_author'))
+        email__iexact=email)
     article.correspondence_author = article.owner
     article.save()
 
@@ -316,8 +318,9 @@ def import_copyediting(article_dict, article, client):
         final = copyediting.get('final')
 
         if initial:
+            email = clean_email(initial.get('email'))
             initial_copyeditor = core_models.Account.objects.get(
-                email__iexact=initial.get('email'))
+                email__iexact=email)
             initial_decision = True if (
                 initial.get('underway') or initial.get('complete')) else False
 
@@ -411,8 +414,9 @@ def import_typesetting(article_dict, article, client):
     task = None
 
     if layout.get('email'):
+        email = clean_email(layout.get('email'))
         typesetter = core_models.Account.objects.get(
-            email__iexact=layout.get('email'))
+            email__iexact=email)
 
         logger.info(
             'Adding typesetter {name}'.format(name=typesetter.full_name()))
@@ -666,18 +670,22 @@ def import_user_metadata(user_data, journal):
 
 def get_or_create_account(data):
     """ Gets or creates an account for the given OJS user data"""
+    email = clean_email(data.get("email"))
     try:
         account = core_models.Account.objects.get(
-            email=data["email"])
+            email=email)
     except core_models.Account.DoesNotExist:
         try:
             account = core_models.Account.objects.create(
-                email=data.get('email'),
+                email=email,
             )
         except Exception as e:
             #Most likely due to a problem with case
-            account = core_models.Account.objects.get(
-                email__iexact=data["email"])
+            try:
+                account = core_models.Account.objects.get(
+                email__iexact=email)
+            except:
+                import pdb;pdb.set_trace()
 
     account.salutation = data.get("salutation")
     if account.salutation and len(account.salutation) > 9:
@@ -739,6 +747,7 @@ def attempt_to_make_timezone_aware(datetime):
     else:
         return None
 
+
 def extract_orcid(raw_orcid_data):
     """ Extracts the orcid from the given raw data from the API
     :param raw_oricid_data: A dict from lang code to orcid URL or actual orcid
@@ -752,3 +761,9 @@ def extract_orcid(raw_orcid_data):
                 except ValueError:
                     return value
     return None
+
+
+def clean_email(email):
+    import unicodedata
+    clean = unicodedata.normalize("NFKC", email).strip()
+    return clean.split(" ")[0]
