@@ -3,6 +3,8 @@ import uuid
 from dateutil import parser as dateparser
 from django.conf import settings
 from django.utils import timezone
+from django.utils.safestring import mark_safe
+from django.template.defaultfilters import linebreaksbr
 
 from core import models as core_models, files as core_files
 from copyediting import models as copyediting_models
@@ -210,6 +212,8 @@ def import_review_data(article_dict, article, client):
             )
             raise
 
+    # Set for avoiding duplicate review files
+    seen_review_file_urls = set()
     for review in article_dict.get('reviews'):
         reviewer = get_or_create_account(review)
 
@@ -257,32 +261,26 @@ def import_review_data(article_dict, article, client):
             new_review.decision = REVIEW_RECOMMENDATION[
                 review['recommendation']]
 
+        # Check for files at review level
         review_file_url = review.get("review_file_url")
-        if review_file_url:
+        if not review_file_url:
+            # Check for files at article level
+            review_file_url = article_dict.get("review_file_url")
+        if review_file_url and review_file_url not in seen_review_file_urls:
             fetched_review_file = client.fetch_file(review_file_url)
             if fetched_review_file:
                 review_file = core_files.save_file_to_article(
                     fetched_review_file, article, reviewer,
                     label="Review File",
                 )
+                seen_review_file_urls.add(review_file_url)
 
                 new_review.review_file = review_file
                 round.review_files.add(review_file)
 
         elif review.get('comments'):
-            filepath = core_files.create_temp_file(
-                review.get('comments'), 'comment.txt')
-            f = open(filepath, 'r')
-            comment_file = core_files.save_file_to_article(
-                f,
-                article,
-                article.owner,
-                label='Review Comments',
-                save=False,
-            )
-
-            new_review.review_file = comment_file
-            round.review_files.add(comment_file)
+            handle_review_comment(
+                article, new_review, review.get('comments'), form)
 
         new_review.save()
 
@@ -307,6 +305,33 @@ def import_review_data(article_dict, article, client):
     round.save()
 
     return article
+
+
+def handle_review_comment(article, review_obj, comment, form):
+    element = form.elements.filter(kind="textarea", name="Review").first()
+    if element:
+        answer, _ = review_models.ReviewAssignmentAnswer.objects.get_or_create(
+            assignment=review_obj,
+            element=element,
+        )
+        answer.answer = comment
+        answer.save()
+    else:
+        comment = linebreaksbr(comment)
+        filepath = core_files.create_temp_file(
+            comment, 'comment-from-ojs.html')
+        f = open(filepath, 'r')
+        comment_file = core_files.save_file_to_article(
+            f,
+            article,
+            article.owner,
+            label='Review Comments',
+            save=False,
+        )
+
+        review_obj.review_file = comment_file
+
+    return review_obj
 
 
 def import_copyediting(article_dict, article, client):
