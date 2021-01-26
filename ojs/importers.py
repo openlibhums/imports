@@ -228,12 +228,12 @@ def import_review_data(article_dict, article, client):
         date_confirmed = timezone.make_aware(
             dateparser.parse(review.get('date_confirmed'))) if review.get(
             'date_confirmed') else None
+        date_declined = None
 
-        # If the review was declined, setup a date declined date stamp
         review.get('declined')
         if review.get('declined') == '1':
             date_accepted = None
-            date_complete = date_confirmed
+            date_declined = date_confirmed
         else:
             date_accepted = date_confirmed
 
@@ -244,6 +244,7 @@ def import_review_data(article_dict, article, client):
             date_requested=date_requested,
             date_complete=date_complete,
             date_accepted=date_accepted,
+            date_declined=date_declined,
             access_code=uuid.uuid4(),
             form=form
         )
