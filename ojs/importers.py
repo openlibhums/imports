@@ -436,6 +436,8 @@ def import_copyediting(article_dict, article, client):
 
 
 def import_typesetting(article_dict, article, client):
+    if "plugins.typesetting" in settings.INSTALLED_APPS:
+        return import_typesetting_plugin(article_dict, article, client)
     layout = article_dict.get('layout')
     task = None
 
@@ -476,6 +478,43 @@ def import_typesetting(article_dict, article, client):
     if task and galleys:
         for galley in galleys:
             task.galleys_loaded.add(galley.file)
+
+
+def import_typesetting_plugin(article_dict, article, client):
+    from plugins.typesetting import models as typesetting_models
+    layout = article_dict.get('layout')
+    task = None
+    typesetter = None
+
+    if layout.get('email'):
+        email = clean_email(layout.get('email'))
+        typesetter = core_models.Account.objects.get(
+            email__iexact=email)
+        assigned = attempt_to_make_timezone_aware(layout.get('notified'))
+        accepted = attempt_to_make_timezone_aware(layout.get('underway'))
+        complete = attempt_to_make_timezone_aware(layout.get('complete'))
+
+        logger.info(
+            'Adding typesetter {name}'.format(name=typesetter.full_name()))
+
+        round, _ = typesetting_models.TypesettingRound.objects.get_or_create(
+            article=article,
+            defaults={"date_created": assigned}
+        )
+
+
+        task, _ = typesetting_models.TypesettingAssignment.objects.get_or_create(
+            round=round,
+            typesetter=typesetter,
+            defaults={
+                "assigned": assigned,
+                "notified": assigned,
+                "accepted": accepted,
+                "completed": complete,
+            }
+        )
+
+    galleys = import_galleys(article, layout, client, owner=typesetter)
 
 
 def import_publication(article_dict, article, client):
@@ -551,8 +590,10 @@ def import_article_section(article_section_dict, issue, section, order):
         ordering.order = order
 
 
-def import_galleys(article, layout_dict, client):
+def import_galleys(article, layout_dict, client, owner=None):
     galleys = list()
+    if not owner:
+        owner = article.owner
 
     if layout_dict.get('galleys'):
         for galley in layout_dict.get('galleys'):
@@ -567,7 +608,7 @@ def import_galleys(article, layout_dict, client):
             remote_file = client.fetch_file(
                 galley.get("file"), galley.get("label"))
             galley_file = core_files.save_file_to_article(
-                remote_file, article, article.owner, label=galley.get("label"))
+                remote_file, article, owner, label=galley.get("label"))
 
             new_galley, c = core_models.Galley.objects.get_or_create(
                 article=article,
@@ -590,7 +631,11 @@ def calculate_article_stage(article_dict, article):
     elif article_dict.get("proofing"):
         stage = submission_models.STAGE_PROOFING
     elif article_dict.get("layout") and article_dict["layout"].get("galleys"):
-        stage = submission_models.STAGE_TYPESETTING
+        if "plugins.typesetting" in settings.INSTALLED_APPS:
+            from plugins.typesetting import plugin_settings as typesetting_settings
+            stage = typesetting_settings.STAGE
+        else:
+            stage = submission_models.STAGE_TYPESETTING
     elif article_dict.get("copyediting"):
         stage = submission_models.STAGE_AUTHOR_COPYEDITING
     elif article_dict.get("review_file_url") or article_dict.get("reviews"):
