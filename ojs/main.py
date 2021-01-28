@@ -34,6 +34,27 @@ def import_published_articles(ojs_client, journal):
 
         logger.info("Imported article with article ID %d" % article.pk)
 
+
+def import_in_progress_articles(ojs_client, journal):
+    """ imports all articles in review or being edited"""
+    in_review = ojs_client.get_articles("in_review")
+    in_editing = ojs_client.get_articles("in_editing")
+    seen = set()
+    for article_dict in chain(in_review, in_editing):
+        article = import_article_metadata(article_dict, journal, ojs_client)
+
+        import_review_data(article_dict, article, ojs_client)
+        import_copyediting(article_dict, article, ojs_client)
+        import_typesetting(article_dict, article, ojs_client)
+
+        stage = calculate_article_stage(article_dict, article)
+        article.stage = stage
+        article.save()
+
+        logger.info("Imported article with article ID %d" % article.pk)
+        seen.add(article_dict["ojs_id"])
+
+
 def import_in_review_articles(ojs_client, journal):
     articles = ojs_client.get_articles("in_review")
     for article_dict in articles:
