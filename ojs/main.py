@@ -1,3 +1,7 @@
+from itertools import chain
+
+from submission import models as submission_models
+
 from plugins.imports.ojs.importers import (
     calculate_article_stage,
     import_article_metadata,
@@ -37,8 +41,8 @@ def import_in_review_articles(ojs_client, journal):
 
         import_review_data(article_dict, article, ojs_client)
 
-        stage = calculate_article_stage(article_dict, article)
-        article.stage = stage
+        calculate_article_stage(article_dict, article)
+        article.stage = submission_models.STAGE_UNDER_REVIEW
         article.save()
 
         logger.info("Imported article with article ID %d" % article.pk)
