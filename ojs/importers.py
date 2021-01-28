@@ -2,6 +2,7 @@ import uuid
 
 from dateutil import parser as dateparser
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
@@ -625,25 +626,56 @@ def import_galleys(article, layout_dict, client, owner=None):
 
 
 def calculate_article_stage(article_dict, article):
+    """ Works out the article stage assuming a standard workflow
 
-    if article_dict.get('publication') and article.date_published:
-        stage = submission_models.STAGE_PUBLISHED
-    elif article_dict.get("proofing"):
-        stage = submission_models.STAGE_PROOFING
-    elif article_dict.get("layout") and article_dict["layout"].get("galleys"):
+    Traverses workflow upwards, creating WorkflowLog objects where
+    necessary.
+    """
+    stage = submission_models.STAGE_UNASSIGNED
+    if article_dict.get("review_file_url") or article_dict.get("reviews"):
+        stage = submission_models.STAGE_UNDER_REVIEW
+        try:
+            create_worfklow_log(article, stage)
+        except ObjectDoesNotExist:
+            # On 1.3.9 STAGE_UNASSIGNED is actually the first stage of review
+            create_worfklow_log(article, submission_models.STAGE_UNASSIGNED)
+
+    if article_dict.get("copyediting"):
+        stage = submission_models.STAGE_AUTHOR_COPYEDITING
+        create_worfklow_log(article, stage)
+
+    if article_dict.get("layout") and article_dict["layout"].get("galleys"):
         if "plugins.typesetting" in settings.INSTALLED_APPS:
             from plugins.typesetting import plugin_settings as typesetting_settings
             stage = typesetting_settings.STAGE
+            create_worfklow_log(article, stage)
         else:
             stage = submission_models.STAGE_TYPESETTING
-    elif article_dict.get("copyediting"):
-        stage = submission_models.STAGE_AUTHOR_COPYEDITING
-    elif article_dict.get("review_file_url") or article_dict.get("reviews"):
-        stage = submission_models.STAGE_UNDER_REVIEW
-    else:
-        stage = submission_models.STAGE_UNASSIGNED
+            create_worfklow_log(article, stage)
+
+    if article_dict.get("proofing"):
+        if not "plugins.typesetting" in settings.INSTALLED_APPS:
+            # Typesetting plugin handles proofing
+            stage = submission_models.STAGE_PROOFING
+            create_worfklow_log(article, stage)
+
+    if article_dict.get('publication') and article.date_published:
+        stage = submission_models.STAGE_PUBLISHED
+        create_worfklow_log(article, stage)
 
     return stage
+
+
+def create_worfklow_log(article, stage):
+    element = core_models.WorkflowElement.objects.get(
+        journal=article.journal,
+        stage=stage,
+    )
+
+    return core_models.WorkflowLog.objects.get_or_create(
+        article=article,
+        element=element,
+    )
 
 
 def get_or_create_article(article_dict, journal):
