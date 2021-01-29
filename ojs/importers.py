@@ -1,5 +1,6 @@
 import uuid
 
+from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -319,6 +320,10 @@ def import_review_data(article_dict, article, client):
 def handle_review_comment(article, review_obj, comment, form):
     element = form.elements.filter(kind="textarea", name="Review").first()
     if element:
+        soup = BeautifulSoup(comment, "html.parser")
+        for tag in soup.find_all(["br", "p"]):
+            tag.replace_with("\n" + tag.text)
+        comment = soup.text
         answer, _ = review_models.ReviewAssignmentAnswer.objects.get_or_create(
             assignment=review_obj,
             element=element,
