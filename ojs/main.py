@@ -78,6 +78,13 @@ def import_in_editing_articles(ojs_client, journal):
         import_typesetting(article_dict, article, ojs_client)
 
         stage = calculate_article_stage(article_dict, article)
+        if (
+            stage == submission_models.STAGE_UNASSIGNED
+            or stage in submission_models.REVIEW_STAGES
+        ):
+            # If an article is in copyediting but there is no copyedit
+            # data yet, we have to override the calculation
+            stage = submission_models.STAGE_EDITOR_COPYEDITING
         article.stage = stage
         article.save()
 

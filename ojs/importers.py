@@ -19,6 +19,10 @@ from utils import setting_handler
 from utils.logger import get_logger
 
 from plugins.imports import utils
+try:
+    from plugins.typesetting import plugin_settings as typesetting_settings
+except ImportError:
+    typesetting_settings = None
 
 logger = get_logger(__name__)
 
@@ -437,7 +441,7 @@ def import_copyediting(article_dict, article, client):
 
 
 def import_typesetting(article_dict, article, client):
-    if "plugins.typesetting" in settings.INSTALLED_APPS:
+    if article.journal.element_in_workflow("Typesetting Plugin"):
         return import_typesetting_plugin(article_dict, article, client)
     layout = article_dict.get('layout')
     task = None
@@ -631,6 +635,8 @@ def calculate_article_stage(article_dict, article):
     Traverses workflow upwards, creating WorkflowLog objects where
     necessary.
     """
+    typesetting_plugin = article.journal.element_in_workflow(
+        "Typesetting Plugin")
     stage = submission_models.STAGE_UNASSIGNED
     if article_dict.get("review_file_url") or article_dict.get("reviews"):
         stage = submission_models.STAGE_UNDER_REVIEW
@@ -645,8 +651,7 @@ def calculate_article_stage(article_dict, article):
         create_worfklow_log(article, stage)
 
     if article_dict.get("layout") and article_dict["layout"].get("galleys"):
-        if "plugins.typesetting" in settings.INSTALLED_APPS:
-            from plugins.typesetting import plugin_settings as typesetting_settings
+        if typesetting_plugin:
             stage = typesetting_settings.STAGE
             create_worfklow_log(article, stage)
         else:
@@ -654,7 +659,7 @@ def calculate_article_stage(article_dict, article):
             create_worfklow_log(article, stage)
 
     if article_dict.get("proofing"):
-        if not "plugins.typesetting" in settings.INSTALLED_APPS:
+        if not typesetting_plugin:
             # Typesetting plugin handles proofing
             stage = submission_models.STAGE_PROOFING
             create_worfklow_log(article, stage)
