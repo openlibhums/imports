@@ -193,6 +193,15 @@ def import_review_data(article_dict, article, client):
     round, _ = review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
     )
+    # Check for files at review level
+    file_for_review_url = article_dict.get("review_file_url")
+    fetched_file_for_review = client.fetch_file(file_for_review_url)
+    if fetched_file_for_review:
+        file_for_review = core_files.save_file_to_article(
+            fetched_file_for_review, article, article.owner,
+            label="File for Peer-Review",
+        )
+        round.review_files.add(file_for_review)
 
     # Attempt to get the default review form
     form = setting_handler.get_setting(
@@ -218,7 +227,6 @@ def import_review_data(article_dict, article, client):
             raise
 
     # Set for avoiding duplicate review files
-    seen_review_file_urls = set()
     for review in article_dict.get('reviews'):
         reviewer = get_or_create_account(review)
 
@@ -267,24 +275,18 @@ def import_review_data(article_dict, article, client):
             new_review.decision = REVIEW_RECOMMENDATION[
                 review['recommendation']]
 
-        # Check for files at review level
+        # Check for files at article level
         review_file_url = review.get("review_file_url")
-        if not review_file_url:
-            # Check for files at article level
-            review_file_url = article_dict.get("review_file_url")
-        if review_file_url and review_file_url not in seen_review_file_urls:
+        if review_file_url:
             fetched_review_file = client.fetch_file(review_file_url)
             if fetched_review_file:
                 review_file = core_files.save_file_to_article(
                     fetched_review_file, article, reviewer,
                     label="Review File",
                 )
-                seen_review_file_urls.add(review_file_url)
-
                 new_review.review_file = review_file
-                round.review_files.add(review_file)
 
-        elif review.get('comments'):
+        if review.get('comments'):
             handle_review_comment(
                 article, new_review, review.get('comments'), form)
 
@@ -306,6 +308,7 @@ def import_review_data(article_dict, article, client):
                 ms_file = core_files.save_file_to_article(
                     supp, article, article.owner, label="Supplementary File")
                 article.data_figure_files.add(ms_file)
+                round.review_files.add(ms_file)
 
     article.save()
     round.save()
