@@ -4,6 +4,8 @@ from django.core.files.base import ContentFile
 from urllib.parse import urlencode, urlparse
 from utils.logger import get_logger
 
+from core.files import check_in_memory_mime
+
 logger = get_logger(__name__)
 
 
@@ -44,7 +46,15 @@ class OJSJanewayClient():
             resp.raise_for_status()
         return resp
 
-    def fetch_file(self, url, filename=None, extension=None):
+    def fetch_file(self, url, filename=None, extension=None, exc_mimes=None):
+        """ Fetches  file from given URL
+        :param url: The URL from where to fetch the file
+        :param filename (optional): A name for the fetched file
+        :param extension (optional): An extension override for the fetched file
+        :param exc_mimes (optional): Set of mimes. If the fetched file is of
+            matches one of these, it is discarded.
+        :return: django.core.files.base.ContentFile or None
+        """
         try:
             response = self.fetch(url, stream=True)
         except requests.exceptions.HTTPError as e:
@@ -53,6 +63,14 @@ class OJSJanewayClient():
 
         blob = response.content
         content_file = ContentFile(blob)
+        if exc_mimes:
+            mime = check_in_memory_mime(content_file)
+            if mime in exc_mimes:
+                logger.info(
+                    "Fetched file from %s ignored: %s in %s",
+                    response.url, mime, exc_mimes,
+                )
+                return None
         if filename:
             if len(filename) >= 60:
                 filename = filename[:60]
