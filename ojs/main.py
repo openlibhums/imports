@@ -4,6 +4,7 @@ from submission import models as submission_models
 
 from plugins.imports.ojs.importers import (
     calculate_article_stage,
+    create_workflow_log,
     import_article_metadata,
     import_article_metrics,
     import_copyediting,
@@ -85,6 +86,7 @@ def import_in_editing_articles(ojs_client, journal):
             # If an article is in copyediting but there is no copyedit
             # data yet, we have to override the calculation
             stage = submission_models.STAGE_EDITOR_COPYEDITING
+            create_workflow_log(article, stage)
         article.stage = stage
         article.save()
 
