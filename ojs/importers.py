@@ -194,15 +194,35 @@ def import_review_data(article_dict, article, client):
     round, _ = review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
     )
-    # Check for files at review level
+
+    # Get MS File
+    manuscript_file_url = article_dict.get("manuscript_file_url")
+    manuscript = client.fetch_file(
+        manuscript_file_url, "manuscript",
+        # If a file doesn't exist, it redirects to the article page
+        # Should probably be handled on the OJS end really
+        exc_mimes=core_files.HTML_MIMETYPES,
+    )
+    if manuscript:
+        ms_file = core_files.save_file_to_article(
+            manuscript, article, article.owner, label="Manuscript")
+        article.manuscript_files.add(ms_file)
+
+    # Check for a file for review
     file_for_review_url = article_dict.get("review_file_url")
-    fetched_file_for_review = client.fetch_file(file_for_review_url)
+    fetched_file_for_review = client.fetch_file(
+        file_for_review_url,
+        exc_mimes=core_files.HTML_MIMETYPES,
+    )
     if fetched_file_for_review:
         file_for_review = core_files.save_file_to_article(
             fetched_file_for_review, article, article.owner,
             label="File for Peer-Review",
         )
         round.review_files.add(file_for_review)
+    elif article_dict.get("reviews") and manuscript:
+        # There are review assignments but no file for review, use manuscript
+        round.review_files.add(ms_file)
 
     # Attempt to get the default review form
     form = setting_handler.get_setting(
@@ -293,13 +313,6 @@ def import_review_data(article_dict, article, client):
 
         new_review.save()
 
-    # Get MS File
-    manuscript_file_url = article_dict.get("manuscript_file_url")
-    manuscript = client.fetch_file(manuscript_file_url, "manuscript")
-    if manuscript:
-        ms_file = core_files.save_file_to_article(
-            manuscript, article, article.owner, label="Manuscript")
-        article.manuscript_files.add(ms_file)
 
     # Get Supp Files
     if article_dict.get('supp_files'):
@@ -661,37 +674,37 @@ def calculate_article_stage(article_dict, article):
     if article_dict.get("review_file_url") or article_dict.get("reviews"):
         stage = submission_models.STAGE_UNDER_REVIEW
         try:
-            create_worfklow_log(article, stage)
+            create_workflow_log(article, stage)
         except ObjectDoesNotExist:
             # On 1.3.9 STAGE_UNASSIGNED is actually the first stage of review
-            create_worfklow_log(article, submission_models.STAGE_UNASSIGNED)
+            create_workflow_log(article, submission_models.STAGE_UNASSIGNED)
 
     if article_dict.get("copyediting"):
         stage = submission_models.STAGE_EDITOR_COPYEDITING
-        create_worfklow_log(article, stage)
+        create_workflow_log(article, stage)
 
     if article_dict.get("layout") and article_dict["layout"].get("galleys"):
         if typesetting_plugin:
             stage = typesetting_settings.STAGE
-            create_worfklow_log(article, stage)
+            create_workflow_log(article, stage)
         else:
             stage = submission_models.STAGE_TYPESETTING
-            create_worfklow_log(article, stage)
+            create_workflow_log(article, stage)
 
     if article_dict.get("proofing"):
         if not typesetting_plugin:
             # Typesetting plugin handles proofing
             stage = submission_models.STAGE_PROOFING
-            create_worfklow_log(article, stage)
+            create_workflow_log(article, stage)
 
     if article_dict.get('publication') and article.date_published:
         stage = submission_models.STAGE_PUBLISHED
-        create_worfklow_log(article, stage)
+        create_workflow_log(article, stage)
 
     return stage
 
 
-def create_worfklow_log(article, stage):
+def create_workflow_log(article, stage):
     element = core_models.WorkflowElement.objects.get(
         journal=article.journal,
         stage=stage,
