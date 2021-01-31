@@ -358,14 +358,22 @@ def import_copyediting(article_dict, article, client):
 
         if initial:
             email = clean_email(initial.get('email'))
+            copyedit_file_url = initial.get("file")
             initial_copyeditor = core_models.Account.objects.get(
                 email__iexact=email)
-            initial_decision = True if (
-                initial.get('underway') or initial.get('complete')) else False
+            initial_decision = 'accept'if (
+                initial.get('underway')
+                or initial.get('complete')
+                or copyedit_file_url
+            ) else None
 
             assigned = attempt_to_make_timezone_aware(initial.get('notified'))
             underway = attempt_to_make_timezone_aware(initial.get('underway'))
             complete = attempt_to_make_timezone_aware(initial.get('complete'))
+            file_upload_date = complete
+            if copyedit_file_url and not file_upload_date:
+                # OJS might not close the task after file uploaded
+                file_upload_date = assigned or timezone.now()
 
             copyedit_assignment = copyediting_models\
                 .CopyeditAssignment.objects.create(
@@ -375,12 +383,12 @@ def import_copyediting(article_dict, article, client):
                     notified=True,
                     decision=initial_decision,
                     date_decided=underway if underway else complete,
-                    copyeditor_completed=complete,
-                    copyedit_accepted=complete
+                    copyeditor_completed=file_upload_date,
+                    copyedit_accepted=complete,
                 )
 
-            copyedit_file_url = initial.get("file")
             if copyedit_file_url:
+                decision = ''
                 fetched_copyedit_file = client.fetch_file(copyedit_file_url)
                 if fetched_copyedit_file:
                     copyedit_file = core_files.save_file_to_article(
@@ -394,17 +402,19 @@ def import_copyediting(article_dict, article, client):
                     author.get('notified'))
                 complete = attempt_to_make_timezone_aware(
                     author.get('complete'))
+                author_file_url = author.get("file")
+                if author_file_url and not complete:
+                    complete = assigned or timezone.now()
 
                 author_review = copyediting_models.AuthorReview.objects.create(
                     author=article.owner,
                     assignment=copyedit_assignment,
-                    assigned=assigned,
+                    assigned=assigned or timezone.now(),
                     notified=True,
                     decision='accept',
                     date_decided=complete,
                 )
 
-                author_file_url = author.get("file")
                 if author_file_url:
                     fetched_review = client.fetch_file(author_file_url)
                     if fetched_review:
@@ -425,6 +435,9 @@ def import_copyediting(article_dict, article, client):
                     initial.get('complete'))
 
                 final_decision = True if underway or complete else False
+                final_file_url = final.get("file")
+                if final_file_url and not complete:
+                    complete = assigned or timezone.now()
 
                 final_assignment = copyediting_models.\
                     CopyeditAssignment.objects.create(
@@ -437,7 +450,6 @@ def import_copyediting(article_dict, article, client):
                         copyeditor_completed=complete,
                         copyedit_accepted=complete,
                     )
-                final_file_url = final.get("file")
                 if final_file_url:
                     fetched_final = client.fetch_file(final_file_url)
                     if fetched_final:
@@ -655,7 +667,7 @@ def calculate_article_stage(article_dict, article):
             create_worfklow_log(article, submission_models.STAGE_UNASSIGNED)
 
     if article_dict.get("copyediting"):
-        stage = submission_models.STAGE_AUTHOR_COPYEDITING
+        stage = submission_models.STAGE_EDITOR_COPYEDITING
         create_worfklow_log(article, stage)
 
     if article_dict.get("layout") and article_dict["layout"].get("galleys"):
