@@ -1,7 +1,7 @@
 import uuid
 
 from bs4 import BeautifulSoup
-from dateutil import parser as dateparser
+from dateutil import parser as try:
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
@@ -560,6 +560,11 @@ def import_publication(article_dict, article, client):
     If the issue doesn't exist yet, it gets created
     """
     pub_data = article_dict.get("publication")
+    if pub_data.get('date_published'):
+        article.date_published = timezone.make_aware(
+            dateparser.parse(pub_data.get('date_published'))
+        )
+        article.save()
     if pub_data and pub_data.get("number"):
         issue = get_or_create_issue(pub_data, article.journal)
 
@@ -699,7 +704,7 @@ def calculate_article_stage(article_dict, article):
 
     if article_dict.get('publication') and article.date_published:
         stage = submission_models.STAGE_PUBLISHED
-        create_workflow_log(article, stage)
+        create_workflow_log(article, submission_models.STAGE_READY_FOR_PUBLICATION)
 
     return stage
 
