@@ -15,6 +15,7 @@ class OJSJanewayClient():
     ISSUES_PATH = "/issues"
     USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
+    SUBMISSION_PATH = '/editor/submission/%s'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -168,6 +169,7 @@ class UPJanewayClient(OJSJanewayClient):
     """
     PLUGIN_PATH = '/jms/janeway'
     AUTH_PATH = '/author/login/'
+    SUBMISSION_PATH = '/jms/editor/submission/%s'
     LOGIN_HEADERS = {
         "Content-Type": "application/x-www-form-urlencoded",
     }

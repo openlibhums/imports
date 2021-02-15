@@ -1,3 +1,5 @@
+import re
+from urllib import parse as urlparse
 import uuid
 
 from bs4 import BeautifulSoup
@@ -30,6 +32,9 @@ logger = get_logger(__name__)
 # Set date time to 12 UTC to ensure correct date for timezone
 HOUR = 12
 
+# Parse emails from "display name <some@email.com>"
+DISPLAY_NAME_EMAIL_RE = re.compile("<([^>]+)>")
+
 """
 REVIEW RECOMMENDATIONS FROM OJS
 define('SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT', 1);
@@ -57,6 +62,11 @@ ROLES = {
     "user.role.copyeditor":     "copyeditor",
     "user.role.sectionEditor":  "section-editor",
     "user.role.proofreader":    "proofreader",
+}
+
+ROLES_PRETTY = {
+    "Section Editor":   "section-editor",
+    "Editor":           "editor",
 }
 
 
@@ -198,7 +208,9 @@ def create_frozen_record(author, article, emails=None):
 
 
 def import_review_data(article_dict, article, client):
-    # Add a new review round
+    ojs_id = article_dict["ojs_id"]
+    import_editor_assignments(client, ojs_id, article)
+    # Add first review round
     round, _ = review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
     )
@@ -892,6 +904,48 @@ def get_or_create_issue(issue_data, journal):
     return issue
 
 
+def import_editor_assignments(client, ojs_id, article):
+    """ Imports editor assignments by scraping them
+    Expected html structure
+    <form action="{url}/setEditorFlags">
+        <table>
+        <tr valign="top">
+            <td>(Section )Editor</td>
+            <td><a href="{emailink}">{editor_name}</td>
+    [...]
+    """
+    url = client.journal_url + client.SUBMISSION_PATH % ojs_id
+    resp = client.fetch(url)
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.content, "html.parser")
+    form = soup.find(
+        "form", {"action": re.compile("setEditorFlags$")})
+    rows = form.find_all("tr", {"valign": "top"})
+    for row in rows:
+        # Parse assigned role
+        role_c, mailto_c, *_, date_c, _ = row.find_all("td")
+        role_name = ROLES_PRETTY.get(role_c.text)
+
+        # get editor account
+        mailto_url = mailto_c.find("a")["href"]
+        display_name = get_query_param(mailto_url, "to[]")[0]
+        editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
+        editor = get_or_create_account({"email": editor_email})
+
+        # Get assignment date
+        date_assigned = timezone.make_aware(
+            dateparser.parse(date_c.text)
+        )
+        review_models.EditorAssignment.objects.update_or_create(
+            article=article,
+            editor=editor,
+            defaults={
+                "editor_type": role_name,
+                "assigned": date_assigned,
+            }
+        )
+
+
 def attempt_to_make_timezone_aware(datetime):
     if datetime:
         dt = dateparser.parse(datetime)
@@ -919,3 +973,8 @@ def clean_email(email):
     import unicodedata
     clean = unicodedata.normalize("NFKC", email).strip()
     return clean.split(" ")[0]
+
+def get_query_param(url, param):
+    query = urlparse.parse_qs( urlparse.urlsplit(url).query)
+    query_dict = dict(query)
+    return query_dict.get(param)
