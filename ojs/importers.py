@@ -97,6 +97,7 @@ def import_article_metadata(article_dict, journal, client):
     if keywords:
         for keyword in keywords:
             if keyword:
+                keyword = strip_tags(keyword)
                 word, _ = submission_models.Keyword.objects.get_or_create(
                     word=keyword)
                 article.keywords.add(word)
