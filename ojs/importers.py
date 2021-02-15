@@ -1,10 +1,11 @@
 import uuid
 
 from bs4 import BeautifulSoup
-from dateutil import parser as try:
+from dateutil import parser as dateparser
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
+from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
 
@@ -26,6 +27,8 @@ except ImportError:
     typesetting_settings = None
 
 logger = get_logger(__name__)
+# Set date time to 12 UTC to ensure correct date for timezone
+HOUR = 12
 
 """
 REVIEW RECOMMENDATIONS FROM OJS
@@ -253,14 +256,15 @@ def import_review_data(article_dict, article, client):
 
         # Parse the dates
         date_requested = timezone.make_aware(
-            dateparser.parse(review.get('date_requested')))
+            dateparser.parse(review.get('date_requested')).replace(hour=HOUR)
+        )
         date_due = timezone.make_aware(
-            dateparser.parse(review.get('date_due')))
+            dateparser.parse(review.get('date_due')).replace(hour=HOUR))
         date_complete = timezone.make_aware(
-            dateparser.parse(review.get('date_complete'))) if review.get(
+            dateparser.parse(review.get('date_complete')).replace(hour=HOUR)) if review.get(
             'date_complete') else None
         date_confirmed = timezone.make_aware(
-            dateparser.parse(review.get('date_confirmed'))) if review.get(
+            dateparser.parse(review.get('date_confirmed')).replace(hour=HOUR)) if review.get(
             'date_confirmed') else None
         date_declined = None
 
@@ -562,7 +566,7 @@ def import_publication(article_dict, article, client):
     pub_data = article_dict.get("publication")
     if pub_data.get('date_published'):
         article.date_published = timezone.make_aware(
-            dateparser.parse(pub_data.get('date_published'))
+            dateparser.parse(pub_data.get('date_published')).replace(hour=HOUR)
         )
         article.save()
     if pub_data and pub_data.get("number"):
@@ -725,7 +729,7 @@ def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
     created = False
     date_started = timezone.make_aware(
-        dateparser.parse(article_dict.get('date_submitted')))
+        dateparser.parse(article_dict.get('date_submitted')).replace(hour=HOUR))
 
     doi = article_dict.get("doi")
     ojs_id = article_dict["ojs_id"]
@@ -886,7 +890,7 @@ def get_or_create_issue(issue_data, journal):
 def attempt_to_make_timezone_aware(datetime):
     if datetime:
         dt = dateparser.parse(datetime)
-        return timezone.make_aware(dt)
+        return timezone.make_aware(dt.replace(hour=HOUR))
     else:
         return None
 
