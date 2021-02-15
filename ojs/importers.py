@@ -95,12 +95,16 @@ def import_article_metadata(article_dict, journal, client):
     # Add keywords
     keywords = article_dict.get('keywords')
     if keywords:
-        for keyword in keywords:
+        for i, keyword in enumerate(keywords):
             if keyword:
                 keyword = strip_tags(keyword)
                 word, _ = submission_models.Keyword.objects.get_or_create(
                     word=keyword)
-                article.keywords.add(word)
+                submission_models.KeywordArticle.objects.update_or_create(
+                    keyword=word,
+                    article=article,
+                    defaults={"order": i},
+                )
 
     # Add authors
     emails = set()
