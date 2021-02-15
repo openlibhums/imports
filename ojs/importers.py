@@ -190,7 +190,7 @@ def create_frozen_record(author, article, emails=None):
 
         submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
 
-    elif emails:
+    elif emails is not None:
         author.snapshot_self(article)
         emails.add(author.email)
     else:
