@@ -835,9 +835,10 @@ def import_user_metadata(user_data, journal):
     account.save()
 
 
-def get_or_create_account(data):
+def get_or_create_account(data, update=True):
     """ Gets or creates an account for the given OJS user data"""
     email = clean_email(data.get("email"))
+    created = False
     try:
         account = core_models.Account.objects.get(
             email=email)
@@ -846,33 +847,35 @@ def get_or_create_account(data):
             account = core_models.Account.objects.create(
                 email=email,
             )
+            created = True
         except Exception as e:
             #Most likely due to a problem with case
             account = core_models.Account.objects.get(
             email__iexact=email)
 
-    account.salutation = data.get("salutation")
-    if account.salutation and len(account.salutation) > 9:
-        # OJS does not sanitise this field.
-        account.salutation = None
-    account.first_name = data.get('first_name')
-    account.middle_name = data.get('middle_name')
-    account.last_name = data.get('last_name')
-    account.institution = data.get('affiliation', ' ') or ' '
-    account.biography = data.get('bio')
-    account.orcid = extract_orcid(data.get("orcid"))
+    if created or update:
+        account.salutation = data.get("salutation")
+        if account.salutation and len(account.salutation) > 9:
+            # OJS does not sanitise this field.
+            account.salutation = None
+        account.first_name = data.get('first_name')
+        account.middle_name = data.get('middle_name')
+        account.last_name = data.get('last_name')
+        account.institution = data.get('affiliation', ' ') or ' '
+        account.biography = data.get('bio')
+        account.orcid = extract_orcid(data.get("orcid"))
 
 
-    if data.get('country'):
-        try:
-            country = core_models.Country.objects.get(
-                code=data.get('country'))
-            account.country = country
-            account.save()
-        except core_models.Country.DoesNotExist:
-            pass
+        if data.get('country'):
+            try:
+                country = core_models.Country.objects.get(
+                    code=data.get('country'))
+                account.country = country
+                account.save()
+            except core_models.Country.DoesNotExist:
+                pass
 
-    account.save()
+        account.save()
     return account
 
 
@@ -930,7 +933,7 @@ def import_editor_assignments(client, ojs_id, article):
         mailto_url = mailto_c.find("a")["href"]
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
-        editor = get_or_create_account({"email": editor_email})
+        editor = get_or_create_account({"email": editor_email}, update=False)
 
         # Get assignment date
         date_assigned = timezone.make_aware(
