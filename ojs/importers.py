@@ -149,21 +149,15 @@ def import_article_metadata(article_dict, journal, client):
 
     # Set the license if it hasn't been set yet
     if not article.license:
-        license_url = article_dict.get("license", "")
-        try:
-            article.license = submission_models.Licence.objects.get(
-                    journal=article.journal,
-                    url=license_url,
-            )
-        except submission_models.Licence.DoesNotExist:
-            try:
-                article.license = submission_models.Licence.objects.get(
-                        journal=article.journal,
-                        short_name="Copyright",
-                )
-            except submission_models.Licence.DoesNotExist:
-                logger.error(
-                    "No license could be parsed from: %s" % license_url)
+        license_url = article_dict.get("license", "").replace("http:", "https:")
+        article.license, _ = submission_models.Licence.objects.get_or_create(
+            journal=article.journal,
+            url=license_url,
+            defaults={
+                "name":"imported license",
+                "short_name":"imported-license",
+            }
+        )
         article.save()
 
     return article
@@ -890,6 +884,7 @@ def get_or_create_issue(issue_data, journal):
         journal=journal,
         volume=vol_num,
         issue=issue_num,
+        issue_type__code="issue",
         defaults={
             "date": date_published or timezone.now(),
             "issue_title": issue_data.get("title"),
