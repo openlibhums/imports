@@ -931,9 +931,12 @@ def import_editor_assignments(client, ojs_id, article):
         editor = get_or_create_account({"email": editor_email}, update=False)
 
         # Get assignment date
-        date_assigned = timezone.make_aware(
-            dateparser.parse(date_c.text)
-        )
+        try:
+            date_assigned = timezone.make_aware(
+                dateparser.parse(date_c.text)
+            )
+        except ValueError:
+            date_assigned = article.date_submitted
         review_models.EditorAssignment.objects.update_or_create(
             article=article,
             editor=editor,
