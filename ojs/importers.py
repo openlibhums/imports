@@ -155,7 +155,7 @@ def import_article_metadata(article_dict, journal, client):
             url=license_url,
             defaults={
                 "name":"imported license",
-                "short_name":"imported-license",
+                "short_name":"imported",
             }
         )
         article.save()
@@ -354,8 +354,8 @@ def handle_review_comment(article, review_obj, comment, form):
         comment = soup.text
         answer, _ = review_models.ReviewAssignmentAnswer.objects.get_or_create(
             assignment=review_obj,
-            element=element,
         )
+        element.snapshot(answer)
         answer.answer = comment
         answer.save()
     else:
