@@ -1,7 +1,9 @@
-import requests
 import os
-from django.core.files.base import ContentFile
+import re
 from urllib.parse import urlencode, urlparse
+
+import requests
+from django.core.files.base import ContentFile
 from utils.logger import get_logger
 
 from core.files import check_in_memory_mime
@@ -61,7 +63,7 @@ class OJSJanewayClient():
         except requests.exceptions.HTTPError as e:
             logger.error(e)
             return
-
+        response_filename = get_filename_from_headers(response)
         blob = response.content
         content_file = ContentFile(blob)
         if exc_mimes:
@@ -75,10 +77,12 @@ class OJSJanewayClient():
         if filename:
             if len(filename) >= 60:
                 filename = filename[:60]
-            if not extension:
+            if not extension and response_filename:
+                _, extension = os.path.splitext(response_filename)
+            elif not extension:
                 _, extension = os.path.splitext(url)
             content_file.name = filename + extension
-        else:
+        elif response_filename:
             content_file.name = os.path.basename(url)
         return content_file
 
@@ -204,3 +208,14 @@ def strip_scheme(url):
     parsed = urlparse(url)
     scheme = "%s://" % parsed.scheme
     return parsed.geturl().replace(scheme, '', 1)
+
+
+def get_filename_from_headers(response):
+    try:
+        header = response.headers['content-disposition']
+        return re.findall("filename=(.+)", header)[0]
+    except KeyError:
+        logger.debug("No content-disposition header")
+    except IndexError:
+        logger.debug("No Filename provided in headers")
+    return None
