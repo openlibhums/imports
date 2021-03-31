@@ -54,6 +54,14 @@ REVIEW_RECOMMENDATION = {
     '1': 'accept',
 }
 
+
+DRAFT_DECISION_STATUS = {
+    'accepted': 'accept',
+    'declined': 'decline',
+    'draft': None,
+}
+
+
 ROLES = {
     "user.role.editor":         "editor",
     "user.role.manager":        "editor",
@@ -340,11 +348,31 @@ def import_review_data(article_dict, article, client):
                     supp, article, article.owner, label="Supplementary File")
                 article.data_figure_files.add(ms_file)
                 round.review_files.add(ms_file)
+    if article_dict.get("draft_decisions"):
+        handle_draft_decisions(article, article_dict["draft_decisions"])
 
     article.save()
     round.save()
 
     return article
+
+
+def handle_draft_decisions(article, draft_decisions):
+    for key, draft in draft_decisions.items():
+        editor = core_models.Account.objects.get(email__iexact=draft["editor"])
+        section_editor = core_models.Account.objects.get(
+                email__iexact=draft["section_editor"])
+
+        # Append unique key to note for idempotency
+        note = key + "\n" + draft["note"]
+        review_models.DraftDecision.objects.update_or_create(
+            article=article,
+            message_to_editor=note,
+            defaults={
+                "email_message": draft["body"] or None,
+                "decision": DRAFT_DECISION_STATUS[draft["status"]],
+                "section_editor": section_editor,
+            }
 
 
 def handle_review_comment(article, review_obj, comment, form):
