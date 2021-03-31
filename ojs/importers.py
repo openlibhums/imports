@@ -729,11 +729,14 @@ def calculate_article_stage(article_dict, article):
             # On 1.3.9 STAGE_UNASSIGNED is actually the first stage of review
             create_workflow_log(article, submission_models.STAGE_UNASSIGNED)
 
-    if article_dict.get("copyediting"):
+    if any(article_dict["copyediting"].values()):
         stage = submission_models.STAGE_EDITOR_COPYEDITING
         create_workflow_log(article, stage)
 
-    if article_dict.get("layout") and article_dict["layout"].get("galleys"):
+    if (
+        article_dict["layout"]["galleys"]
+        or article_dict["layout"]["layout_file"]
+    ):
         if typesetting_plugin:
             stage = typesetting_settings.STAGE
             create_workflow_log(article, stage)
