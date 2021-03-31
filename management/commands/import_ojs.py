@@ -32,6 +32,7 @@ class Command(BaseCommand):
 
         ojs.import_users(client, journal)
         if options["editorial"]:
+            ojs.import_unassigned_articles(client, journal)
             ojs.import_in_review_articles(client, journal)
             ojs.import_in_editing_articles(client, journal)
         else:

@@ -56,6 +56,20 @@ def import_in_progress_articles(ojs_client, journal):
         seen.add(article_dict["ojs_id"])
 
 
+def import_unassigned_articles(ojs_client, journal):
+    articles = ojs_client.get_articles("unassigned")
+    for article_dict in articles:
+        article = import_article_metadata(article_dict, journal, ojs_client)
+
+        import_review_data(article_dict, article, ojs_client)
+
+        calculate_article_stage(article_dict, article)
+        article.stage = submission_models.UNASSIGNED
+        article.save()
+
+        logger.info("Imported article with article ID %d" % article.pk)
+
+
 def import_in_review_articles(ojs_client, journal):
     articles = ojs_client.get_articles("in_review")
     for article_dict in articles:
