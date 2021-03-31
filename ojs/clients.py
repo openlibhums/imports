@@ -27,6 +27,7 @@ class OJSJanewayClient():
         'published',
         'in_editing',
         'in_review',
+        'unassigned',
     }
 
     def __init__(self, journal_url, user=None, password=None, session=None):
