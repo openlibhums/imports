@@ -206,7 +206,6 @@ def create_frozen_record(author, article, emails=None):
 
 def import_review_data(article_dict, article, client):
     ojs_id = article_dict["ojs_id"]
-    import_editor_assignments(client, ojs_id, article)
     # Add first review round
     round, _ = review_models.ReviewRound.objects.get_or_create(
         article=article, round_number=1,
@@ -905,8 +904,10 @@ def get_or_create_issue(issue_data, journal):
     return issue
 
 
-def import_editor_assignments(client, ojs_id, article):
+def scrape_editor_assignments(client, ojs_id, article):
     """ Imports editor assignments by scraping them
+
+    Not required since ojs-janeway v1.1
     Expected html structure
     <form action="{url}/setEditorFlags">
         <table>
