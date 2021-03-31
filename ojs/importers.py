@@ -89,15 +89,18 @@ def import_article_metadata(article_dict, journal, client):
     # Check for editors and assign them as section editors.
     editors = article_dict.get('editors', [])
 
-    for editor in editors:
+    for editor_ass in editors:
         try:
-            editor = clean_email(editor)
-            account = core_models.Account.objects.get(email__iexact=editor)
-            account.add_account_role('section-editor', journal)
+            ed_email = clean_email(editor_ass["email"])
+            acc = core_models.Account.objects.get(email__iexact=ed_email)
+            if editor_ass["role"] == 'editor':
+                acc.add_account_role('editor', journal)
+            elif editor_ass["role"] == 'section-editor':
+                acc.add_account_role('editor', journal)
             review_models.EditorAssignment.objects.create(
-                article=article, editor=account, editor_type='section-editor')
+                article=article, editor=acc, editor_type=editor_ass["role"])
             logger.info(
-                'Editor %s added to article %s' % (editor.email, article.pk))
+                'Editor %s added to article %s' % (acc.email, article.pk))
         except Exception as e:
             logger.error('Editor account was not found.')
             logger.exception(e)
@@ -974,6 +977,7 @@ def clean_email(email):
     import unicodedata
     clean = unicodedata.normalize("NFKC", email).strip()
     return clean.split(" ")[0]
+
 
 def get_query_param(url, param):
     query = urlparse.parse_qs( urlparse.urlsplit(url).query)
