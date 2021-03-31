@@ -165,8 +165,8 @@ def import_article_metadata(article_dict, journal, client):
             journal=article.journal,
             url=license_url,
             defaults={
-                "name":"imported license",
-                "short_name":"imported",
+                "name": "Imported License",
+                "short_name": "imported",
             }
         )
         article.save()
@@ -220,33 +220,20 @@ def import_review_data(article_dict, article, client):
     )
 
     # Get MS File
-    manuscript_file_url = article_dict.get("manuscript_file_url")
-    manuscript = client.fetch_file(
-        manuscript_file_url, "manuscript",
-        # If a file doesn't exist, it redirects to the article page
-        # Should probably be handled on the OJS end really
-        exc_mimes=core_files.HTML_MIMETYPES,
-    )
+    manuscript_json = article_dict["manuscript_file"]
+    manuscript = import_file(client, manuscript_json, article, "manuscript")
     if manuscript:
-        ms_file = core_files.save_file_to_article(
-            manuscript, article, article.owner, label="Manuscript")
-        article.manuscript_files.add(ms_file)
+        article.manuscript_files.add(manuscript)
 
     # Check for a file for review
-    file_for_review_url = article_dict.get("review_file_url")
-    fetched_file_for_review = client.fetch_file(
-        file_for_review_url,
-        exc_mimes=core_files.HTML_MIMETYPES,
-    )
-    if fetched_file_for_review:
-        file_for_review = core_files.save_file_to_article(
-            fetched_file_for_review, article, article.owner,
-            label="File for Peer-Review",
-        )
+    file_for_review_json = article_dict["review_file"]
+    file_for_review = import_file(
+        client, file_for_review_json, article, "File for Peer-Review")
+    if file_for_review:
         round.review_files.add(file_for_review)
     elif article_dict.get("reviews") and manuscript:
         # There are review assignments but no file for review, use manuscript
-        round.review_files.add(ms_file)
+        round.review_files.add(manuscript)
 
     # Attempt to get the default review form
     form = setting_handler.get_setting(
@@ -322,15 +309,13 @@ def import_review_data(article_dict, article, client):
                 review['recommendation']]
 
         # Check for files at article level
-        review_file_url = review.get("review_file_url")
-        if review_file_url:
-            fetched_review_file = client.fetch_file(review_file_url)
-            if fetched_review_file:
-                review_file = core_files.save_file_to_article(
-                    fetched_review_file, article, reviewer,
-                    label="Review File",
-                )
-                new_review.review_file = review_file
+        review_file_json = review.get("review_file")
+        if review_file_json:
+            review_file = import_file(
+                client, review_file_json, article, "Review File",
+                owner=reviewer,
+            )
+            new_review.review_file = review_file
 
         if review.get('comments'):
             handle_review_comment(
@@ -338,16 +323,14 @@ def import_review_data(article_dict, article, client):
 
         new_review.save()
 
-
     # Get Supp Files
     if article_dict.get('supp_files'):
-        for supp in article_dict.get('supp_files'):
-            supp = client.fetch_file(supp["url"], supp["title"])
+        for supp_json in article_dict.get('supp_files'):
+            supp = import_file(
+                client, supp_json, article, "Supplementary File")
             if supp:
-                ms_file = core_files.save_file_to_article(
-                    supp, article, article.owner, label="Supplementary File")
-                article.data_figure_files.add(ms_file)
-                round.review_files.add(ms_file)
+                article.data_figure_files.add(supp)
+                round.review_files.add(supp)
     if article_dict.get("draft_decisions"):
         handle_draft_decisions(article, article_dict["draft_decisions"])
 
@@ -373,7 +356,6 @@ def handle_draft_decisions(article, draft_decisions):
                 "decision": DRAFT_DECISION_STATUS[draft["status"]],
                 "section_editor": section_editor,
             }
-
 
 def handle_review_comment(article, review_obj, comment, form):
     element = form.elements.filter(kind="textarea", name="Review").first()
@@ -407,31 +389,49 @@ def handle_review_comment(article, review_obj, comment, form):
 
 
 def import_copyediting(article_dict, article, client):
+    """ Imports copyediting files and 'signoffs' into Janeway.
+
+    OJS is very flexible during copyediting. There are 3 main copyediting
+    stages:
+        - Initial Copyedit
+        - Author Copyedit
+        - Final Copyedit
+    For each stage there will be 3 signoff timestamps:
+        - Notified
+        - Underway
+        - Complete
+
+    It is possible for editors to ignore the signoffs and upload each of the
+    3 files above directly, so the API will return the signoffs and the files
+    separately.
+    """
     copyediting = article_dict.get('copyediting', None)
+    imported_files = set()
 
     if copyediting:
+        # Signoffs
         initial = copyediting.get('initial')
         author = copyediting.get('author')
         final = copyediting.get('final')
 
         if initial:
             email = clean_email(initial.get('email'))
-            copyedit_file_url = initial.get("file")
+            copyedit_file_json = initial.get("file")
             initial_copyeditor = core_models.Account.objects.get(
                 email__iexact=email)
-            initial_decision = 'accept'if (
+            initial_decision = 'accept' if (
                 initial.get('underway')
                 or initial.get('complete')
-                or copyedit_file_url
+                or initial.get('file')
             ) else None
 
             assigned = attempt_to_make_timezone_aware(initial.get('notified'))
             underway = attempt_to_make_timezone_aware(initial.get('underway'))
             complete = attempt_to_make_timezone_aware(initial.get('complete'))
-            file_upload_date = complete
-            if copyedit_file_url and not file_upload_date:
+            upload_date = complete
+            if initial["file"] and not upload_date:
                 # OJS might not close the task after file uploaded
-                file_upload_date = assigned or timezone.now()
+                upload_date = initial["file"]["date_uploaded"] or timezone.now()
 
             copyedit_assignment = copyediting_models\
                 .CopyeditAssignment.objects.create(
@@ -441,27 +441,25 @@ def import_copyediting(article_dict, article, client):
                     notified=True,
                     decision=initial_decision,
                     date_decided=underway if underway else complete,
-                    copyeditor_completed=file_upload_date,
+                    copyeditor_completed=upload_date,
                     copyedit_accepted=complete,
                 )
 
-            if copyedit_file_url:
+            if copyedit_file_json:
                 decision = ''
-                fetched_copyedit_file = client.fetch_file(copyedit_file_url)
-                if fetched_copyedit_file:
-                    copyedit_file = core_files.save_file_to_article(
-                        fetched_copyedit_file, article, initial_copyeditor,
-                        label="Copyedited File")
-                    copyedit_assignment.copyeditor_files.add(copyedit_file)
+                initial_version = import_file(
+                    client, copyedit_file_json, article, "Initial copyedit")
+                copyedit_assignment.copyeditor_files.add(initial_version)
+                imported_files.add("initial_file")
 
-            if initial and author.get('notified'):
+            if author.get('notified'):
                 logger.info('Adding author review.')
                 assigned = attempt_to_make_timezone_aware(
                     author.get('notified'))
                 complete = attempt_to_make_timezone_aware(
                     author.get('complete'))
-                author_file_url = author.get("file")
-                if author_file_url and not complete:
+                author_file_json = author.get("file")
+                if author_file_json and not complete:
                     complete = assigned or timezone.now()
 
                 author_review = copyediting_models.AuthorReview.objects.create(
@@ -469,20 +467,17 @@ def import_copyediting(article_dict, article, client):
                     assignment=copyedit_assignment,
                     assigned=assigned or timezone.now(),
                     notified=True,
-                    decision='accept',
+                    decision='accept' if complete else None,
                     date_decided=complete,
                 )
 
-                if author_file_url:
-                    fetched_review = client.fetch_file(author_file_url)
-                    if fetched_review:
-                        author_review_file = core_files.save_file_to_article(
-                            fetched_review, article, article.owner,
-                            label="Author Review File",
-                        )
-                        author_review.files_updated.add(author_review_file)
+                if author_file_json:
+                    author_version = import_file(
+                        client, author_file_json, article, "Author copyedit")
+                    author_review.files_updated.add(author_version)
+                    imported_files.add("author_file")
 
-            if final and initial_copyeditor and final.get('notified'):
+            if final and final.get('notified'):
                 logger.info('Adding final copyedit assignment.')
 
                 assigned = attempt_to_make_timezone_aware(
@@ -493,8 +488,8 @@ def import_copyediting(article_dict, article, client):
                     initial.get('complete'))
 
                 final_decision = True if underway or complete else False
-                final_file_url = final.get("file")
-                if final_file_url and not complete:
+                final_file_json = final.get("file")
+                if final_file_json and not complete:
                     complete = assigned or timezone.now()
 
                 final_assignment = copyediting_models.\
@@ -508,14 +503,23 @@ def import_copyediting(article_dict, article, client):
                         copyeditor_completed=complete,
                         copyedit_accepted=complete,
                     )
-                if final_file_url:
-                    fetched_final = client.fetch_file(final_file_url)
-                    if fetched_final:
-                        final_file = core_files.save_file_to_article(
-                            fetched_final, article, initial_copyeditor,
-                            label="Final File",
-                        )
-                        final_assignment.copyeditor_files.add(final_file)
+                if final_file_json:
+                    final_version = import_file(
+                        client, final_file_json, article, "Final copyedit")
+                    author_review.files_updated.add(author_version)
+                    final_assignment.copyeditor_files.add(final_version)
+                    imported_files.add("final_file")
+
+        # Handle files uploaded outside the OJS signoff workflow
+        if "initial_file" not in imported_files and copyediting["initial_file"]:
+            import_file(
+                client, copyediting["initial_file"],
+                article, "Initial copyedit"
+            )
+        if "author_file" not in imported_files and copyediting["author_file"]:
+            import_file(client, final_file_json, article, "Author copyedit")
+        if "final_file" not in imported_files and copyediting["final_file"]:
+            import_file(client, final_file_json, article, "Final copyedit")
 
 
 def import_typesetting(article_dict, article, client):
@@ -693,10 +697,10 @@ def import_galleys(article, layout_dict, client, owner=None):
             if not galley.get("file") or galley["file"] == "None":
                 logger.warning("Can't fetch galley: %s", galley)
                 continue
-            remote_file = client.fetch_file(
-                galley.get("file"), galley.get("label"))
-            galley_file = core_files.save_file_to_article(
-                remote_file, article, owner, label=galley.get("label"))
+            galley_file = import_file(
+                client, galley.get("file"), article, galley.get("label"),
+                owner=owner,
+            )
 
             new_galley, c = core_models.Galley.objects.get_or_create(
                 article=article,
@@ -1015,3 +1019,23 @@ def get_query_param(url, param):
     query = urlparse.parse_qs( urlparse.urlsplit(url).query)
     query_dict = dict(query)
     return query_dict.get(param)
+
+
+def import_file(client, file_json, article, label, file_name=None, owner=None):
+    """ Imports an OJS file from the provided JSON metadata"""
+    if not file_json:
+        return
+    django_file = client.fetch_file(file_json["url"], file_name)
+    janeway_file = core_files.save_file_to_article(
+        django_file, article, owner or article.owner, label=label)
+    janeway_file.date_uploaded= attempt_to_make_timezone_aware(
+            file_json["date_uploaded"])
+    janeway_file.date_modified= attempt_to_make_timezone_aware(
+            file_json["date_modified"])
+    if file_json["mime_type"]:
+        janeway_file.mime_type = file_json["mime_type"]
+    if file_json["file_name"]:
+        janeway_file.original_filename = file_json["file_name"]
+    janeway_file.save()
+
+    return janeway_file
