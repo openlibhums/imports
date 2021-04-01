@@ -275,13 +275,7 @@ def import_review_data(article_dict, article, client):
             dateparser.parse(review.get('date_confirmed')).replace(hour=HOUR)) if review.get(
             'date_confirmed') else None
         date_declined = None
-
-        review.get('declined')
-        if review.get('declined') == '1':
-            date_accepted = None
-            date_declined = date_confirmed
-        else:
-            date_accepted = date_confirmed
+        date_accepted = date_confirmed
 
         review_defaults = dict(
             review_type='traditional',
@@ -301,12 +295,19 @@ def import_review_data(article_dict, article, client):
             defaults=review_defaults,
         )
 
-        if review.get('declined') or review.get('recommendation'):
-            new_review.is_complete = True
-
         if review.get('recommendation'):
             new_review.decision = REVIEW_RECOMMENDATION[
                 review['recommendation']]
+            new_review.is_complete = True
+
+        if review.get("cancelled"):
+            new_review.decision = "withdrawn"
+
+        if review.get('declined'):
+            new_review.date_accepted = None
+            new_review.date_declined = date_confirmed
+            new_review.date_complete = None
+            is_complete = True
 
         # Check for files at article level
         review_file_json = review.get("review_file")
@@ -356,6 +357,8 @@ def handle_draft_decisions(article, draft_decisions):
                 "decision": DRAFT_DECISION_STATUS[draft["status"]],
                 "section_editor": section_editor,
             }
+        )
+
 
 def handle_review_comment(article, review_obj, comment, form):
     element = form.elements.filter(kind="textarea", name="Review").first()
