@@ -215,9 +215,15 @@ def create_frozen_record(author, article, emails=None):
 def import_review_data(article_dict, article, client):
     ojs_id = article_dict["ojs_id"]
     # Add first review round
-    round, _ = review_models.ReviewRound.objects.get_or_create(
-        article=article, round_number=1,
-    )
+    if article_dict.get("current_review_round"):
+        for n in range(1, article_dict["current_review_round"] + 1):
+            round, _ = review_models.ReviewRound.objects.get_or_create(
+                article=article, round_number=n,
+            )
+    else:
+        round, _ = review_models.ReviewRound.objects.get_or_create(
+            article=article, round_number=1,
+        )
 
     # Get MS File
     manuscript_json = article_dict["manuscript_file"]
@@ -291,7 +297,8 @@ def import_review_data(article_dict, article, client):
         new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
             article=article,
             reviewer=reviewer,
-            review_round=round,
+            review_round=review_models.ReviewRound.objects.get(
+                article=article, round_number=review["round"]),
             defaults=review_defaults,
         )
 
