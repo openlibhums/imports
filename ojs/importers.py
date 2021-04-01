@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from urllib import parse as urlparse
 import uuid
 
@@ -43,6 +44,12 @@ define('SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE', 3);
 define('SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE', 4);
 define('SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE', 5);
 define('SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS', 6);
+
+EDITOR DECISIONS FROM OJS
+define('SUBMISSION_EDITOR_DECISION_ACCEPT', 1);
+define('SUBMISSION_EDITOR_DECISION_PENDING_REVISIONS', 2);
+define('SUBMISSION_EDITOR_DECISION_RESUBMIT', 3);
+define('SUBMISSION_EDITOR_DECISION_DECLINE', 4);
 """
 
 REVIEW_RECOMMENDATION = {
@@ -105,8 +112,10 @@ def import_article_metadata(article_dict, journal, client):
                 acc.add_account_role('editor', journal)
             elif editor_ass["role"] == 'section-editor':
                 acc.add_account_role('editor', journal)
-            review_models.EditorAssignment.objects.create(
-                article=article, editor=acc, editor_type=editor_ass["role"])
+            review_models.EditorAssignment.objects.update_or_create(
+                article=article, editor=acc,
+                defaults={"editor_type": editor_ass["role"]},
+            )
             logger.info(
                 'Editor %s added to article %s' % (acc.email, article.pk))
         except Exception as e:
@@ -266,70 +275,7 @@ def import_review_data(article_dict, article, client):
 
     # Set for avoiding duplicate review files
     for review in article_dict.get('reviews'):
-        reviewer = get_or_create_account(review)
-
-        # Parse the dates
-        date_requested = timezone.make_aware(
-            dateparser.parse(review.get('date_requested')).replace(hour=HOUR)
-        )
-        date_due = timezone.make_aware(
-            dateparser.parse(review.get('date_due')).replace(hour=HOUR))
-        date_complete = timezone.make_aware(
-            dateparser.parse(review.get('date_complete')).replace(hour=HOUR)) if review.get(
-            'date_complete') else None
-        date_confirmed = timezone.make_aware(
-            dateparser.parse(review.get('date_confirmed')).replace(hour=HOUR)) if review.get(
-            'date_confirmed') else None
-        date_declined = None
-        date_accepted = date_confirmed
-
-        review_defaults = dict(
-            review_type='traditional',
-            visibility='double-blind',
-            date_due=date_due,
-            date_requested=date_requested,
-            date_complete=date_complete,
-            date_accepted=date_accepted,
-            date_declined=date_declined,
-            access_code=uuid.uuid4(),
-            form=form
-        )
-        new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
-            article=article,
-            reviewer=reviewer,
-            review_round=review_models.ReviewRound.objects.get(
-                article=article, round_number=review["round"]),
-            defaults=review_defaults,
-        )
-
-        if review.get('recommendation'):
-            new_review.decision = REVIEW_RECOMMENDATION[
-                review['recommendation']]
-            new_review.is_complete = True
-
-        if review.get("cancelled"):
-            new_review.decision = "withdrawn"
-
-        if review.get('declined'):
-            new_review.date_accepted = None
-            new_review.date_declined = date_confirmed
-            new_review.date_complete = None
-            is_complete = True
-
-        # Check for files at article level
-        review_file_json = review.get("review_file")
-        if review_file_json:
-            review_file = import_file(
-                client, review_file_json, article, "Review File",
-                owner=reviewer,
-            )
-            new_review.review_file = review_file
-
-        if review.get('comments'):
-            handle_review_comment(
-                article, new_review, review.get('comments'), form)
-
-        new_review.save()
+        import_review_assignment(client, article, review, form)
 
     # Get Supp Files
     if article_dict.get('supp_files'):
@@ -342,21 +288,115 @@ def import_review_data(article_dict, article, client):
     if article_dict.get("draft_decisions"):
         handle_draft_decisions(article, article_dict["draft_decisions"])
 
+    if article_dict.get("latest_editor_decision"):
+        import_editorial_decision(client, article_dict, article)
+
     article.save()
     round.save()
 
     return article
 
 
+def import_review_assignment(client, article, review, review_form):
+    reviewer = get_or_create_account(review)
+
+    # Parse the dates
+    date_requested = timezone.make_aware(
+        dateparser.parse(review.get('date_requested')).replace(hour=HOUR)
+    )
+    date_due = timezone.make_aware(
+        dateparser.parse(review.get('date_due')).replace(hour=HOUR))
+    date_complete = timezone.make_aware(
+        dateparser.parse(review.get('date_complete')).replace(hour=HOUR)) if review.get(
+        'date_complete') else None
+    date_confirmed = timezone.make_aware(
+        dateparser.parse(review.get('date_confirmed')).replace(hour=HOUR)) if review.get(
+        'date_confirmed') else None
+    date_declined = None
+    date_accepted = date_confirmed
+
+    review_defaults = dict(
+        review_type='traditional',
+        visibility='double-blind',
+        date_due=date_due,
+        date_requested=date_requested,
+        date_complete=date_complete,
+        date_accepted=date_accepted,
+        date_declined=date_declined,
+        access_code=uuid.uuid4(),
+        form=review_form
+    )
+    new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
+        article=article,
+        reviewer=reviewer,
+        review_round=review_models.ReviewRound.objects.get(
+            article=article, round_number=review["round"]),
+        defaults=review_defaults,
+    )
+
+    if review.get('recommendation'):
+        new_review.decision = REVIEW_RECOMMENDATION[
+            review['recommendation']]
+        new_review.is_complete = True
+
+    if review.get("cancelled"):
+        new_review.decision = "withdrawn"
+
+    if review.get('declined'):
+        new_review.date_accepted = None
+        new_review.date_declined = date_confirmed
+        new_review.date_complete = None
+        is_complete = True
+
+    # Check for files at article level
+    review_file_json = review.get("review_file")
+    if review_file_json:
+        review_file = import_file(
+            client, review_file_json, article, "Review File",
+            owner=reviewer,
+        )
+        new_review.review_file = review_file
+
+    if review.get('comments'):
+        handle_review_comment(
+            article, new_review, review.get('comments'), review_form)
+
+    new_review.save()
+
+
+def import_editorial_decision(client, article_dict, article):
+    decision_code = article_dict["latest_editor_decision"]["decision"]
+
+    # Article has been accepted
+    if decision_code == "1":
+        article.date_accepted = timezone.make_aware(dateparser.parse(
+            article_dict["latest_editor_decision"]["dateDecided"]
+        ))
+
+    # Revisions have been requested
+    elif decision_code in {"2", "3"}:
+        date_decided = timezone.make_aware(dateparser.parse(
+            article_dict["latest_editor_decision"]["dateDecided"]
+        ))
+        review_models.RevisionRequest.objects.update_or_create(
+            article=article,
+            defaults={
+                "editor_note": "Revision notes have been sent by email",
+                "type": REVIEW_RECOMMENDATION[decision_code],
+                "date_requested": date_decided,
+                "date_due": date_decided + timedelta(days=14),
+            }
+        )
+
+
 def handle_draft_decisions(article, draft_decisions):
     for key, draft in draft_decisions.items():
-        editor = core_models.Account.objects.get(email__iexact=draft["editor"])
         section_editor = core_models.Account.objects.get(
                 email__iexact=draft["section_editor"])
 
         # Append unique key to note for idempotency
         note = key + "\n" + draft["note"]
-        review_models.DraftDecision.objects.update_or_create(
+        review_models.DecisionDraft.objects.update_or_create(
             article=article,
             message_to_editor=note,
             defaults={
