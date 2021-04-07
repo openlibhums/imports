@@ -1125,14 +1125,18 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
     django_file = client.fetch_file(file_json["url"], file_name)
     janeway_file = core_files.save_file_to_article(
         django_file, article, owner or article.owner, label=label)
-    janeway_file.date_uploaded= attempt_to_make_timezone_aware(
-            file_json["date_uploaded"])
-    janeway_file.date_modified= attempt_to_make_timezone_aware(
-            file_json["date_modified"] or file_json["date_uploaded"])
+    janeway_file.date_uploaded = attempt_to_make_timezone_aware(
+        file_json["date_uploaded"])
     if file_json["mime_type"]:
         janeway_file.mime_type = file_json["mime_type"]
     if file_json["file_name"]:
         janeway_file.original_filename = file_json["file_name"]
     janeway_file.save()
+
+    # Overcome autho_now_add=True
+    date_modified = attempt_to_make_timezone_aware(
+        file_json["date_modified"] or file_json["date_uploaded"])
+    core_models.File.objects.filter(id=janeway_file.pk).update(
+        date_modified=date_modified)
 
     return janeway_file
