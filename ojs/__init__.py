@@ -1,4 +1,5 @@
 from plugins.imports.ojs.main import (
+    import_article,
     import_published_articles,
     import_unassigned_articles,
     import_in_progress_articles,
