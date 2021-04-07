@@ -383,6 +383,17 @@ def import_editorial_decision(client, article_dict, article):
 
     # Revisions have been requested
     elif decision_code in {"2", "3"}:
+        try:
+            ed = core_models.Account.objects.get(email__iexact=article_dict[
+                "latest_editor_decision"
+            ]["editor"]),
+        except core_models.Account.DoesNotExist:
+            # An old assignment from an account that no longer exists
+            logger.warning(
+                "Ignoring revision assignment from unknown account: %s",
+                article_dict["latest_editor_decision"]["editor"],
+            )
+            return
         date_decided = timezone.make_aware(dateparser.parse(
             article_dict["latest_editor_decision"]["dateDecided"]
         ))
