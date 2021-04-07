@@ -404,6 +404,10 @@ def import_editorial_decision(client, article_dict, article):
                 "type": REVIEW_RECOMMENDATION[decision_code],
                 "date_requested": date_decided,
                 "date_due": date_decided + timedelta(days=14),
+                "editor": core_models.Account.objects.get(
+                    email__iexact=article_dict[
+                        "latest_editor_decision"
+                    ]["editor"]),
             }
         )
 
