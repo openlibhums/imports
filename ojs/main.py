@@ -19,6 +19,17 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def import_article(ojs_client, journal, ojs_id):
+    article_dict = ojs_client.get_article(ojs_id)
+    if article_dict:
+        article = import_article_metadata(article_dict, journal, ojs_client)
+
+        import_review_data(article_dict, article, ojs_client)
+        import_copyediting(article_dict, article, ojs_client)
+        import_typesetting(article_dict, article, ojs_client)
+        import_publication(article_dict, article, ojs_client)
+
+
 def import_published_articles(ojs_client, journal):
     articles = ojs_client.get_articles("published")
     for article_dict in articles:

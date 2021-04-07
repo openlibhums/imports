@@ -105,6 +105,18 @@ class OJSJanewayClient():
         self.post(auth_url, headers=req_headers, body=req_body)
         self.authenticated = True
 
+    def get_article(self, ojs_id):
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + "?%s" % urlencode({"article_id": ojs_id})
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        if data:
+            return data[0]
+        return None
+
     def get_articles(self, stage):
         if stage not in self.SUPPORTED_STAGES:
             raise NameError("Stage %s not supported", (stage))
