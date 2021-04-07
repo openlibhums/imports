@@ -415,17 +415,21 @@ def import_editorial_decision(client, article_dict, article):
 def handle_draft_decisions(article, draft_decisions):
     for key, draft in draft_decisions.items():
         section_editor = core_models.Account.objects.get(
-                email__iexact=draft["section_editor"])
+            email__iexact=draft["section_editor"])
 
         # Append unique key to note for idempotency
-        note = key + "\n" + draft["note"]
+        note = key + "\n" + (draft["note"] or "")
+        if draft["recommendation"] == "0":
+            # MS: I found a couple of currpted instances like this
+            continue
         review_models.DecisionDraft.objects.update_or_create(
             article=article,
             message_to_editor=note,
             defaults={
                 "email_message": draft["body"] or None,
-                "decision": DRAFT_DECISION_STATUS[draft["status"]],
+                "decision": REVIEW_RECOMMENDATION[draft["recommendation"]],
                 "section_editor": section_editor,
+                "editor_decision": DRAFT_DECISION_STATUS[draft["status"]]
             }
         )
 
