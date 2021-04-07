@@ -594,9 +594,11 @@ def import_copyediting(article_dict, article, client):
                 article, "Initial copyedit"
             )
         if "author_file" not in imported_files and copyediting["author_file"]:
-            import_file(client, final_file_json, article, "Author copyedit")
+            import_file(
+                client, copyediting["author_file"], article, "Author copyedit")
         if "final_file" not in imported_files and copyediting["final_file"]:
-            import_file(client, final_file_json, article, "Final copyedit")
+            import_file(
+                client, copyediting["final_file"], article, "Final copyedit")
 
 
 def import_typesetting(article_dict, article, client):
@@ -685,7 +687,7 @@ def import_publication(article_dict, article, client):
     """ Imports an article-issue relationship
     If the issue doesn't exist yet, it gets created
     """
-    pub_data = article_dict.get("publication")
+    pub_data = article_dict.get("publication", {})
     if pub_data.get('date_published'):
         article.date_published = timezone.make_aware(
             dateparser.parse(pub_data.get('date_published')).replace(hour=HOUR)
@@ -1100,7 +1102,7 @@ def get_query_param(url, param):
 
 def import_file(client, file_json, article, label, file_name=None, owner=None):
     """ Imports an OJS file from the provided JSON metadata"""
-    if not file_json:
+    if not file_json or not file_json["url"]:
         return
     django_file = client.fetch_file(file_json["url"], file_name)
     janeway_file = core_files.save_file_to_article(
@@ -1108,7 +1110,7 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
     janeway_file.date_uploaded= attempt_to_make_timezone_aware(
             file_json["date_uploaded"])
     janeway_file.date_modified= attempt_to_make_timezone_aware(
-            file_json["date_modified"])
+            file_json["date_modified"] or file_json["date_uploaded"])
     if file_json["mime_type"]:
         janeway_file.mime_type = file_json["mime_type"]
     if file_json["file_name"]:
