@@ -255,7 +255,13 @@ def import_review_data(article_dict, article, client):
     editor_version = import_file(
         client, editor_version_json, article, "Editor Review Version")
     if editor_version:
-        article.manuscript_files.add(manuscript)
+        article.manuscript_files.add(editor_version)
+
+    author_revision_json = article_dict["author_revision"]
+    author_revision = import_file(
+        client, author_revision_json, article, "Author Revision")
+    if author_revision:
+        article.manuscript_files.add(author_revision)
 
 
     # Attempt to get the default review form
@@ -297,7 +303,7 @@ def import_review_data(article_dict, article, client):
         handle_draft_decisions(article, article_dict["draft_decisions"])
 
     if article_dict.get("latest_editor_decision"):
-        import_editorial_decision(client, article_dict, article)
+        import_editorial_decision(client, article_dict, article, author_revision)
 
     article.save()
     round.save()
@@ -372,7 +378,7 @@ def import_review_assignment(client, article, review, review_form):
     new_review.save()
 
 
-def import_editorial_decision(client, article_dict, article):
+def import_editorial_decision(client, article_dict, article, revision=None):
     decision_code = article_dict["latest_editor_decision"]["decision"]
 
     # Article has been accepted
@@ -397,7 +403,7 @@ def import_editorial_decision(client, article_dict, article):
         date_decided = timezone.make_aware(dateparser.parse(
             article_dict["latest_editor_decision"]["dateDecided"]
         ))
-        review_models.RevisionRequest.objects.update_or_create(
+        request, c = review_models.RevisionRequest.objects.update_or_create(
             article=article,
             defaults={
                 "editor_note": "Revision notes have been sent by email",
@@ -410,6 +416,18 @@ def import_editorial_decision(client, article_dict, article):
                     ]["editor"]),
             }
         )
+
+        # Handle author having uploaded a revised MS
+        if revision and revision.date_uploaded >= date_decided:
+            request.date_completed = revision.date_uploaded
+            request.save()
+            request.actions.update_or_create(
+                text="Author Uplaoded: %s" % revision.original_filename,
+                defaults={
+                    "logged": revision.date_uploaded,
+                    "user": article.owner,
+                }
+            )
 
 
 def handle_draft_decisions(article, draft_decisions):
