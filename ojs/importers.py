@@ -250,6 +250,14 @@ def import_review_data(article_dict, article, client):
         # There are review assignments but no file for review, use manuscript
         round.review_files.add(manuscript)
 
+    # Check for an editor version
+    editor_version_json = article_dict["editor_file"]
+    editor_version = import_file(
+        client, editor_version_json, article, "Editor Review Version")
+    if editor_version:
+        article.manuscript_files.add(manuscript)
+
+
     # Attempt to get the default review form
     form = setting_handler.get_setting(
         'general',
