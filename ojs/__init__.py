@@ -7,6 +7,7 @@ from plugins.imports.ojs.main import (
     import_in_editing_articles,
     import_issues,
     import_metrics,
+    import_sections,
     import_users,
 )
 from plugins.imports.ojs.clients import OJSJanewayClient

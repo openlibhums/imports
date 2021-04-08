@@ -753,6 +753,34 @@ def import_issue_metadata(issue_dict, client, journal):
     return issue
 
 
+def import_section_metadata(section_dict, client, journal):
+    section, _ = submission_models.Section.objects.language(
+        settings.LANGUAGE_CODE
+    ).get_or_create(
+        journal=journal,
+        name=section_dict["title"],
+    )
+    section.public_submissions = section_dict["open_submissions"]
+    section.indexing = section_dict["indexed"]
+    section.sequence = section_dict["sequence"]
+
+    auto_assign_editors = None
+    for editor_dict in section_dict["editors"]:
+        account = core_models.Account.objects.get(
+            email__iexact=editor_dict["email"])
+        if editor_dict["review"] or editor_dict["edit"]:
+            auto_assign_editors = True
+            section.section_editors.add(account)
+
+    if not section_dict["peer_reviewed"]:
+        section.number_of_reviewers = 0
+    if auto_assign_editors is not None:
+        section.auto_assign_editors = auto_assign_editors
+
+    section.save()
+    return section
+
+
 def import_article_section(article_section_dict, issue, section, order):
     ojs_id = article_section_dict["id"]
     try:

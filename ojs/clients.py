@@ -15,6 +15,7 @@ class OJSJanewayClient():
     PLUGIN_PATH = '/janeway'
     AUTH_PATH = '/login/signIn'
     ISSUES_PATH = "/issues"
+    SECTIONS_PATH = "/sections"
     USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
     SUBMISSION_PATH = '/editor/submission/%s'
@@ -140,6 +141,17 @@ class OJSJanewayClient():
         data = response.json()
         for issue in data:
             yield issue
+
+    def get_sections(self):
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + self.SECTIONS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for section in data:
+            yield section
 
     def get_users(self):
         request_url = (

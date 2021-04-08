@@ -12,6 +12,7 @@ from plugins.imports.ojs.importers import (
     import_issue_metadata,
     import_publication,
     import_review_data,
+    import_section_metadata,
     import_user_metadata,
 )
 from utils.logger import get_logger
@@ -119,9 +120,15 @@ def import_in_editing_articles(ojs_client, journal):
 
 
 def import_issues(ojs_client, journal):
-    for issue in ojs_client.get_issues():
-        issue = import_issue_metadata(issue, ojs_client, journal)
+    for issue_dict in ojs_client.get_issues():
+        issue = import_issue_metadata(issue_dict, ojs_client, journal)
         logger.info("Imported Issue: %s " % issue)
+
+
+def import_sections(ojs_client, journal):
+    for section_dict in ojs_client.get_sections():
+        section = import_section_metadata(section_dict, ojs_client, journal)
+        logger.info("Imported Section: %s " % section)
 
 
 def import_metrics(ojs_client, journal):
