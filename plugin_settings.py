@@ -1,7 +1,7 @@
 PLUGIN_NAME = 'Import Plugin'
 DESCRIPTION = 'This plugin is a collection of import scripts.'
 AUTHOR = 'Birkbeck Centre for Technology and Publishing'
-VERSION = '1.4'
+VERSION = '1.5'
 SHORT_NAME = 'imports'
 MANAGER_URL = 'imports_index'
 JANEWAY_VERSION = "1.3.9"
@@ -12,7 +12,6 @@ from utils import models
 def install():
     new_plugin, created = models.Plugin.objects.get_or_create(
         name=SHORT_NAME,
-        enabled=True,
         defaults={'version': VERSION},
     )
 
