@@ -64,6 +64,45 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None, own
         save_galley(article, request, xml_file, True, "XML")
 
 
+def import_jats_zipped(zip_file, journal, owner=None, persist=True):
+    """ Import a batch of Zipped JATS articles and their figures
+    :param zip_file: The zipped jats to be imported
+    :param journal: Journal in which to import the articles
+    :param owner: An instance of core.models.Account
+    """
+    articles = []
+    jats_files_info = []
+    image_map = {}
+    temp_path = os.path.join(settings.BASE_DIR, 'files/temp')
+    with zipfile.ZipFile(zip_file, 'r') as zf:
+        with tempfile.TemporaryDirectory(dir=temp_path) as temp_dir:
+            zf.extractall(path=temp_dir)
+
+            for root, path, filenames in os.walk(temp_dir):
+                jats_path = None
+                jats_filename = None
+                supplements = []
+
+                for filename in filenames:
+                    mimetype, _ = mimetypes.guess_type(filename)
+                    file_path = os.path.join(root, filename)
+                    if mimetype in files.XML_MIMETYPES:
+                        jats_path = file_path
+                        jats_filename = filename
+                    else:
+                        supplements.append(file_path)
+
+                if jats_path:
+                    with open(jats_path, 'r') as jats_file:
+                        articles.append(import_jats_article(
+                            jats_file.read(), journal, persist,
+                            jats_filename, owner, supplements,
+                        ))
+
+    return articles
+
+
+
 def get_jats_title(soup):
     title = soup.find("article-title")
     if title:
