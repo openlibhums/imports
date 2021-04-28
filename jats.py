@@ -268,6 +268,12 @@ def save_article(journal, metadata, issue=None, owner=None):
                 identifier=metadata["identifiers"]["pubid"],
                 defaults={"article": article},
             )
+        if metadata["identifiers"]["handle"]:
+            Identifier.objects.get_or_create(
+                id_type="handle",
+                identifier=metadata["identifiers"]["handle"],
+                defaults={"article": article},
+            )
         for idx, author in enumerate(metadata["authors"]):
             account, _ = Account.objects.get_or_create(
                 email=author["email"],
@@ -315,12 +321,16 @@ def get_jats_identifiers(soup):
     ids = {
         "pubid": None,
         "doi": None,
+        "handle": None,
     }
     for article_id in soup.find_all("article-id"):
         if article_id.attrs.get("pub-id-type") == "doi":
             ids["doi"] = article_id.text
         elif article_id.attrs.get("pub-id-type") == "publisher-id":
             ids["pubid"] = article_id.text
+        elif article_id.attrs.get("pub-id-type") == "handle":
+            ids["handle"] = article_id.text
+
 
     return ids
 
