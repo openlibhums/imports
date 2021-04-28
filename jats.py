@@ -3,22 +3,31 @@ Set of functions for importing articles from JATS XML
 """
 import datetime
 import hashlib
+import mimetypes
+import os
+import tempfile
 import uuid
+import zipfile
 
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
+from core import files
 from core.models import Account
 from identifiers.models import Identifier
 from journal import models as journal_models
-from production.logic import save_galley
+from production.logic import save_galley, save_galley_image
 from plugins.imports.utils import DummyRequest
 from submission import models as submission_models
 
 
-def import_jats_article(jats_contents, journal, persist=True, filename=None, owner=None):
+def import_jats_article(
+        jats_contents, journal,
+        persist=True, filename=None, owner=None,
+        images=None, request=None
+):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
     :param journal: Journal in which to import the article
@@ -60,8 +69,12 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None, own
         # Save Galleys
         xml_file = ContentFile(jats_contents.encode("utf-8"))
         xml_file.name = filename or uuid.uuid4()
-        request = DummyRequest(owner)
-        save_galley(article, request, xml_file, True, "XML")
+        request = request or DummyRequest(owner)
+        galley = save_galley(article, request, xml_file, True, "XML")
+
+    if images:
+        load_jats_images(images, galley, request)
+    return article
 
 
 def import_jats_zipped(zip_file, journal, owner=None, persist=True):
@@ -309,4 +322,24 @@ def get_jats_identifiers(soup):
 
 def default_email(seed):
     hashed = hashlib.md5(str(seed).encode("utf-8")).hexdigest()
-    return "{0}@{1}".format(hashed, settings.DUMMY_EMAIL_DOMAIN)
+    return "{0}{1}".format(hashed, settings.DUMMY_EMAIL_DOMAIN)
+
+
+def load_jats_images(images, galley, request):
+    for img_path in images:
+        _, filename = os.path.split(img_path)
+        missing_images = galley.has_missing_image_files()
+        all_images = galley.all_images()
+        if filename in all_images:
+            with open(img_path, 'rb') as image:
+                content_file = ContentFile(image.read())
+                content_file.name = filename
+
+                if filename in missing_images:
+                    save_galley_image(galley, request, content_file)
+                else:
+                    to_replace = galley.images.get(original_filename=filename)
+                    files.overwrite_file(
+                        content_file, to_replace,
+                        ('articles', galley.article.pk)
+                    )
