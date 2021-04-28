@@ -4,16 +4,16 @@ from django.core.management.base import BaseCommand
 from journal import models
 from core.models import Account
 
-from plugins.imports.jats import import_jats_article
+from plugins.imports.jats import import_jats_zipped
 
 
 class Command(BaseCommand):
-    """ Imports an article from its JATS XML metadata file"""
+    """ Imports zipped articles in JATS XML format file"""
 
-    help = "Imports an article form the metadata of a JATS XML galley"
+    help = "Imports zipped articles in JATS XML Format"
 
     def add_arguments(self, parser):
-        parser.add_argument('jats_xml_path')
+        parser.add_argument('zip_file')
         parser.add_argument('journal_code')
         parser.add_argument('--owner_id', default=1)
         parser.add_argument('--dry-run', action="store_true", default=False)
@@ -21,15 +21,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         journal = models.Journal.objects.get(code=options["journal_code"])
         owner = Account.objects.get(pk=options["owner_id"])
-        with open(options["jats_xml_path"], "r") as jats_file:
-            persist = True
-            if options["dry_run"]:
-                persist = False
-            article = import_jats_article(
-                jats_file.read(), journal,
-                persist=persist,
-                filename=jats_file.name,
-                owner=owner,
-            )
+        persist = True
+        if options["dry_run"]:
+            persist = False
+        articles = import_jats_zipped(
+            options["zip_file"], journal,
+            owner=owner, persist=persist,
+        )
+        for article in articles:
             if not persist:
                 pprint.pprint(article)
+            else:
+                print("Imported Article %s" % article)
