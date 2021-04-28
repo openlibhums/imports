@@ -212,10 +212,15 @@ def get_jats_authors(soup, author_notes=None):
         if author.find("aff"):
             institution = author.find("aff").text
         if author.find("surname"):
+            email_jats = author.find("email")
+            if email_jats:
+                email = email_jats.text
+            else:
+                email = default_email(author)
             author_data = {
                 "first_name": author.find("given-names").text,
                 "last_name": author.find("surname").text,
-                "email": author.find("email") or default_email(author),
+                "email": email,
                 "correspondence": False,
                 "institution": institution,
             }
