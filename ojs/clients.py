@@ -15,6 +15,7 @@ class OJSJanewayClient():
     PLUGIN_PATH = '/janeway'
     AUTH_PATH = '/login/signIn'
     ISSUES_PATH = "/issues"
+    COLLECTIONS_PATH = "/collections"
     SECTIONS_PATH = "/sections"
     USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
@@ -142,6 +143,17 @@ class OJSJanewayClient():
         for issue in data:
             yield issue
 
+    def get_collections(self):
+        request_url = (
+            self.journal_url
+            + self.PLUGIN_PATH
+            + self.COLLECTIONS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for collection in data:
+            yield collection
+
     def get_sections(self):
         request_url = (
             self.journal_url
@@ -225,8 +237,13 @@ class UPJanewayClient(OJSJanewayClient):
         self.authenticated = True
 
     def set_csrftoken(self, url):
+        """ Set the CSRF token cookie for the session
+        Fetches the URL containing the form so that the token gets set by
+        the request session handler.
+        :param url: The URL for which the CSRFTOKEN needs setting
+        """
         logger.debug("Setting CSRFTOKEN for url:%s " % url)
-        response = self.fetch(url)
+        self.fetch(url)
 
 
 def strip_scheme(url):
