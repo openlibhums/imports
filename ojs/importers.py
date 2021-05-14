@@ -782,6 +782,24 @@ def import_issue_metadata(issue_dict, client, journal):
     return issue
 
 
+def import_collection_metadata(collection_dict, client, journal):
+    collection = get_or_create_collection(collection_dict, journal)
+
+    # Handle cover
+    if collection_dict.get("cover_file") and not collection.cover_image:
+        collection_img = client.fetch_file(collection_dict["cover_file"])
+        collection.cover_image = collection_img
+    collection.save()
+
+    # Handle Section orderings
+    for i, ojs_id in enumerate(
+        collection_dict.get("article_ids", []), 1
+    ):
+        link_article_to_collection(collection, ojs_id, order=i)
+
+    return collection
+
+
 def import_section_metadata(section_dict, client, journal):
     section, _ = submission_models.Section.objects.language(
         settings.LANGUAGE_CODE
@@ -834,6 +852,28 @@ def import_article_section(article_section_dict, issue, section, order):
             section=section,
         )
         ordering.order = order
+
+def link_article_to_collection(collection, ojs_id, order):
+    try:
+        article = identifiers_models.Identifier.objects.get(
+            id_type="ojs_id",
+            identifier=ojs_id,
+            article__journal=collection.journal,
+        ).article
+    except identifiers_models.Identifier.DoesNotExist:
+        logger.warning(
+            "Collection %s has non-existant OJS ID %d", collection, ojs_id
+        )
+    collection.articles.add(article)
+    if not article.primary_issue:
+        article.primary_issue = collection
+        article.save()
+    ordering, _ = journal_models.ArticleOrdering.objects.update_or_create(
+        issue=collection,
+        article=article,
+        section=article.section,
+        defaults={"order": order},
+    )
 
 
 def import_galleys(article, layout_dict, client, owner=None):
@@ -1091,6 +1131,31 @@ def get_or_create_issue(issue_data, journal):
         logger.info("Created new issue {}".format(issue))
 
     return issue
+
+
+def get_or_create_collection(collection_data, journal):
+    collection_id = int(collection_data.get("id", 1))
+    date_published = attempt_to_make_timezone_aware(
+        collection_data.get("date_published"),
+    )
+    issue_type = journal_models.IssueType.objects.get(
+        code="collection", journal=journal)
+
+    collection, created = journal_models.Issue.objects.update_or_create(
+        journal=journal,
+        volume=collection_id,
+        issue_type=issue_type,
+        defaults={
+            "date": date_published or timezone.now(),
+            "issue_title": collection_data.get("title"),
+            "short_description": collection_data.get("short_description"),
+            "issue_description": collection_data.get("description"),
+        },
+    )
+    if created:
+        logger.info("Created new issue {}".format(collection))
+
+    return collection
 
 
 def scrape_editor_assignments(client, ojs_id, article):
