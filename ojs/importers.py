@@ -373,7 +373,13 @@ def import_review_assignment(client, article, review, review_form):
 
     if review.get('comments'):
         handle_review_comment(
-            article, new_review, review.get('comments'), review_form)
+            article, new_review, review['comments'],
+            review_form, public=True)
+    if review.get('comments_to_editor'):
+        handle_review_comment(
+            article, new_review, review['comments_to_editor'],
+            review_form, public=False,
+        )
 
     new_review.save()
 
@@ -452,7 +458,7 @@ def handle_draft_decisions(article, draft_decisions):
         )
 
 
-def handle_review_comment(article, review_obj, comment, form):
+def handle_review_comment(article, review_obj, comment, form, public=True):
     element = form.elements.filter(kind="textarea", name="Review").first()
     if element:
         soup = BeautifulSoup(comment, "html.parser")
@@ -464,6 +470,7 @@ def handle_review_comment(article, review_obj, comment, form):
         )
         element.snapshot(answer)
         answer.answer = comment
+        answer.for_author_consumption=public
         answer.save()
     else:
         comment = linebreaksbr(comment)
