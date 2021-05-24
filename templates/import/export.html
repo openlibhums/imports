@@ -1,0 +1,27 @@
+
+<html>
+<head>
+    <title>[{{ journal.code }}] #{{ article.pk }} {{ article.title }}</title>
+</head>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+      integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+<body>
+<div class="container-fluid">
+    <h1>Article Data</h1>
+    <h2>General Info</h2>
+    {% include "import/elements/general.html" %}
+    <h2>Authors</h2>
+    {% include "import/elements/authors.html" %}
+    <h2>Files</h2>
+    {% include "import/elements/files.html" %}
+    <h2>Dates</h2>
+    {% include "import/elements/dates.html" %}
+    {% if article.funders %}
+    <h2>Funding</h2>
+    {% include "import/elements/funding.html" %}
+    {% endif %}
+
+</div>a
+</body>
+</html>

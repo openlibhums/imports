@@ -7,9 +7,15 @@ from django.core.urlresolvers import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404
 
-from core import files
-from plugins.imports import utils, forms, logic, models
+from rest_framework import viewsets
+from rest_framework.decorators import api_view, permission_classes
+
+from api import permissions as api_permissions
+from core import files, models as core_models
+from plugins.imports import utils, forms, logic, models, export, serializers
 from journal import models as journal_models
+from submission import models as submission_models
+from security import decorators
 
 
 @staff_member_required
@@ -195,7 +201,7 @@ def csv_example(request):
     filepath = files.get_temp_file_path_from_name('metadata.csv')
 
     with open(filepath, "w") as f:
-        wr = csv.writer(f)
+        wr = csv.writer(f, quoting=csv.QUOTE_ALL)
         wr.writerow(utils.CSV_HEADER_ROW.split(","))
         wr.writerow(utils.CSV_MAURO.split(","))
 
@@ -281,3 +287,97 @@ def wordpress_posts(request, import_id):
     }
 
     return render(request, template, context)
+
+
+@decorators.has_journal
+@decorators.editor_user_required
+def export_article(request, article_id, format='csv'):
+    """
+    A view that exports either a CSV or HTML representation of an article.
+    :param request: HttpRequest object
+    :param article_id: Article object PK
+    :param format: string, csv or html
+    :return: HttpResponse or Http404
+    """
+    article = get_object_or_404(
+        submission_models.Article,
+        pk=article_id,
+        journal=request.journal,
+    )
+    files = core_models.File.objects.filter(
+        article_id=article.pk,
+    )
+
+    if request.GET.get('action') == 'output_html':
+        context = {
+            'article': article,
+            'journal': request.journal,
+            'files': files,
+        }
+
+        return render(
+            request,
+            'import/export.html',
+            context,
+        )
+
+    if format == 'csv':
+        return export.export_csv(request, article, files)
+    elif format == 'html':
+        return export.export_html(request, article, files)
+
+    raise Http404
+
+
+@decorators.has_journal
+@decorators.editor_user_required
+def export_articles_all(request):
+    """
+    A view that displays all articles in a journal and allows export.
+    """
+    element = request.GET.get('element')
+
+    articles = submission_models.Article.objects.filter(
+        journal=request.journal,
+    ).select_related(
+        'correspondence_author',
+    )
+
+    if element in ['Published', 'Rejected']:
+        articles = articles.filter(stage=element)
+    elif element:
+        workflow_element = core_models.WorkflowElement.objects.get(
+            journal=request.journal,
+            stage=element,
+        )
+        articles = articles.filter(stage__in=workflow_element.stages)
+
+    if request.POST:
+        if 'export_all' in request.POST:
+            return export.export_using_import_format(articles)
+
+    template = 'import/articles_all.html'
+    context = {
+        'articles_in_stage': articles,
+        'stages': submission_models.STAGE_CHOICES,
+        'selected_element': element,
+    }
+
+    return render(request, template, context)
+
+
+@permission_classes((api_permissions.IsEditor, ))
+class ExportFilesViewSet(viewsets.ModelViewSet):
+    serializer_class = serializers.ExportFileSerializer
+    http_method_names = ['get', 'post', 'delete']
+
+    def get_queryset(self):
+        if self.request.journal:
+            queryset = models.ExportFile.objects.filter(
+                article__journal=self.request.journal,
+            )
+        else:
+            queryset = models.ExportFile.objects.all()
+
+        return queryset
+

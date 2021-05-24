@@ -1,0 +1,16 @@
+<table class="table table-bordered">
+    <tr>
+        <th width="20%">Started</th>
+        <td>{{ article.date_started }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Submitted</th>
+        <td>{{ article.date_submitted }}</td>
+    </tr>
+    {% for log in article.articlestagelog_set.all reversed %}
+        <tr>
+            <th>[Moved to Stage] {{ log.stage_to }}</th>
+            <td>{{ log.date_time }}</td>
+        </tr>
+    {% endfor %}
+</table>

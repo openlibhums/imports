@@ -1,0 +1,144 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Article Export{% endblock %}
+
+{% block body %}
+<div class="large-12 columns">
+    <div class="box">
+        <div class="title-area">
+            <h2>Article Export</h2>
+        </div>
+        <div class="content">
+            <div class="row expanded">
+                <div class="large-3 columns">
+                    <form method="GET">
+                         <select name="element" onchange="this.form.submit()">
+                            <option value="">- Filter by Stage -</option>
+                            {% for element in request.journal.workflow.elements.all %}
+                            <option value="{{ element.stage }}"{% if selected_element == element.stage  %} selected{% endif %}>{{ element.element_name|capfirst }}</option>
+                            {% endfor %}
+                            <option value="Published"{% if selected_element == 'Published'  %} selected{% endif %}>Published</option>
+                            <option value="Rejected"{% if selected_element == 'Rejected'  %} selected{% endif %}>Rejected</option>
+                        </select>
+                    </form>
+                </div>
+                <div class="large-2 columns">
+                    {% if selected_element %}<a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>{% endif %}
+                </div>
+                <div class="large-2 columns end">
+                    <form method="POST">
+                        {% csrf_token %}
+                        <button name="export_all" class="button">Export Articles</button>
+                    </form>
+                </div>
+            </div>
+
+            <table class="small scroll" id="unassigned">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th style="width: 25%">Title</th>
+                        <th>Stage</th>
+                        <th>Submitted</th>
+                        <th>Main Author</th>
+                        <th>Editors</th>
+                        <th>Section</th>
+                        <th>Projected Issue</th>
+                        <th>Files</th>
+                        <th>Edit Metadata</th>
+                        <th>Archive</th>
+                        <th>Export CSV</th>
+                        <th>Export HTML</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for article in articles_in_stage %}
+                    <tr>
+                        <td>{{ article.pk }}</td>
+                        <td>
+                            {% if article.stage != 'Rejected' and article.stage != 'Published' %}
+                            <a href="{{ article.current_workflow_element_url }}" target="_blank">{{ article.title|safe }}</a>
+                            {% else %}
+                             <a href="{% url 'manage_archive_article' article.pk %}" target="_blank">{{ article.title|safe }}</a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ article.stage }}
+                        </td>
+                        <td>{{ article.date_submitted }}</td>
+                        <td>{{ article.correspondence_author.full_name }}</td>
+                        <td>{% for editor in article.editors %}{{ editor.editor.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                        <td>{{ article.section.name }}</td>
+                        <td>{{ article.projected_issue }} <a target="_blank" href="{% url 'review_projected_issue' article.pk %}"><span class="fa fa-edit"></span></a></td>
+                        <td><a href="#" data-open="file-modal-{{ article.pk }}" class="tiny secondary button"><span class="fa fa-file"></span></a></td>
+                        <td><a target="_blank" class="tiny secondary button" href="{% url 'edit_metadata' article.pk %}"><span class="fa fa-edit"></span></a></td>
+                        <td><a target="_blank" class="tiny secondary button" href="{% url 'manage_archive_article' article.pk %}"><span class="fa fa-sticky-note"></span></a></td>
+                        <td>
+                            <a class="tiny secondary button" href="{% url 'import_export_article' article.pk 'csv' %}?in_stage=false"><span class="fa fa-download"></span> </a>
+                        </td>
+                        <td>
+                             <a class="tiny secondary button" href="{% url 'import_export_article' article.pk 'html' %}?in_stage=false"><span class="fa fa-download"></span> </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10">No articles in this stage</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% for article in articles_in_stage %}
+<div class="reveal large" id="file-modal-{{ article.pk }}" data-reveal data-animation-in="slide-in-up"
+     data-animation-out="slide-out-down">
+    <div class="card">
+        <div class="card-divider">
+            <h4>Article Files</h4>
+        </div>
+        <div class="card-section">
+            <button class="close-button" data-close aria-label="Close reveal" type="button">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <p>Select the export files for {{ article.title|safe }}. When you run an export these files will be included in the zip file.</p>
+            <form method="POST">
+                {% csrf_token %}
+
+            <table class="table small">
+                <tr>
+                    <th></th>
+                    <th>Label</th>
+                    <th>Original Filename</th>
+                    <th>Date</th>
+                </tr>
+                {% for file in article.manuscript_files.all %}
+                    <tr>
+                        <td><input id="{{ file.pk }}" value="{{ file.pk }}" name="files" type="checkbox" onclick="add_export_file({{ request.journal.pk }}, {{ article.pk }}, {{ file.pk }})"></td>
+                        <td>{{ file.label }}</td>
+                        <td>{{ file.original_filename }}</td>
+                        <td>{{ file.date_uploaded }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock body %}
+
+{% block js %}
+{% include "elements/datatables.html" with target="#unassigned" %}
+    <script type="text/javascript">
+        function add_export_file(journal_id, article_id, file_id) {
+            var data = {
+                'file': file_id,
+                'article': article_id,
+                'journal': journal_id
+            };
+            console.log(data);
+        }
+    </script>
+{% endblock js %}

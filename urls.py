@@ -1,6 +1,11 @@
-from django.conf.urls import url
+from django.conf.urls import url, include
+
+from rest_framework import routers
 
 from plugins.imports import views
+
+router = routers.DefaultRouter()
+router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
 
 urlpatterns = [
     url(r'^$', views.index, name='imports_index'),
@@ -19,4 +24,11 @@ urlpatterns = [
 
     url(r'^example_csv/$', views.csv_example, name='imports_csv_example'),
     url(r'^failed_rows/(?P<tmp_file_name>[.0-9a-z-]+)$', views.serve_failed_rows, name='imports_failed_rows'),
+
+    url(r'^articles/(?P<article_id>\d+)/format/(?P<format>csv|html)/$',
+        views.export_article,
+        name='import_export_article',
+        ),
+    url(r'^articles/all/$', views.export_articles_all, name='import_export_articles_all'),
+    url(r'^api/', include(router.urls)),
 ]

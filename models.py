@@ -16,3 +16,14 @@ class WordPressImport(models.Model):
     
     def __str__(self):
         return 'Import from {url}'.format(url=self.url)
+
+
+class ExportFile(models.Model):
+    article = models.ForeignKey('submission.Article')
+    file = models.ForeignKey('core.File')
+
+    def __str__(self):
+        return '{} export file for {}'.format(
+            self.file,
+            self.article.title,
+        )
