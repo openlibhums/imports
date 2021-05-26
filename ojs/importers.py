@@ -376,10 +376,7 @@ def import_review_assignment(client, article, review, review_form):
             article, new_review, review['comments'],
             review_form, public=True)
     if review.get('comments_to_editor'):
-        handle_review_comment(
-            article, new_review, review['comments_to_editor'],
-            review_form, public=False,
-        )
+        new_review.comments_for_editor = review["comments_to_editor"]
 
     new_review.save()
 
