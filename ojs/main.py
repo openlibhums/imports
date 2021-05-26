@@ -160,4 +160,8 @@ def import_metrics(ojs_client, journal):
 
 def import_users(ojs_client, journal):
     for user in ojs_client.get_users():
-        import_user_metadata(user, journal)
+        account, created = import_user_metadata(user, journal)
+        if created:
+            logger.info("New Imported user: %s", account.username)
+        else:
+            logger.info("re-imported user: %s", account.username)

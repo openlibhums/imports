@@ -140,7 +140,7 @@ def import_article_metadata(article_dict, journal, client):
     emails = set()
     for author in sorted(article_dict.get('authors'),
                          key=lambda x: x.get("sequence", 1)):
-        author_record = get_or_create_account(author)
+        author_record, _ = get_or_create_account(author)
 
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
@@ -312,7 +312,7 @@ def import_review_data(article_dict, article, client):
 
 
 def import_review_assignment(client, article, review, review_form):
-    reviewer = get_or_create_account(review)
+    reviewer, _ = get_or_create_account(review)
 
     # Parse the dates
     date_requested = timezone.make_aware(
@@ -1049,7 +1049,7 @@ def import_article_metrics(ojs_id, journal, views=0, downloads=0):
 
 
 def import_user_metadata(user_data, journal):
-    account = get_or_create_account(user_data)
+    account, created = get_or_create_account(user_data)
     for ojs_role in user_data.get("roles"):
         janeway_role = ROLES.get(ojs_role)
         if janeway_role:
@@ -1058,6 +1058,7 @@ def import_user_metadata(user_data, journal):
     account.add_account_role("author", journal)
     account.is_active = True
     account.save()
+    return account, created
 
 
 def get_or_create_account(data, update=True):
@@ -1101,7 +1102,7 @@ def get_or_create_account(data, update=True):
                 pass
 
         account.save()
-    return account
+    return account, created
 
 
 def get_or_create_issue(issue_data, journal):
@@ -1186,7 +1187,7 @@ def scrape_editor_assignments(client, ojs_id, article):
         mailto_url = mailto_c.find("a")["href"]
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
-        editor = get_or_create_account({"email": editor_email}, update=False)
+        editor, _ = get_or_create_account({"email": editor_email}, update=False)
 
         # Get assignment date
         try:
