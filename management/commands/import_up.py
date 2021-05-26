@@ -3,51 +3,12 @@ from journal import models
 
 from django.core.management.base import BaseCommand
 from plugins.imports import ojs
+from plugins.imports.management.commands import import_ojs
 
 
-class Command(BaseCommand):
+class Command(import_ojs.Command):
     """ Imports back content from target UP Journal"""
+    IMPORT_CLIENT = ojs.clients.UPJanewayClient
+
 
     help = "Imports issues and articles from the target UP journal"
-
-    def add_arguments(self, parser):
-        parser.add_argument('journal_url')
-        parser.add_argument('username')
-        parser.add_argument('journal_code')
-        parser.add_argument('--password', default=None)
-        parser.add_argument('--dry-run', action="store_true", default=False)
-        parser.add_argument('--editorial', action="store_true", default=False,
-                            help="Imports only content in the editorial flow")
-        parser.add_argument('--users', action="store_true", default=False,
-                            help="Imports only users")
-        parser.add_argument('--sections', action="store_true", default=False,
-                            help="Imports only sections")
-        parser.add_argument('--ojs_id', default=False,
-                            help="Imports only the article matching by ojs id")
-
-    def handle(self, *args, **options):
-        journal = models.Journal.objects.get(code=options["journal_code"])
-        if not options["password"]:
-            password = getpass.getpass(
-                "Enter password for user %s: " % options["username"])
-        client = ojs.clients.UPJanewayClient(
-            options["journal_url"],
-            options["username"],
-            options["password"] or password,
-        )
-        if options["users"]:
-            ojs.import_users(client, journal)
-        elif options["editorial"]:
-            ojs.import_users(client, journal)
-            ojs.import_unassigned_articles(client, journal)
-            ojs.import_in_review_articles(client, journal)
-            ojs.import_in_editing_articles(client, journal)
-        elif options["sections"]:
-            ojs.import_sections(client, journal)
-        elif options["ojs_id"]:
-            ojs.import_article(client, journal, options["ojs_id"])
-        else:
-            ojs.import_users(client, journal)
-            ojs.import_published_articles(client, journal)
-            ojs.import_issues(client, journal)
-            ojs.import_collections(client, journal)
