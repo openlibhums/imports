@@ -1,6 +1,6 @@
 import os
 import re
-from urllib.parse import urlencode, urlparse
+from urllib import parse as urlparse
 
 import requests
 from django.core.files.base import ContentFile
@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 class PaginatedResults():
     OFFSET_KEY = ""
     PAGE_KEY = ""
+
     def __init__(self, url, client, per_page=20, key=None, **client_params):
         """ An iterator that yields results from an API using pagination
         :param URL: URL of the API endpoint.
@@ -27,8 +28,9 @@ class PaginatedResults():
         self._url = url
         self._client = client
         self._key = key
-        self._results = iter()
+        self._results = iter([])
         self._client_params = client_params
+        self._cached = None
 
     def __iter__(self):
         if self._results is None:
@@ -45,14 +47,17 @@ class PaginatedResults():
     def _fetch_results(self):
         self._page += 1
         url = self.build_url(self._url, self._page, self._per_page)
-        data = client(url, **client_params)
+        data = self._client(url, **self._client_params).json()
         if data:
             if self._key:
                 data = data.get(self._key)
         if not data:
             raise StopIteration
+        if self._cached and self._cached == data:
+            # There is no out of bounds error, API returns last results again
+            raise StopIteration
+        self._cached = data
         self._results = iter(data)
-
 
     @classmethod
     def build_url(cls, url, page, offset):
@@ -60,10 +65,14 @@ class PaginatedResults():
         url_parts = list(urlparse.urlparse(url))
         query = dict(urlparse.parse_qsl(url_parts[4]))
         query.update(params)
-        url_parts[4] = urlencode(query)
+        url_parts[4] = urlparse.urlencode(query)
 
         return urlparse.urlunparse(url_parts)
+        
 
+class OJS2PaginatedResults(PaginatedResults):
+    OFFSET_KEY = "limit"
+    PAGE_KEY = "page"
 
 class OJSBaseClient():
     API_PATH = ''  # Path to the OJS API to be consumed
@@ -174,7 +183,7 @@ class OJSJanewayClient(OJSBaseClient):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + "?%s" % urlencode({"article_id": ojs_id})
+            + "?%s" % urlparse.urlencode({"article_id": ojs_id})
         )
         response = self.fetch(request_url)
         data = response.json()
@@ -188,10 +197,10 @@ class OJSJanewayClient(OJSBaseClient):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + "?%s" % urlencode({"request_type": stage})
+            + "?%s" % urlparse.urlencode({"request_type": stage})
         )
         client = self.fetch
-        paginator = PaginatedResults(request_url, client)
+        paginator = OJS2PaginatedResults(request_url, client)
         for article in paginator:
             yield article
 
@@ -209,7 +218,7 @@ class OJSJanewayClient(OJSBaseClient):
     def get_collections(self):
         request_url = (
             self.journal_url
-            + self.PLUGIN_PATH
+            + self.API_PATH
             + self.COLLECTIONS_PATH
         )
         response = self.fetch(request_url)
@@ -236,7 +245,9 @@ class OJSJanewayClient(OJSBaseClient):
         )
         response = self.fetch(request_url)
         data = response.json()
-        for user in data:
+        client = self.fetch
+        paginator = OJS2PaginatedResults(request_url, client)
+        for user in paginator:
             yield user
 
     def get_metrics(self):
@@ -304,7 +315,7 @@ class UPJanewayClient(OJSJanewayClient):
 
 
 def strip_scheme(url):
-    parsed = urlparse(url)
+    parsed = urlparse.urlparse(url)
     scheme = "%s://" % parsed.scheme
     return parsed.geturl().replace(scheme, '', 1)
 
@@ -400,7 +411,7 @@ class OJS3APIClient(OJSBaseClient):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + "?%s" % urlencode({"article_id": ojs_id})
+            + "?%s" % urlparse.urlencode({"article_id": ojs_id})
         )
         response = self.fetch(request_url)
         data = response.json()
