@@ -2,6 +2,7 @@ import zipfile
 import os
 import uuid
 import csv
+from uuid import uuid4
 
 from bs4 import BeautifulSoup
 
@@ -84,7 +85,7 @@ def export_html(request, article, article_files):
     html_file_path = files.create_temp_file(
         render_to_string(
             'import/export.html',
-            context = {
+            context={
                 'article': article,
                 'journal': request.journal,
                 'files': article_files,
@@ -198,9 +199,16 @@ def export_using_import_format(articles):
             author_list = article.authors.all()
             frozen = False
 
+        if article.issue:
+            issue = article.issue
+        elif article.projected_issue:
+            issue = article.projected_issue
+        else:
+            issue = None
+
         article_initial_details = [
             article.title,
-            'Field not exportable',
+            ','.join(['{}/{}'.format(article.pk, ex_file.file.original_filename) for ex_file in article.export_files]),
             article.section.name,
             keyword_string,
             article.license.short_name,
@@ -222,10 +230,10 @@ def export_using_import_format(articles):
             article.journal.issn,
             'Field not exportable',
             'Field not exportable',
-            article.issue.volume if article.issue and article.issue.volume else '',
-            article.issue.issue if article.issue and article.issue.issue else '',
-            article.issue.issue_title if article.issue and article.issue.issue_title else '',
-            article.issue.date if article.issue else '',
+            issue.volume if issue and issue.volume else '',
+            issue.issue if issue and issue.issue else '',
+            issue.issue_title if issue and issue.issue_title else '',
+            issue.date if issue else '',
         ]
         article_initial_details.extend(additional_details)
         author_rows = add_author_information(
@@ -249,6 +257,24 @@ def export_using_import_format(articles):
         for row in body_rows:
             wr.writerow(row)
 
-    return files.serve_temp_file(filepath, csv_name)
+    return filepath, csv_name
 
 
+def zip_export_files(journal, articles, csv_path):
+    zip_file_name = 'export_{}_csv.zip'.format(journal.code)
+    zip_path = os.path.join(files.TEMP_DIR, zip_file_name)
+    zip_file = zipfile.ZipFile(zip_path, mode='w')
+
+    zip_file.write(
+        csv_path,
+        'article_data.csv'
+    )
+    for article in articles:
+        for export_file in article.export_files:
+            zip_file.write(
+                export_file.file.self_article_path(),
+                '{}/{}'.format(article.pk, export_file.file.original_filename),
+            )
+
+    zip_file.close()
+    return files.serve_temp_file(zip_path, zip_file_name)

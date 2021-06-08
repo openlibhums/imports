@@ -1,4 +1,5 @@
 {% extends "admin/core/base.html" %}
+{% load static from staticfiles %}
 
 {% block title %}Article Export{% endblock %}
 
@@ -25,11 +26,14 @@
                 <div class="large-2 columns">
                     {% if selected_element %}<a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>{% endif %}
                 </div>
-                <div class="large-2 columns end">
+                <div class="large-2 columns">
                     <form method="POST">
                         {% csrf_token %}
                         <button name="export_all" class="button">Export Articles</button>
                     </form>
+                </div>
+                <div class="large-2 columns end">
+                    <a href="#" data-open="upload_update" class="button">Upload Update</a>
                 </div>
             </div>
 
@@ -103,42 +107,111 @@
                 <span aria-hidden="true">&times;</span>
             </button>
             <p>Select the export files for {{ article.title|safe }}. When you run an export these files will be included in the zip file.</p>
-            <form method="POST">
-                {% csrf_token %}
-
-            <table class="table small">
+                    <table class="table small">
                 <tr>
                     <th></th>
                     <th>Label</th>
                     <th>Original Filename</th>
                     <th>Date</th>
                 </tr>
-                {% for file in article.manuscript_files.all %}
+                {% for export_file in article.export_files %}
                     <tr>
-                        <td><input id="{{ file.pk }}" value="{{ file.pk }}" name="files" type="checkbox" onclick="add_export_file({{ request.journal.pk }}, {{ article.pk }}, {{ file.pk }})"></td>
+                        <td>{{ export_file.file.label }}</td>
+                        <td>{{ export_file.file.original_filename }}</td>
+                        <td>{{ export_file.file.date_uploaded }}</td>
+                        <td>
+                            <button id="add-{{ export_file.file.pk }}" style="display: none" class="tiny success button" onclick="add_export_file({{ request.journal.pk }}, {{ export_file.article.pk }}, {{ export_file.file.pk }})">Add File</button>
+                            <button id="remove-{{ export_file.file.pk }}" data-export_file="{{ export_file.pk }}" class="tiny alert button" onclick="remove_export_file(this, {{ export_file.file.pk }})">Remove File</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% for file in article.manuscript_files.all %}
+                    {% if file.pk not in article.export_file_pks %}
+                    <tr>
                         <td>{{ file.label }}</td>
                         <td>{{ file.original_filename }}</td>
                         <td>{{ file.date_uploaded }}</td>
+                        <td>
+                            <button id="add-{{ file.pk }}" class="tiny success button" onclick="add_export_file({{ request.journal.pk }}, {{ article.pk }}, {{ file.pk }})">Add File</button>
+                            <button id="remove-{{ file.pk }}" style="display: none" class="tiny alert button"  onclick="remove_export_file(this, {{ file.pk }})">Remove File</button>
+                        </td>
                     </tr>
+                    {% endif %}
                 {% endfor %}
             </table>
-        </form>
         </div>
     </div>
 </div>
 {% endfor %}
+    <div class="reveal large" id="upload_update" data-reveal data-animation-in="slide-in-up"
+         data-animation-out="slide-out-down">
+        <div class="card">
+            <div class="card-divider">
+                <h4>Upload Update</h4>
+            </div>
+            <div class="card-section">
+                <button class="close-button" data-close aria-label="Close reveal" type="button">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <form method="POST" action="{% url 'imports_load' %}?type=update" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input name="file" type="file">
+                    <button class="success button">
+                        <span class="fa fa-upload">&nbsp;</span>Upload
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 {% endblock body %}
 
 {% block js %}
 {% include "elements/datatables.html" with target="#unassigned" %}
+    <script src="{% static "admin/js/csrf.js" %}"></script>
     <script type="text/javascript">
+        function remove_export_file(button, file_id) {
+            export_file_id = button.dataset.export_file;
+            var data = {
+                'pk': export_file_id,
+            }
+            $.ajax({
+                "type": "DELETE",
+                "dataType": "json",
+                "url": "{% url 'exportfile-list' %}" + export_file_id + "/",
+                "data": data,
+                "success": function (data) {
+                    toastr.success("File Removed.")
+                    $("#remove-" + file_id).hide();
+                    $("#add-" + file_id).show();
+                },
+                "error": function (xhr, status, error) {
+                    toastr.error(xhr.responseText)
+                },
+            })
+        }
         function add_export_file(journal_id, article_id, file_id) {
             var data = {
                 'file': file_id,
                 'article': article_id,
                 'journal': journal_id
             };
-            console.log(data);
+            $.ajax({
+                "type": "POST",
+                "dataType": "json",
+                "url": "{% url 'exportfile-list' %}",
+                "data": data,
+                "success": function(xhr, status) {
+                    console.log(xhr.id);
+                    console.log(status)
+                    toastr.success('File added for article.', { timeOut: 500 })
+                    $("#remove-" + file_id).show();
+                    $("#add-" + file_id).hide();
+                    $("#remove-" + file_id).attr('data-export_file', xhr.id);
+                },
+                "error": function (xhr, status, error) {
+                    toastr.error(xhr.responseText)
+                },
+            })
         }
     </script>
 {% endblock js %}

@@ -5,7 +5,7 @@ from rest_framework import routers
 from plugins.imports import views
 
 router = routers.DefaultRouter()
-router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
+router.register(r'exportfiles', views.ExportFilesViewSet, base_name='exportfile')
 
 urlpatterns = [
     url(r'^$', views.index, name='imports_index'),
@@ -30,5 +30,6 @@ urlpatterns = [
         name='import_export_article',
         ),
     url(r'^articles/all/$', views.export_articles_all, name='import_export_articles_all'),
+
     url(r'^api/', include(router.urls)),
 ]

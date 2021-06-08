@@ -21,6 +21,10 @@ class WordPressImport(models.Model):
 class ExportFile(models.Model):
     article = models.ForeignKey('submission.Article')
     file = models.ForeignKey('core.File')
+    journal = models.ForeignKey('journal.Journal')
+
+    class Meta:
+        unique_together = ('article', 'file', 'journal')
 
     def __str__(self):
         return '{} export file for {}'.format(
