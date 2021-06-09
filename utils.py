@@ -158,7 +158,7 @@ def prep_update(row):
             code="issue",
             journal=journal,
         )
-        parsed_issue_date = parse_date(row.get('Issue pub date'))
+        parsed_issue_date = parse_datetime(row.get('Issue pub date'))
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=row.get('Volume number') or 0,
