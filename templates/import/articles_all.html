@@ -109,7 +109,7 @@
             <p>Select the export files for {{ article.title|safe }}. When you run an export these files will be included in the zip file.</p>
                     <table class="table small">
                 <tr>
-                    <th></th>
+                    <th>Type</th>
                     <th>Label</th>
                     <th>Original Filename</th>
                     <th>Date</th>
@@ -126,17 +126,13 @@
                     </tr>
                 {% endfor %}
                 {% for file in article.manuscript_files.all %}
-                    {% if file.pk not in article.export_file_pks %}
-                    <tr>
-                        <td>{{ file.label }}</td>
-                        <td>{{ file.original_filename }}</td>
-                        <td>{{ file.date_uploaded }}</td>
-                        <td>
-                            <button id="add-{{ file.pk }}" class="tiny success button" onclick="add_export_file({{ request.journal.pk }}, {{ article.pk }}, {{ file.pk }})">Add File</button>
-                            <button id="remove-{{ file.pk }}" style="display: none" class="tiny alert button"  onclick="remove_export_file(this, {{ file.pk }})">Remove File</button>
-                        </td>
-                    </tr>
-                    {% endif %}
+                    {% include "import/elements/file_row.html" %}
+                {% endfor %}
+                {% for galley in article.galley_set.all %}
+                    {% include "import/elements/file_row.html" with file=galley.file from="Typeset File" %}
+                {% endfor %}
+                {% for file in article.proofing_files %}
+                    {% include "import/elements/file_row.html" with from="Proofreader File" %}
                 {% endfor %}
             </table>
         </div>

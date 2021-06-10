@@ -12,8 +12,7 @@ from django.db import transaction
 from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
 
-from core import models as core_models, files
-from core import logic as core_logic
+from core import models as core_models, files, logic as core_logic, workflow
 from identifiers import models as id_models
 from journal import models as journal_models
 from production.logic import handle_zipped_galley_images, save_galley
@@ -608,5 +607,49 @@ def unzip_update_file(path):
         errors.append('No article_data.csv file found in zip.')
 
     return csv_path, temp_folder_path, errors
+
+
+def get_proofing_assignments_for_journal(journal):
+    proofing_workflow_element = core_models.WorkflowElement.objects.get(
+        journal=journal,
+        stage=submission_models.STAGE_PROOFING,
+    )
+
+    if journal.element_in_workflow(proofing_workflow_element.element_name):
+        from proofing import models as proofing_models
+        return 'proofing', proofing_models.ProofingTask.objects.filter(
+            round__assignment__article__journal=journal,
+        )
+
+    try:
+        from plugins.typesetting import plugin_settings, models as typesetting_models
+        typesetting_workflow_element = core_models.WorkflowElement.objects.get(
+            journal=journal,
+            stage=plugin_settings.STAGE,
+        )
+        if journal.element_in_workflow(typesetting_workflow_element.element_name):
+            return 'typesetting', typesetting_models.GalleyProofing.objects.filter(
+                round__article__journal=journal,
+            )
+    except ImportError:
+        pass
+
+    return None, []
+
+
+def proofing_files(workflow_type, proofing_assignments, article):
+    article_assignments = proofing_assignments.filter(round__article=article)
+    if workflow_type == 'proofing':
+        proofreader_file_queries = [proof.proofed_files.all() for proof in article_assignments]
+    else:
+        proofreader_file_queries = [proof.annotated_files.all() for proof in article_assignments]
+
+    files = []
+    for proofed_file_query in proofreader_file_queries:
+        for file in proofed_file_query:
+            files.append(file)
+
+    return set(files)
+
 
 

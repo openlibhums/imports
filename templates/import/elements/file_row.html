@@ -1,0 +1,15 @@
+{% if file.pk not in article.export_file_pks %}
+<tr>
+    <td>{{ file.label }} ({{ from }})</td>
+    <td>{{ file.original_filename }}</td>
+    <td>{{ file.date_uploaded }}</td>
+    <td>
+        <button id="add-{{ file.pk }}" class="tiny success button"
+                onclick="add_export_file({{ request.journal.pk }}, {{ article.pk }}, {{ file.pk }})">Add File
+        </button>
+        <button id="remove-{{ file.pk }}" style="display: none" class="tiny alert button"
+                onclick="remove_export_file(this, {{ file.pk }})">Remove File
+        </button>
+    </td>
+</tr>
+{% endif %}

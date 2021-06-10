@@ -386,9 +386,15 @@ def export_articles_all(request):
         )
         articles = articles.filter(stage__in=workflow_element.stages)
 
+    workflow_type, proofing_assignments = utils.get_proofing_assignments_for_journal(
+        request.journal,
+    )
+
     for article in articles:
         article.export_files = article.exportfile_set.all()
         article.export_file_pks = [ef.file.pk for ef in article.exportfile_set.all()]
+
+        article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
 
     if request.POST:
         if 'export_all' in request.POST:
@@ -402,29 +408,6 @@ def export_articles_all(request):
         'selected_element': element,
     }
 
-    return render(request, template, context)
-
-
-@decorators.has_journal
-@staff_member_required
-def import_update(request, filename=None):
-    path = files.get_temp_file_path_from_name(filename)
-    errors = error_file = None
-
-    if not os.path.exists(path):
-        raise Http404()
-
-    file = open(path, 'r')
-    reader = csv.reader(file)
-
-    file_content = None
-    if filename:
-        file_content = logic.process_update_file(request, filename)
-
-    template = 'import/update.html'
-    context = {
-        'file_content': file_content,
-    }
     return render(request, template, context)
 
 
