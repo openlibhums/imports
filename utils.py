@@ -242,6 +242,7 @@ def import_corporate_author(author_fields, article):
 
 def import_galley_from_uri(article, uri, figures_uri=None):
     parsed = urlparse(uri)
+    print(parsed)
     django_file = None
     if parsed.scheme == "file":
         if parsed.netloc:
@@ -250,6 +251,10 @@ def import_galley_from_uri(article, uri, figures_uri=None):
         blob = read_local_file(path)
         django_file = ContentFile(blob)
         django_file.name = os.path.basename(path)
+    elif parsed.scheme == 'https':
+        contents = read_remote_file(uri)
+        django_file = ContentFile(contents)
+        django_file.name = os.path.basename(uri)
     else:
         raise NotImplementedError("Scheme not supported: %s" % parsed.scheme)
 
@@ -267,10 +272,16 @@ def import_galley_from_uri(article, uri, figures_uri=None):
             handle_zipped_galley_images(figures_path, galley, request)
 
 
+def read_remote_file(url):
+    request = requests.get(url)
+    return request.content
+
+
 def read_local_file(path):
     if os.path.exists(path):
         with open(path, "rb") as f:
             return f.read()
+
 
 def generate_review_forms(request):
     from review import models as review_models
