@@ -7,6 +7,7 @@ from plugins.imports.ojs.importers import (
     create_workflow_log,
     import_article_metadata,
     import_article_metrics,
+    import_collection_metadata,
     import_copyediting,
     import_typesetting,
     import_issue_metadata,
@@ -125,6 +126,14 @@ def import_issues(ojs_client, journal):
         logger.info("Imported Issue: %s " % issue)
 
 
+def import_collections(ojs_client, journal):
+    for collection_dict in ojs_client.get_collections():
+        collection = import_collection_metadata(
+            collection_dict, ojs_client, journal,
+        )
+        logger.info("Imported collection: %s " % collection)
+
+
 def import_sections(ojs_client, journal):
     for section_dict in ojs_client.get_sections():
         section = import_section_metadata(section_dict, ojs_client, journal)
@@ -151,4 +160,8 @@ def import_metrics(ojs_client, journal):
 
 def import_users(ojs_client, journal):
     for user in ojs_client.get_users():
-        import_user_metadata(user, journal)
+        account, created = import_user_metadata(user, journal)
+        if created:
+            logger.info("New Imported user: %s", account.username)
+        else:
+            logger.info("re-imported user: %s", account.username)

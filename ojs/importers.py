@@ -140,7 +140,7 @@ def import_article_metadata(article_dict, journal, client):
     emails = set()
     for author in sorted(article_dict.get('authors'),
                          key=lambda x: x.get("sequence", 1)):
-        author_record = get_or_create_account(author)
+        author_record, _ = get_or_create_account(author)
 
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
@@ -312,7 +312,7 @@ def import_review_data(article_dict, article, client):
 
 
 def import_review_assignment(client, article, review, review_form):
-    reviewer = get_or_create_account(review)
+    reviewer, _ = get_or_create_account(review)
 
     # Parse the dates
     date_requested = timezone.make_aware(
@@ -373,7 +373,10 @@ def import_review_assignment(client, article, review, review_form):
 
     if review.get('comments'):
         handle_review_comment(
-            article, new_review, review.get('comments'), review_form)
+            article, new_review, review['comments'],
+            review_form, public=True)
+    if review.get('comments_to_editor'):
+        new_review.comments_for_editor = review["comments_to_editor"]
 
     new_review.save()
 
@@ -452,7 +455,7 @@ def handle_draft_decisions(article, draft_decisions):
         )
 
 
-def handle_review_comment(article, review_obj, comment, form):
+def handle_review_comment(article, review_obj, comment, form, public=True):
     element = form.elements.filter(kind="textarea", name="Review").first()
     if element:
         soup = BeautifulSoup(comment, "html.parser")
@@ -464,6 +467,7 @@ def handle_review_comment(article, review_obj, comment, form):
         )
         element.snapshot(answer)
         answer.answer = comment
+        answer.for_author_consumption=public
         answer.save()
     else:
         comment = linebreaksbr(comment)
@@ -625,11 +629,23 @@ def import_typesetting(article_dict, article, client):
     layout = article_dict.get('layout')
     task = None
 
+    typesetter = None
     if layout.get('email'):
-        email = clean_email(layout.get('email'))
-        typesetter = core_models.Account.objects.get(
-            email__iexact=email)
+        if layout.get('email'):
+            email = clean_email(layout.get('email'))
+            typesetter = core_models.Account.objects.get(
+                email__iexact=email)
+        elif article_dict["sent_for_typesetting"]:
+            try:
+                typesetter = core_models.AccountRole.objects.filter(
+                    slug="typesetter",
+                    journal=article.journal,
+                    ).first()
+            except core_models.AccountRole.DoesNotExist:
+                logger.warning(
+                    "Journal %s has no typesetters setup", article.journal.code)
 
+    if typesetter:
         logger.info(
             'Adding typesetter {name}'.format(name=typesetter.full_name()))
 
@@ -669,11 +685,21 @@ def import_typesetting_plugin(article_dict, article, client):
     layout = article_dict.get('layout')
     task = None
     typesetter = None
-
     if layout.get('email'):
         email = clean_email(layout.get('email'))
         typesetter = core_models.Account.objects.get(
             email__iexact=email)
+    elif article_dict["sent_for_typesetting"]:
+        try:
+            typesetter = core_models.AccountRole.objects.filter(
+                slug="typesetter",
+                journal=article.journal,
+                ).first()
+        except core_models.AccountRole.DoesNotExist:
+            logger.warning(
+                "Journal %s has no typesetters setup", article.journal.code)
+
+    if typesetter:
         assigned = attempt_to_make_timezone_aware(layout.get('notified'))
         accepted = attempt_to_make_timezone_aware(layout.get('underway'))
         complete = attempt_to_make_timezone_aware(layout.get('complete'))
@@ -753,6 +779,24 @@ def import_issue_metadata(issue_dict, client, journal):
     return issue
 
 
+def import_collection_metadata(collection_dict, client, journal):
+    collection = get_or_create_collection(collection_dict, journal)
+
+    # Handle cover
+    if collection_dict.get("cover_file") and not collection.cover_image:
+        collection_img = client.fetch_file(collection_dict["cover_file"])
+        collection.cover_image = collection_img
+    collection.save()
+
+    # Handle Section orderings
+    for i, ojs_id in enumerate(
+        collection_dict.get("article_ids", []), 1
+    ):
+        link_article_to_collection(collection, ojs_id, order=i)
+
+    return collection
+
+
 def import_section_metadata(section_dict, client, journal):
     section, _ = submission_models.Section.objects.language(
         settings.LANGUAGE_CODE
@@ -805,6 +849,28 @@ def import_article_section(article_section_dict, issue, section, order):
             section=section,
         )
         ordering.order = order
+
+def link_article_to_collection(collection, ojs_id, order):
+    try:
+        article = identifiers_models.Identifier.objects.get(
+            id_type="ojs_id",
+            identifier=ojs_id,
+            article__journal=collection.journal,
+        ).article
+    except identifiers_models.Identifier.DoesNotExist:
+        logger.warning(
+            "Collection %s has non-existant OJS ID %d", collection, ojs_id
+        )
+    collection.articles.add(article)
+    if not article.primary_issue:
+        article.primary_issue = collection
+        article.save()
+    ordering, _ = journal_models.ArticleOrdering.objects.update_or_create(
+        issue=collection,
+        article=article,
+        section=article.section,
+        defaults={"order": order},
+    )
 
 
 def import_galleys(article, layout_dict, client, owner=None):
@@ -980,7 +1046,7 @@ def import_article_metrics(ojs_id, journal, views=0, downloads=0):
 
 
 def import_user_metadata(user_data, journal):
-    account = get_or_create_account(user_data)
+    account, created = get_or_create_account(user_data)
     for ojs_role in user_data.get("roles"):
         janeway_role = ROLES.get(ojs_role)
         if janeway_role:
@@ -989,6 +1055,7 @@ def import_user_metadata(user_data, journal):
     account.add_account_role("author", journal)
     account.is_active = True
     account.save()
+    return account, created
 
 
 def get_or_create_account(data, update=True):
@@ -1032,7 +1099,7 @@ def get_or_create_account(data, update=True):
                 pass
 
         account.save()
-    return account
+    return account, created
 
 
 def get_or_create_issue(issue_data, journal):
@@ -1064,6 +1131,31 @@ def get_or_create_issue(issue_data, journal):
     return issue
 
 
+def get_or_create_collection(collection_data, journal):
+    collection_id = int(collection_data.get("id", 1))
+    date_published = attempt_to_make_timezone_aware(
+        collection_data.get("date_published"),
+    )
+    issue_type = journal_models.IssueType.objects.get(
+        code="collection", journal=journal)
+
+    collection, created = journal_models.Issue.objects.update_or_create(
+        journal=journal,
+        volume=collection_id,
+        issue_type=issue_type,
+        defaults={
+            "date": date_published or timezone.now(),
+            "issue_title": collection_data.get("title"),
+            "short_description": collection_data.get("short_description"),
+            "issue_description": collection_data.get("description"),
+        },
+    )
+    if created:
+        logger.info("Created new issue {}".format(collection))
+
+    return collection
+
+
 def scrape_editor_assignments(client, ojs_id, article):
     """ Imports editor assignments by scraping them
 
@@ -1092,7 +1184,7 @@ def scrape_editor_assignments(client, ojs_id, article):
         mailto_url = mailto_c.find("a")["href"]
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
-        editor = get_or_create_account({"email": editor_email}, update=False)
+        editor, _ = get_or_create_account({"email": editor_email}, update=False)
 
         # Get assignment date
         try:
