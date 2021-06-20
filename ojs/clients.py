@@ -121,6 +121,7 @@ class OJSJanewayClient(OJSBaseClient):
     USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
     SUBMISSION_PATH = '/editor/submission/%s'
+    JOURNAL_SETTINGS_PATH = '/journal_settings'
     SUPPORTED_STAGES = {
         'published',
         'in_editing',
@@ -251,7 +252,7 @@ class OJSJanewayClient(OJSBaseClient):
             yield user
 
     def get_metrics(self):
-        """ Retrievesd the metrics as exposed by the Janeway Plugin for OJS
+        """ Retrieves the metrics as exposed by the Janeway Plugin for OJS
         :return: A mapping from metric type to a list of ojs ids and metric
             values e.g:
             {"views": [
@@ -267,6 +268,27 @@ class OJSJanewayClient(OJSBaseClient):
             self.journal_url
             + self.API_PATH
             + self.METRICS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+
+        return data
+
+    def get_journal_settings(self):
+        """ Retrieves journal settignsas exposed by the Janeway Plugin for OJS
+        Values are returned in a raw format
+        :return: A mapping from a setting key to its value
+            value types can be one of:
+            - bool
+            - int
+            - str
+            - list
+            - A localised setting (mapping from a locale to another value)
+        """
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.JOURNAL_SETTINGS_PATH
         )
         response = self.fetch(request_url)
         data = response.json()

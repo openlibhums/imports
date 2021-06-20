@@ -2,6 +2,7 @@ from itertools import chain
 
 from submission import models as submission_models
 
+from plugins.imports.ojs import importers
 from plugins.imports.ojs.importers import (
     calculate_article_stage,
     create_workflow_log,
@@ -165,3 +166,8 @@ def import_users(ojs_client, journal):
             logger.info("New Imported user: %s", account.username)
         else:
             logger.info("re-imported user: %s", account.username)
+
+
+def import_journal_settings(ojs_client, journal):
+    settings_dict = ojs_client.get_journal_settings
+    return importers.import_journal_settings(settings_dict, journal)

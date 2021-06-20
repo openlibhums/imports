@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
@@ -797,6 +797,25 @@ def import_collection_metadata(collection_dict, client, journal):
     return collection
 
 
+def import_journal_settings(settings_dict, journal):
+    if 'focusScopeDesc' in settings_dict:
+        import_multilingual_setting("general", "focus_and_scope", journal, settings_dict.get("focusScopeDesc"))
+
+
+
+def import_multilingual_setting(group, setting_name, journal, setting_dict):
+    """ Import a multilingual setting from OJS into the Janeway journal
+    """
+    default_lang = settings.LANGUAGE_CODE
+    values = []
+    for locale, value in setting_dict.items():
+        lang_code = locale_to_lang(locale)
+        if lang_code and value:
+            with translation.activate(lang_code):
+                print(setting_name, lang_code, value)
+                #save_setting( group, setting_name, journal, value)
+
+
 def import_section_metadata(section_dict, client, journal):
     section, _ = submission_models.Section.objects.language(
         settings.LANGUAGE_CODE
@@ -1260,3 +1279,19 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
         date_modified=date_modified)
 
     return janeway_file
+
+
+def locale_to_lang(locale):
+    """Return the correct configured language code for the given locale"""
+    try:
+        # Convert OJS locale to LCID: es_MX -> es-mx
+        lang_code = locale.replace("_", "-").lower()
+        if lang_code in settings.LANGUAGES:
+            return lang_code
+        # Try lang code without suffix 'es-mx' -> 'es'
+        lang_code, *_ = lang_code.split("-")
+        if lang_code in settings.LANGUAGES:
+            return lang_code
+    except Exception as err:
+        logger.warning("unable to parse locale %s: %s", locale, err)
+    return None
