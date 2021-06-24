@@ -610,16 +610,19 @@ def unzip_update_file(path):
 
 
 def get_proofing_assignments_for_journal(journal):
-    proofing_workflow_element = core_models.WorkflowElement.objects.get(
-        journal=journal,
-        stage=submission_models.STAGE_PROOFING,
-    )
-
-    if journal.element_in_workflow(proofing_workflow_element.element_name):
-        from proofing import models as proofing_models
-        return 'proofing', proofing_models.ProofingTask.objects.filter(
-            round__assignment__article__journal=journal,
+    try:
+        proofing_workflow_element = core_models.WorkflowElement.objects.get(
+            journal=journal,
+            stage=submission_models.STAGE_PROOFING,
         )
+
+        if journal.element_in_workflow(proofing_workflow_element.element_name):
+            from proofing import models as proofing_models
+            return 'proofing', proofing_models.ProofingTask.objects.filter(
+                round__assignment__article__journal=journal,
+            )
+    except core_models.WorkflowElement.DoesNotExist:
+        pass
 
     try:
         from plugins.typesetting import plugin_settings, models as typesetting_models
