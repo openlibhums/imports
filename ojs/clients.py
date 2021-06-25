@@ -13,8 +13,9 @@ logger = get_logger(__name__)
 class PaginatedResults():
     OFFSET_KEY = ""
     PAGE_KEY = ""
+    RESULTS_KEY = None
 
-    def __init__(self, url, client, per_page=20, key=None, **client_params):
+    def __init__(self, url, client, per_page=20, **client_params):
         """ An iterator that yields results from an API using pagination
         :param URL: URL of the API endpoint.
         :param client: The request client to use for fetching results.
@@ -23,11 +24,10 @@ class PaginatedResults():
             To be used if the api doesnt return an array but an object like
             {"results": [...]}
         """
-        self._page = 0
+        self._page = None
         self._per_page = per_page
         self._url = url
         self._client = client
-        self._key = key
         self._results = iter([])
         self._client_params = client_params
         self._cached = None
@@ -44,13 +44,19 @@ class PaginatedResults():
             self._fetch_results()
             return next(self)
 
+    def _next_page(self):
+        if self._page == None:
+            self._page = 1
+        else:
+            self._page += 1
+
     def _fetch_results(self):
-        self._page += 1
+        self._next_page()
         url = self.build_url(self._url, self._page, self._per_page)
         data = self._client(url, **self._client_params).json()
         if data:
-            if self._key:
-                data = data.get(self._key)
+            if self.RESULTS_KEY:
+                data = data.get(self.RESULTS_KEY, [])
         if not data:
             raise StopIteration
         if self._cached and self._cached == data:
@@ -73,6 +79,26 @@ class PaginatedResults():
 class OJS2PaginatedResults(PaginatedResults):
     OFFSET_KEY = "limit"
     PAGE_KEY = "page"
+
+
+class OJS3PaginatedResults(PaginatedResults):
+    OFFSET_KEY = "count"
+    PAGE_KEY = "offset"
+    RESULTS_KEY = "items"
+
+    def _next_page(self):
+        """Calculate next page parameter for the next request
+        OJS 3 uses an offset rather than a page number, so we calculate the next
+        page number as current page + count of items returned per page
+        e.g with a count of 10, to get page 2 we set the offset to  0 + 10
+        """
+        if self._page == None:
+            self._page = 0 # We start at 0 because it is an offset not a page
+        else:
+            self._page += self._per_page
+
+
+
 
 class OJSBaseClient():
     API_PATH = ''  # Path to the OJS API to be consumed
@@ -332,13 +358,11 @@ def get_filename_from_headers(response):
 
 
 class OJS3APIClient(OJSBaseClient):
-    PATH = '/api/v1/'
+    API_PATH = '/api/v1'
     AUTH_PATH = '/login/signIn'
-    ISSUES_PATH = "/issues"
-    SECTIONS_PATH = "/sections"
     USERS_PATH = "/users"
-    METRICS_PATH = "/metrics"
-    SUBMISSION_PATH = '/editor/submission/%s'
+    SUBMISSIONS_PATH = '/submissions/%s'
+    PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -423,12 +447,55 @@ class OJS3APIClient(OJSBaseClient):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + '/submissions'
+            + self.SUBMISSIONS_PATH % ''
+        )
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, article in enumerate(paginator):
+            yield article
+
+    def get_publication(self, ojs_id, publication_id):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.PUBLICATIONS_PATH % (ojs_id, publication_id)
+        )
+        response = self.fetch(request_url)
+        return response.json()
+
+    def get_issues(self):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.ISSUES_PATH
         )
         response = self.fetch(request_url)
         data = response.json()
-        for article in data['results']:
-            yield article
+        for issue in data:
+            yield issue
+
+    def get_sections(self):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SECTIONS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for section in data:
+            yield section
+
+    def get_users(self):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.USERS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+        for user in data:
+            yield user
+
 
     def get_issues(self):
         request_url = (
