@@ -57,8 +57,11 @@ def import_issue(client, journal, issue_dict):
         url = delocalise(issue_dict["coverImageUrl"])
         if url:
             django_file = client.fetch_file(url)
-            issue.cover_image.save(django_file.name or "cover.graphic", django_file)
-            issue.large_image.save(django_file.name or "cover.graphic", django_file)
+            if django_file:
+                issue.cover_image.save(
+                    django_file.name or "cover.graphic", django_file)
+                issue.large_image.save(
+                    django_file.name or "cover.graphic", django_file)
     
     issue.save()
     return issue
@@ -152,18 +155,19 @@ def import_article_galleys(article, publication, journal, client):
         elif not galley["file"]:
             # Ghost galley with no file
             continue
-        galley_file = import_file(galley["file"], client, article)
-        if galley_file:
-            new_galley, c = core_models.Galley.objects.get_or_create(
-                article=article,
-                type=GALLEY_TYPES.get(galley.get("label"), "other"),
-                defaults={
-                    "label": galley.get("label"),
-                    "file": galley_file,
-                },
-            )
         else:
-            logger.error("Unable to fetch Galley %s" % galley["file"])
+            galley_file = import_file(galley["file"], client, article)
+            if galley_file:
+                new_galley, c = core_models.Galley.objects.get_or_create(
+                    article=article,
+                    type=GALLEY_TYPES.get(galley.get("label"), "other"),
+                    defaults={
+                        "label": galley.get("label"),
+                        "file": galley_file,
+                    },
+                )
+            else:
+                logger.error("Unable to fetch Galley %s" % galley["file"])
 
 
 def import_file(file_json, client, article, label=None, file_name=None, owner=None):
