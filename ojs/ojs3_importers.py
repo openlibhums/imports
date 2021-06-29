@@ -143,16 +143,22 @@ def import_article_metadata(article_dict, journal, client):
 
 def import_article_galleys(article, publication, journal, client):
     for galley in publication["galleys"]:
-        galley_file = import_file(galley["file"], client, article)
-        
-        new_galley, c = core_models.Galley.objects.get_or_create(
-            article=article,
-            type=GALLEY_TYPES.get(galley.get("label"), "other"),
-            defaults={
-                "label": galley.get("label"),
-                "file": galley_file,
-            },
-        )
+        if not galley["file"]:
+            # Ghost galley with no file
+            continue
+        #galley_file = import_file(galley["file"], client, article)
+        galley_file = None
+        if galley_file:
+            new_galley, c = core_models.Galley.objects.get_or_create(
+                article=article,
+                type=GALLEY_TYPES.get(galley.get("label"), "other"),
+                defaults={
+                    "label": galley.get("label"),
+                    "file": galley_file,
+                },
+            )
+        else:
+            logger.error("Unable to fetch Galley %s" % galley["file"])
 
 
 def import_file(file_json, client, article, label=None, file_name=None, owner=None):
@@ -161,20 +167,21 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
     if not file_name:
         file_name = (file_json["name"])
     django_file = client.fetch_file(file_json["url"])
-    janeway_file = core_files.save_file_to_article(
-        django_file, article, owner or article.owner, label=label or file_json["label"]
-    )
-    if file_json["mimetype"]:
-        janeway_file.mime_type = file_json["mimetype"]
-    if file_json["createdAt"]:
-        janeway_file.date_uploaded = attempt_to_make_timezone_aware(
-            file_json["createdAt"])
-    if file_json["updatedAt"]:
-        core_models.File.objects.filter(id=janeway_file.pk).update(
-            date_modified=attempt_to_make_timezone_aware(file_json["updatedAt"])
+    if django_file:
+        janeway_file = core_files.save_file_to_article(
+            django_file, article, owner or article.owner, label=label or file_json["label"]
         )
-    janeway_file.original_filename = file_name
-    janeway_file.save()
+        if file_json["mimetype"]:
+            janeway_file.mime_type = file_json["mimetype"]
+        if file_json["createdAt"]:
+            janeway_file.date_uploaded = attempt_to_make_timezone_aware(
+                file_json["createdAt"])
+        if file_json["updatedAt"]:
+            core_models.File.objects.filter(id=janeway_file.pk).update(
+                date_modified=attempt_to_make_timezone_aware(file_json["updatedAt"])
+            )
+        janeway_file.original_filename = file_name
+        janeway_file.save()
 
         return janeway_file
 
@@ -313,6 +320,7 @@ def create_frozen_record(author, article):
         logger.debug("Added Frozen Author %s", frozen_dict)
     else:
         logger.debug("Updated Frozen Author %s", frozen_dict)
+
     return frozen, created
 
 
