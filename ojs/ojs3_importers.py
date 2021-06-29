@@ -6,6 +6,7 @@ from django.conf import settings
 from core import files as core_files
 from core import models as core_models
 from identifiers import models as identifiers_models
+from journal import models as journal_models
 from submission import models as submission_models
 from utils.logger import get_logger
 
@@ -31,7 +32,54 @@ def import_article(client, journal, article_dict):
 
 
 def import_issue(client, journal, issue_dict):
-    logger.
+    issue, c = get_or_create_issue(issue_dict, journal)
+    if c:
+        logger.info("Created Issue %s from OJS ID %s", issue, issue_dict["id"])
+    else:
+        logger.info("Updating Issue %s from OJS ID %s", issue, issue_dict["id"])
+
+    for section_dict in issue_dict["sections"]:
+        section = import_section(section_dict, issue, client)
+
+    for order, article_dict in enumerate(issue_dict["articles"]):
+        article_dict["publication"] = get_pub_article_dict(article_dict, client)
+        article, c = get_or_create_article(article_dict, journal)
+        article.primary_issue = issue
+        article.save()
+        issue.articles.add(article)
+        journal_models.ArticleOrdering.objects.update_or_create(
+            section=article.section,
+            issue=issue,
+            article=article,
+            defaults={"order": order}
+        )
+    if issue_dict["coverImageUrl"].values():
+        django_file = client.fetch_file(delocalise(issue_dict["coverImageUrl"]))
+        issue.cover_image.save(django_file.name or "cover.graphic", django_file)
+        issue.large_image.save(django_file.name or "cover.graphic", django_file)
+    
+    issue.save()
+    return issue
+
+
+def import_section(section_dict, issue, client):
+    section_id = section_dict["id"]
+    tracked_section, c = update_or_create_section(
+        issue.journal, section_id, section_dict)
+    if c:
+        logger.info("Created Section %s" % tracked_section.section)
+    else:
+        logger.info("Updating Section %s" % tracked_section.section)
+    
+    journal_models.SectionOrdering.objects.update_or_create(
+        issue=issue,
+        section=tracked_section.section,
+        defaults={
+            "order": section_dict.get("seq") or 0,
+        }
+    )
+
+    return tracked_section.section
 
 
 def import_article_metadata(article_dict, journal, client):
@@ -65,7 +113,7 @@ def import_article_metadata(article_dict, journal, client):
 
     # Add to section with given ojs sectionId
     ojs_section, _ = update_or_create_section(
-        journal, article_dict["publication"]["sectionId"]
+        journal, article_dict["publication"]["sectionId"],
     )
     article.section = ojs_section.section
 
@@ -128,7 +176,28 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
     janeway_file.original_filename = file_name
     janeway_file.save()
 
-    return janeway_file
+        return janeway_file
+
+
+def get_or_create_issue(issue_dict, journal):
+    issue_type = journal_models.IssueType.objects.get(
+        journal=journal, code='issue')
+    issue, c = journal_models.Issue.objects.update_or_create(
+        volume=issue_dict.get("volume", 0),
+        issue=issue_dict.get("number"),
+        journal=journal,
+        defaults={
+            "issue_title": (
+                delocalise(issue_dict["title"])
+                #or issue_dict["identification"]
+                or ""
+            ),
+            "issue_type": issue_type,
+            "issue_description": delocalise(issue_dict["description"]) or None,
+            "date": timezone.now().replace(year=issue_dict["year"])
+        }
+    )
+    return issue, c
 
 
 def get_or_create_article(article_dict, journal):
@@ -199,23 +268,26 @@ def get_pub_article_dict(article_dict, client):
         article_dict["id"], article_dict["currentPublicationId"]
     )
 
-def update_or_create_section(journal, ojs_section_id, section_data=None):
+def update_or_create_section(journal, ojs_section_id, section_dict=None):
     imported, created = models.OJS3Section.objects.get_or_create(
         journal=journal,
         ojs_id=ojs_section_id,
     )
     if not imported.section:
-        section = submission_models.Section.objects.language(
-            settings.LANGUAGE_CODE,
-        ).create(
+        section = submission_models.Section.objects.create(
             name=ojs_section_id,
             journal=journal,
         )
         imported.section = section
         imported.save()
-    return imported, created
 
-    # TODO update with section metadata coming from issues
+    if section_dict:
+        section = imported.section
+        section_name_translations = get_localised(section_dict["title"], prefix="name")
+        section.__dict__.update(section_name_translations)
+        section.save()
+
+    return imported, created
 
 
 def create_frozen_record(author, article):
@@ -250,9 +322,36 @@ def delocalise(localised):
     if with_value:
         if settings.LANGUAGE_CODE in with_value:
             return with_value[settings.LANGUAGE_CODE]
-        return next(with_value.values())
+        return next(iter(with_value.values()))
         
     return None
+
+def get_localised(localised, prefix=None):
+    """ Gets a localised OJS object in a format understandable by janeway
+    e.g: {"en_US": "value"} => {"en" => "value"}
+    :param localised: The localised object to transform.
+    :param prefix: An optional prefix to add to the returned value. Useful for
+        translating Modeltranslation objects (e.g: {"name_en" => "value"})
+    """
+    langs = dict(settings.LANGUAGES)
+
+    transformed = {
+        # "en_US" => "prefix_en"
+        k.split("_")[0]: v for k, v in localised.items()
+        if k.split("_")[0] in langs
+    }
+    if settings.LANGUAGE_CODE not in transformed:
+        #transformed[settings.LANGUAGE_CODE] = next(iter(transformed.values()))
+        pass
+
+    if prefix:
+        transformed = {
+            # "en_US" => "prefix_en"
+            "%s_%s" % (prefix, k.split("_")[0]): v 
+            for k, v in transformed.items()
+            if k.split("_")[0] in langs
+        }
+    return transformed
 
 
 def attempt_to_make_timezone_aware(datetime):
