@@ -98,8 +98,6 @@ class OJS3PaginatedResults(PaginatedResults):
             self._page += self._per_page
 
 
-
-
 class OJSBaseClient():
     API_PATH = ''  # Path to the OJS API to be consumed
     AUTH_PATH = '/login/signIn' # Path where the auth details should be posted
@@ -115,6 +113,9 @@ class OJSBaseClient():
     def __init__(self, journal_url, user=None, password=None, session=None):
         """"A Client for consumption of OJS APIs"""
         self.journal_url = journal_url
+        self.base_url = urlparse.urlunsplit(
+            urlparse.urlsplit(journal_url)._replace(path="/")
+        )
         self._auth_dict = {}
         self.session = session or requests.Session()
         self.session.headers.update(**self.HEADERS)

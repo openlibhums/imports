@@ -54,9 +54,11 @@ def import_issue(client, journal, issue_dict):
             defaults={"order": order}
         )
     if issue_dict["coverImageUrl"].values():
-        django_file = client.fetch_file(delocalise(issue_dict["coverImageUrl"]))
-        issue.cover_image.save(django_file.name or "cover.graphic", django_file)
-        issue.large_image.save(django_file.name or "cover.graphic", django_file)
+        url = delocalise(issue_dict["coverImageUrl"])
+        if url:
+            django_file = client.fetch_file(url)
+            issue.cover_image.save(django_file.name or "cover.graphic", django_file)
+            issue.large_image.save(django_file.name or "cover.graphic", django_file)
     
     issue.save()
     return issue
@@ -146,8 +148,7 @@ def import_article_galleys(article, publication, journal, client):
         if not galley["file"]:
             # Ghost galley with no file
             continue
-        #galley_file = import_file(galley["file"], client, article)
-        galley_file = None
+        galley_file = import_file(galley["file"], client, article)
         if galley_file:
             new_galley, c = core_models.Galley.objects.get_or_create(
                 article=article,
@@ -349,8 +350,7 @@ def get_localised(localised, prefix=None):
         if k.split("_")[0] in langs
     }
     if settings.LANGUAGE_CODE not in transformed:
-        #transformed[settings.LANGUAGE_CODE] = next(iter(transformed.values()))
-        pass
+        transformed[settings.LANGUAGE_CODE] = next(iter(transformed.values()))
 
     if prefix:
         transformed = {
