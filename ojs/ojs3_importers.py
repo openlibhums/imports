@@ -145,7 +145,11 @@ def import_article_metadata(article_dict, journal, client):
 
 def import_article_galleys(article, publication, journal, client):
     for galley in publication["galleys"]:
-        if not galley["file"]:
+        if galley["urlRemote"]:
+            article.is_remote = True
+            article.remote_url = galley["urlRemote"]
+            article.save()
+        elif not galley["file"]:
             # Ghost galley with no file
             continue
         galley_file = import_file(galley["file"], client, article)
