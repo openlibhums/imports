@@ -362,6 +362,7 @@ class OJS3APIClient(OJSBaseClient):
     AUTH_PATH = '/login/signIn'
     USERS_PATH = "/users"
     SUBMISSIONS_PATH = '/submissions/%s'
+    ISSUES_PATH = '/issues/%s'
     PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
@@ -369,18 +370,11 @@ class OJS3APIClient(OJSBaseClient):
         "Chrome/39.0.2171.95 Safari/537.36"
     }
 
+    # Submission status codes from OJS 3
     STATUS_QUEUED = 1
     STATUS_SCHEDULED = 2
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
-
-    # A mapping from STAGE to (status code, filter)
-    SUPPORTED_STAGES = {
-        'published',
-        'in_editing',
-        'in_review',
-        'unassigned',
-    }
 
     def fetch(self, request_url, headers=None, stream=False):
         resp = self.session.get(request_url, headers=headers, stream=stream)
@@ -467,57 +461,22 @@ class OJS3APIClient(OJSBaseClient):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + self.ISSUES_PATH
+            + self.ISSUES_PATH % ''
         )
-        response = self.fetch(request_url)
-        data = response.json()
-        for issue in data:
-            yield issue
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, issue in enumerate(paginator):
+            # The issue endpoint for each issue object provides more data
+            yield self.get_issue(issue["id"])
 
-    def get_sections(self):
+    def get_issue(self, ojs_issue_id):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + self.SECTIONS_PATH
+            + self.ISSUES_PATH % (ojs_issue_id)
         )
         response = self.fetch(request_url)
-        data = response.json()
-        for section in data:
-            yield section
-
-    def get_users(self):
-        request_url = (
-            self.journal_url
-            + self.API_PATH
-            + self.USERS_PATH
-        )
-        response = self.fetch(request_url)
-        data = response.json()
-        for user in data:
-            yield user
-
-
-    def get_issues(self):
-        request_url = (
-            self.journal_url
-            + self.API_PATH
-            + self.ISSUES_PATH
-        )
-        response = self.fetch(request_url)
-        data = response.json()
-        for issue in data:
-            yield issue
-
-    def get_sections(self):
-        request_url = (
-            self.journal_url
-            + self.API_PATH
-            + self.SECTIONS_PATH
-        )
-        response = self.fetch(request_url)
-        data = response.json()
-        for section in data:
-            yield section
+        return response.json()
 
     def get_users(self):
         request_url = (

@@ -18,6 +18,8 @@ class Command(BaseCommand):
         parser.add_argument('journal_code')
         parser.add_argument('--password', default=None)
         parser.add_argument('--dry-run', action="store_true", default=False)
+        parser.add_argument('--issues', action="store_true", default=False,
+                            help="Imports only issues")
         parser.add_argument('--users', action="store_true", default=False,
                             help="Imports only users")
         parser.add_argument('--ojs_id', default=False,
@@ -34,4 +36,7 @@ class Command(BaseCommand):
             options["username"],
             options["password"] or password,
         )
-        ojs.import_ojs3_articles(client, journal)
+        if options["issues"]:
+            ojs.import_ojs3_issues(client, journal)
+        else:
+            ojs.import_ojs3_articles(client, journal)
