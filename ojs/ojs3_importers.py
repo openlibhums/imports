@@ -223,7 +223,10 @@ def get_or_create_article(article_dict, journal):
         dateparser.parse(article_dict['dateSubmitted'])
     )
 
-    doi = article_dict.get("pub-id::doi")
+    doi = (
+        article_dict.get("pub-id::doi")
+        or article_dict["publication"].get("pub-id::doi")
+    )
     ojs_id = article_dict["id"]
 
     if doi and identifiers_models.Identifier.objects.filter(
