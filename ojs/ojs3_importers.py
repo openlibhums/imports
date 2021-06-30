@@ -97,15 +97,15 @@ def import_article_metadata(article_dict, journal, client):
 
     # Update Metadata
     article.abstract = delocalise(article_dict["publication"]["abstract"])
-    article.pages = article_dict["publication"].get("pages")
+    article.page_numbers = article_dict["publication"]["pages"]
     if article_dict["publication"].get("datePublished"):
         date_published = timezone.make_aware(
             dateparser.parse(article_dict['dateSubmitted']).replace(hour=12)
         )
         article.date_published = date_published
         article.stage = submission_models.STAGE_PUBLISHED
-    license_url = article_dict["publication"].get(
-        "license", "").replace("http:", "https:")
+    license_url = article_dict["publication"]["licenseUrl"] or ''
+    license_url = license_url.replace("http:", "https:")
     if license_url:
         article.license, _ = submission_models.Licence.objects.get_or_create(
             journal=article.journal,
