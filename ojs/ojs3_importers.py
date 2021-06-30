@@ -174,7 +174,7 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
     if not label:
         label = file_json.get("label", "file")
     if not file_name:
-        file_name = (file_json["name"])
+        file_name = delocalise(file_json["name"])
     django_file = client.fetch_file(file_json["url"])
     if django_file:
         janeway_file = core_files.save_file_to_article(
