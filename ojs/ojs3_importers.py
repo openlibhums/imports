@@ -12,6 +12,12 @@ from utils.logger import get_logger
 
 from plugins.imports import models
 
+
+class DummyRequest():
+    def __init__(self, user=None):
+        self.user = user
+
+
 logger = get_logger(__name__)
 
 GALLEY_TYPES = {
@@ -62,7 +68,32 @@ def import_issue(client, journal, issue_dict):
                     django_file.name or "cover.graphic", django_file)
                 issue.large_image.save(
                     django_file.name or "cover.graphic", django_file)
-    
+
+    if issue_dict["galleys"]:
+        galley_id = issue_dict["galleys"][-1].get("id")
+        django_file = client.get_issue_galley(issue_dict["id"], galley_id)
+        if django_file:
+            logger.info("Importing Issue galley %s into %s", galley_id, issue)
+            try:
+                issue_galley = journal_models.IssueGalley.objects.get(
+                    issue=issue,
+                )
+                issue_galley.replace_file(django_file)
+            except journal_models.IssueGalley.DoesNotExist:
+                issue_galley = journal_models.IssueGalley(
+                    issue=issue,
+                )
+                file_obj = core_files.save_file(
+                    DummyRequest(),
+                    django_file,
+                    label=issue.issue_title,
+                    public=True,
+                    path_parts=(journal_models.IssueGalley.FILES_PATH, issue.pk),
+                )
+                issue_galley.file = file_obj
+                issue_galley.save()
+
+
     issue.save()
     return issue
 

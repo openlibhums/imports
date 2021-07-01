@@ -364,6 +364,7 @@ class OJS3APIClient(OJSBaseClient):
     USERS_PATH = "/users"
     SUBMISSIONS_PATH = '/submissions/%s'
     ISSUES_PATH = '/issues/%s'
+    ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
     PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
@@ -478,6 +479,21 @@ class OJS3APIClient(OJSBaseClient):
         )
         response = self.fetch(request_url)
         return response.json()
+
+    def get_issue_galley(self, issue_id, galley_id):
+        """ Fetch an issue galley from its URL (not from the rest API)
+        It seems the REST API won't return URLS or file paths for issue galleys,
+        instead we construct the regular download path from the issue and 
+        :param issue_id: The OJS ID of the issue
+        :param galley_id: The OJS ID of the issue's galley
+        :return: A django file wrapping the galley file or None
+        """
+        request_url = (
+            self.journal_url
+            + self.ISSUE_GALLEY_PATH.format(issue=issue_id, galley=galley_id)
+        )
+
+        return self.fetch_file(request_url)
 
     def get_users(self):
         request_url = (
