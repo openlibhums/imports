@@ -2,6 +2,7 @@ from dateutil import parser as dateparser
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.conf import settings
+from django.core.management import call_command
 
 from core import files as core_files
 from core import models as core_models
@@ -9,6 +10,7 @@ from identifiers import models as identifiers_models
 from journal import models as journal_models
 from submission import models as submission_models
 from utils.logger import get_logger
+from utils import setting_handler
 
 from plugins.imports import models
 
@@ -365,6 +367,53 @@ def create_frozen_record(author, article):
         logger.debug("Updated Frozen Author %s", frozen_dict)
 
     return frozen, created
+
+
+def import_journal_metadata(client, journal_dict):
+    journal = get_or_create_journal(journal_dict)
+    journal.issn = journal_dict["onlineIssn"]
+    about = delocalise(journal_dict["about"])
+    journal_id = journal_dict["id"]
+    journal.description = about
+    setting_handler.save_setting( "plugin:About", "about_title", journal, about)
+
+    favicon_filename = delocalise(journal_dict["favicon"])
+    if favicon_filename:
+        favicon = client.fetch_public_file(journal_id, favicon_filename.get("name"))
+        if favicon:
+            journal.favicon.save(favicon_filename.get("name"), favicon)
+
+    journal_filename = delocalise(journal_dict["journalThumbnail"])
+    if journal_filename:
+        journal_cover = client.fetch_public_file(journal_id, journal_filename.get("name"))
+        if journal_cover:
+            journal.default_cover_image.save(journal_filename.get("name"), journal_cover)
+            journal.default_large_image.save(journal_filename.get("name"), journal_cover)
+
+    header_f = delocalise(journal_dict["pageHeaderLogoImage"])
+    if header_f:
+        header_image = client.fetch_public_file(journal_id, header_f.get("name"))
+        if header_image:
+            journal.header_image.save(header_f.get("name"), header_image)
+
+    journal.save()
+
+    return journal
+
+def get_or_create_journal(journal_dict):
+    code = journal_dict["urlPath"].lower()
+    try:
+        return journal_models.Journal.objects.get(code=code)
+    except journal_models.Journal.DoesNotExist:
+        name = delocalise(journal_dict["name"])
+        default_domain = "localhost/%s" % code
+        call_command(
+            "install_journal",
+            journal_code=code,
+            journal_name=name,
+            base_url=default_domain,
+        )
+        return journal_models.Journal.objects.get(code=code)
 
 
 def delocalise(localised):

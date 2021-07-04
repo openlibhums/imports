@@ -2,7 +2,7 @@ from itertools import chain
 
 from submission import models as submission_models
 
-from plugins.imports.ojs import ojs3_importers
+from plugins.imports.ojs import clients, ojs3_importers
 from plugins.imports.ojs.importers import (
     calculate_article_stage,
     create_workflow_log,
@@ -178,3 +178,15 @@ def import_ojs3_issues(client, journal):
     issues = client.get_issues()
     for issue_dict in issues:
         ojs3_importers.import_issue(client, journal, issue_dict)
+
+def import_ojs3_journals(client, include_content=True):
+    journals = client.get_journals()
+    for journal_dict in journals:
+        journal = ojs3_importers.import_journal_metadata(client, journal_dict)
+        if include_content:
+            journal_client = clients.OJS3APIClient(
+                journal_dict["url"],
+                **client._auth_dict,
+            )
+            import_ojs3_articles(journal_client, journal)
+            import_ojs3_issues(journal_client, journal)

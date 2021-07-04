@@ -110,7 +110,7 @@ class OJSBaseClient():
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
-    def __init__(self, journal_url, user=None, password=None, session=None):
+    def __init__(self, journal_url, username=None, password=None, session=None):
         """"A Client for consumption of OJS APIs"""
         self.journal_url = journal_url
         self.base_url = urlparse.urlunsplit(
@@ -120,9 +120,9 @@ class OJSBaseClient():
         self.session = session or requests.Session()
         self.session.headers.update(**self.HEADERS)
         self.authenticated = False
-        if user and password:
+        if username and password:
             self._auth_dict = {
-                'username': user,
+                'username': username,
                 'password': password,
             }
             self.login()
@@ -360,12 +360,15 @@ def get_filename_from_headers(response):
 
 class OJS3APIClient(OJSBaseClient):
     API_PATH = '/api/v1'
+    ROOT_PATH = '_'
+    CONTEXTS_PATH = '/contexts/%s'
     AUTH_PATH = '/login/signIn'
     USERS_PATH = "/users"
     SUBMISSIONS_PATH = '/submissions/%s'
     ISSUES_PATH = '/issues/%s'
     ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
     PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
+    PUBLIC_PATH = '/public/journals/%s/'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -421,6 +424,16 @@ class OJS3APIClient(OJSBaseClient):
             content_file.name = os.path.basename(url)
         return content_file
 
+    def fetch_public_file(self, journal_id, filename):
+        url = (
+            self.base_url
+            + self.PUBLIC_PATH % journal_id
+            + filename
+
+        )
+        return self.fetch_file(url, filename=filename)
+
+
     def post(self, request_url, headers=None, body=None):
         if not headers:
             headers = {}
@@ -458,6 +471,20 @@ class OJS3APIClient(OJSBaseClient):
         )
         response = self.fetch(request_url)
         return response.json()
+
+    def get_journals(self):
+        """ Retrieves all journals from the contexts (sites) API"""
+        request_url = (
+            self.base_url
+            + self.ROOT_PATH
+            + self.API_PATH
+            + self.CONTEXTS_PATH % ''
+        )
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, journal in enumerate(paginator):
+            # The site endpoint for each issue object provides more metadata
+            yield self.fetch(journal["_href"]).json()
 
     def get_issues(self):
         request_url = (
