@@ -188,5 +188,10 @@ def import_ojs3_journals(client, include_content=True):
                 journal_dict["url"],
                 **client._auth_dict,
             )
-            import_ojs3_articles(journal_client, journal)
-            import_ojs3_issues(journal_client, journal)
+            try:
+                import_ojs3_articles(journal_client, journal)
+                import_ojs3_issues(journal_client, journal)
+            except Exception as e:
+                logger.warning("Error importing articles: %s", journal)
+                logger.warning(e)
+
