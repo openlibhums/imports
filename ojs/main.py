@@ -179,8 +179,8 @@ def import_ojs3_issues(client, journal):
     for issue_dict in issues:
         ojs3_importers.import_issue(client, journal, issue_dict)
 
-def import_ojs3_journals(client, include_content=True):
-    journals = client.get_journals()
+def import_ojs3_journals(client, journal_acronym=None, include_content=True):
+    journals = client.get_journals(journal_acronym)
     for journal_dict in journals:
         journal = ojs3_importers.import_journal_metadata(client, journal_dict)
         if include_content:

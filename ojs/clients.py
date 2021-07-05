@@ -472,7 +472,7 @@ class OJS3APIClient(OJSBaseClient):
         response = self.fetch(request_url)
         return response.json()
 
-    def get_journals(self):
+    def get_journals(self, journal_acronym=None):
         """ Retrieves all journals from the contexts (sites) API"""
         request_url = (
             self.base_url
@@ -480,6 +480,9 @@ class OJS3APIClient(OJSBaseClient):
             + self.API_PATH
             + self.CONTEXTS_PATH % ''
         )
+        if journal_acronym:
+            params = {"searchPhrase": journal_acronym}
+            request_url += '?%s' % urlparse.urlencode(params)
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
         for i, journal in enumerate(paginator):

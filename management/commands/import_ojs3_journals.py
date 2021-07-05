@@ -15,6 +15,10 @@ class Command(BaseCommand):
         parser.add_argument('ojs_url')
         parser.add_argument('username')
         parser.add_argument('--password', default=None)
+        parser.add_argument('--journal_acronym', default=None)
+        parser.add_argument('--include_articles', action="store_true",
+                            default=False,
+                            help="Include importing journal articles")
 
 
     def handle(self, *args, **options):
@@ -26,4 +30,8 @@ class Command(BaseCommand):
             options["username"],
             options["password"] or password,
         )
-        ojs.import_ojs3_journals(client)
+        ojs.import_ojs3_journals(
+            client,
+            journal_acronym=options["journal_acronym"],
+            include_content=options["include_articles"],
+        )
