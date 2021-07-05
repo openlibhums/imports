@@ -7,6 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from cms import models as cms_models
 from core import files as core_files
+from core import logic as core_logic
 from core import models as core_models
 from identifiers import models as identifiers_models
 from journal import models as journal_models
@@ -18,8 +19,10 @@ from plugins.imports import models
 
 
 class DummyRequest():
-    def __init__(self, user=None):
+    def __init__(self, user=None, files=None, journal=None):
         self.user = user
+        self.FILES = files
+        self.journal=journal
 
 
 logger = get_logger(__name__)
@@ -88,7 +91,7 @@ def import_issue(client, journal, issue_dict):
                     issue=issue,
                 )
                 file_obj = core_files.save_file(
-                    DummyRequest(),
+                    DummyRequest(journal=journal),
                     django_file,
                     label=issue.issue_title,
                     public=True,
@@ -408,6 +411,12 @@ def import_journal_metadata(client, journal_dict):
             description="Open Access Policy",
             is_translatable=True,
         )
+        setting_handler.save_setting(
+            "general", "open_access_policy",
+            journal=None,
+            value="",
+        )
+
     setting = import_localised_journal_setting(
         journal_dict["openAccessPolicy"],
         "general", "open_access_policy", journal,
@@ -472,6 +481,12 @@ def import_journal_images(client, journal, journal_dict):
         )
         if header_image:
             journal.header_image.save(header_f.get("name"), header_image)
+            dummy_request = DummyRequest(
+                files={"default_thumbnail": header_image},
+                journal=journal,
+            )
+            core_logic.handle_default_thumbnail(
+                dummy_request, journal, '')
 
     journal.save()
 
@@ -501,119 +516,7 @@ def delocalise(localised):
         if settings.LANGUAGE_CODE in with_value:
             return with_value[settings.LANGUAGE_CODE]
         return next(iter(with_value.values()))
-        
-    return None
 
-def get_localised(localised, prefix=None):
-    """ Gets a localised OJS object in a format understandable by janeway
-    e.g: {"en_US": "value"} => {"en" => "value"}
-    :param localised: The localised object to transform.
-    :param prefix: An optional prefix to add to the returned value. Useful for
-        translating Modeltranslation objects (e.g: {"name_en" => "value"})
-    """
-    langs = dict(settings.LANGUAGES)
-
-    transformed = {
-        # "en_US" => "prefix_en"
-        k.split("_")[0]: v for k, v in localised.items()
-        if k.split("_")[0] in langs
-    }
-    if settings.LANGUAGE_CODE not in transformed:
-        transformed[settings.LANGUAGE_CODE] = next(iter(transformed.values()))
-
-    if prefix:
-        transformed = {
-            # "en_US" => "prefix_en"
-            "%s_%s" % (prefix, k.split("_")[0]): v 
-            for k, v in transformed.items()
-            if k.split("_")[0] in langs
-        }
-    return transformed
-
-
-def attempt_to_make_timezone_aware(datetime):
-    if datetime:
-        dt = dateparser.parse(datetime)
-        # We use 12 to avoid changing the date when the time is 00:00 with no tz
-        return timezone.make_aware(dt.replace(hour=12))
-    else:
-        return None
-
-
-    import_journal_images(client, journal, journal_dict)
-
-
-def import_journal_setting(setting_dict, setting_group, setting_name, journal):
-    setting_value = setting_handler.get_setting(
-        setting_group, setting_name, journal)
-    setting_value.__dict__.update(
-        get_localised(setting_dict, prefix="value")
-    )
-    setting_value.save()
-
-
-def import_journal_images(client, journal, journal_dict):
-    journal_id = journal_dict["id"]
-
-    favicon_filename = delocalise(journal_dict["favicon"])
-    if favicon_filename:
-        favicon = (
-            client.fetch_public_file(journal_id, favicon_filename.get("name"))
-             or client.fetch_public_file(
-                 journal_id, favicon_filename.get("uploadName"))
-        )
-        if favicon:
-            journal.favicon.save(favicon_filename.get("name"), favicon)
-
-    journal_filename = delocalise(journal_dict["journalThumbnail"])
-    if journal_filename:
-        journal_cover = (
-            client.fetch_public_file(journal_id, journal_filename.get("name"))
-            or client.fetch_public_file(
-                journal_id, journal_filename.get("uploadName"))
-        )
-        if journal_cover:
-            journal.default_cover_image.save(journal_filename.get("name"), journal_cover)
-            journal.default_large_image.save(journal_filename.get("name"), journal_cover)
-
-    header_f = delocalise(journal_dict["pageHeaderLogoImage"])
-    if header_f:
-        header_image = (
-            client.fetch_public_file(journal_id, header_f.get("name"))
-            or client.fetch_public_file(journal_id, header_f.get("uploadName"))
-        )
-        if header_image:
-            journal.header_image.save(header_f.get("name"), header_image)
-
-    journal.save()
-
-    return journal
-
-
-def get_or_create_journal(journal_dict):
-    code = journal_dict["urlPath"].lower()
-    try:
-        return journal_models.Journal.objects.get(code=code)
-    except journal_models.Journal.DoesNotExist:
-        name = delocalise(journal_dict["name"])
-        default_domain = "localhost/%s" % code
-        call_command(
-            "install_journal",
-            journal_code=code,
-            journal_name=name,
-            base_url=default_domain,
-        )
-        return journal_models.Journal.objects.get(code=code)
-
-
-def delocalise(localised):
-    """ Given a localised object, return the best possible value"""
-    with_value = {k.split("_")[0]: v for k, v in localised.items() if v}
-    if with_value:
-        if settings.LANGUAGE_CODE in with_value:
-            return with_value[settings.LANGUAGE_CODE]
-        return next(iter(with_value.values()))
-        
     return None
 
 def get_localised(localised, prefix=None):
