@@ -381,20 +381,32 @@ def import_journal_metadata(client, journal_dict):
 
     favicon_filename = delocalise(journal_dict["favicon"])
     if favicon_filename:
-        favicon = client.fetch_public_file(journal_id, favicon_filename.get("name"))
+        favicon = (
+            client.fetch_public_file(journal_id, favicon_filename.get("name"))
+             or client.fetch_public_file(
+                 journal_id, favicon_filename.get("uploadName"))
+        )
         if favicon:
             journal.favicon.save(favicon_filename.get("name"), favicon)
+                
 
     journal_filename = delocalise(journal_dict["journalThumbnail"])
     if journal_filename:
-        journal_cover = client.fetch_public_file(journal_id, journal_filename.get("name"))
+        journal_cover = (
+            client.fetch_public_file(journal_id, journal_filename.get("name"))
+            or client.fetch_public_file(
+                journal_id, journal_filename.get("uploadName"))
+        )
         if journal_cover:
             journal.default_cover_image.save(journal_filename.get("name"), journal_cover)
             journal.default_large_image.save(journal_filename.get("name"), journal_cover)
 
     header_f = delocalise(journal_dict["pageHeaderLogoImage"])
     if header_f:
-        header_image = client.fetch_public_file(journal_id, header_f.get("name"))
+        header_image = (
+            client.fetch_public_file(journal_id, header_f.get("name"))
+            or client.fetch_public_file(journal_id, header_f.get("uploadName"))
+        )
         if header_image:
             journal.header_image.save(header_f.get("name"), header_image)
 
