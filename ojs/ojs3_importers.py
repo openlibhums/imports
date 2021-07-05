@@ -373,9 +373,11 @@ def import_journal_metadata(client, journal_dict):
     journal = get_or_create_journal(journal_dict)
     journal.issn = journal_dict["onlineIssn"]
     about = delocalise(journal_dict["about"])
+    description = delocalise(journal_dict["description"])
     journal_id = journal_dict["id"]
     journal.description = about
-    setting_handler.save_setting( "plugin:About", "about_title", journal, about)
+    setting_handler.save_setting( "general", "journal_description", journal, description)
+    setting_handler.save_setting( "general", "focus_and_scope", journal, about)
 
     favicon_filename = delocalise(journal_dict["favicon"])
     if favicon_filename:
