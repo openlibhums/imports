@@ -605,7 +605,6 @@ def import_copyediting(article_dict, article, client):
                 if final_file_json:
                     final_version = import_file(
                         client, final_file_json, article, "Final copyedit")
-                    author_review.files_updated.add(author_version)
                     final_assignment.copyeditor_files.add(final_version)
                     imported_files.add("final_file")
 
@@ -783,9 +782,10 @@ def import_collection_metadata(collection_dict, client, journal):
     collection = get_or_create_collection(collection_dict, journal)
 
     # Handle cover
-    if collection_dict.get("cover_file") and not collection.cover_image:
+    if collection_dict.get("cover_file"):
         collection_img = client.fetch_file(collection_dict["cover_file"])
-        collection.cover_image = collection_img
+        file_name = os.path.basename(collection_dict["cover_file"]) or "cover.graphic"
+        collection.cover_image.save(file_name, collection_img)
     collection.save()
 
     # Handle Section orderings
@@ -912,16 +912,17 @@ def import_galleys(article, layout_dict, client, owner=None):
                 owner=owner,
             )
 
-            new_galley, c = core_models.Galley.objects.get_or_create(
-                article=article,
-                type=GALLEY_TYPES.get(galley.get("label"), "other"),
-                defaults={
-                    "label": galley.get("label"),
-                    "file": galley_file,
-                },
-            )
-            if c:
-                galleys.append(new_galley)
+            if galley_file:
+                new_galley, c = core_models.Galley.objects.get_or_create(
+                    article=article,
+                    type=GALLEY_TYPES.get(galley.get("label"), "other"),
+                    defaults={
+                        "label": galley.get("label"),
+                        "file": galley_file,
+                    },
+                )
+                if c:
+                    galleys.append(new_galley)
 
     return galleys
 

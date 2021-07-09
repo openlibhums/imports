@@ -78,7 +78,7 @@ def import_unassigned_articles(ojs_client, journal):
         import_review_data(article_dict, article, ojs_client)
 
         calculate_article_stage(article_dict, article)
-        article.stage = submission_models.UNASSIGNED
+        article.stage = submission_models.STAGE_UNASSIGNED
         article.save()
 
         logger.info("Imported article with article ID %d" % article.pk)

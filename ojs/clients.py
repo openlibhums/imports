@@ -244,8 +244,6 @@ class OJSJanewayClient(OJSBaseClient):
             + self.API_PATH
             + self.USERS_PATH
         )
-        response = self.fetch(request_url)
-        data = response.json()
         client = self.fetch
         paginator = OJS2PaginatedResults(request_url, client)
         for user in paginator:
