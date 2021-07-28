@@ -179,7 +179,7 @@ def get_jats_authors(soup, author_notes=None):
 def save_article(journal, metadata, issue=None, owner=None):
     with transaction.atomic():
         section, _ = submission_models.Section.objects \
-            .language(settings.LANGUAGE_CODE).get_or_create(
+            .get_or_create(
                 journal=journal,
                 name=metadata["section_name"],
         )

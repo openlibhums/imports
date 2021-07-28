@@ -5,7 +5,7 @@ from rest_framework import routers
 from plugins.imports import views
 
 router = routers.DefaultRouter()
-router.register(r'exportfiles', views.ExportFilesViewSet, base_name='exportfile')
+router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
 
 urlpatterns = [
     url(r'^$', views.index, name='imports_index'),

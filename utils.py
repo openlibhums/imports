@@ -257,9 +257,7 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     row = prepared_row.get('primary_row')
 
     article.title = row.get('Article title')
-    section_obj, created = submission_models.Section.objects.language(
-        'en',
-    ).get_or_create(
+    section_obj, created = submission_models.Section.objects.get_or_create(
         journal=article.journal,
         name=row.get('Article section'),
     )
@@ -422,8 +420,7 @@ def import_article_row(row, journal, issue_type, article=None):
             article.date_published = (parse_datetime(date_published)
                     or parse_date(date_published))
             article.stage = stage
-            sec_obj, created = submission_models.Section.objects.language(
-                'en').get_or_create(journal=journal, name=section)
+            sec_obj, created = submission_models.Section.objects.get_or_create(journal=journal, name=section)
             article.section = sec_obj
             split_keywords = keywords.split("|")
             for kw in split_keywords:
