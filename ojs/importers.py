@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import timedelta
 from urllib import parse as urlparse
@@ -149,7 +150,7 @@ def import_article_metadata(article_dict, journal, client):
             author=author_record,
         )
         order.order = author.get("sequence", 999)
-        create_frozen_record(author_record, article, emails)
+        create_frozen_record(author_record, article, emails, author_dict=author)
 
     # Set the primary author
     email = clean_email(article_dict.get('correspondence_author'))
@@ -180,10 +181,10 @@ def import_article_metadata(article_dict, journal, client):
         )
         article.save()
 
-    return article
+    return article, created
 
 
-def create_frozen_record(author, article, emails=None):
+def create_frozen_record(author, article, emails=None, author_dict=None):
     """ Creates a frozen record for the article from author metadata
 
     We create a frozen record that is not linked to a user
@@ -194,31 +195,27 @@ def create_frozen_record(author, article, emails=None):
     :param article: an instance of submission.models.Article
     :param emails: a set cotaining the author emails seen in this article
     """
-    if emails and author.email in emails:
-        # Copy behaviour of snapshot_self, without liking acccount
-        try:
-            order = submission_models.ArticleAuthorOrder.objects.get(
-                article=article, author=author).order
-        except submission_models.ArticleAuthorOrder.DoesNotExist:
-            order = 1
+    try:
+        order = submission_models.ArticleAuthorOrder.objects.get(
+            article=article, author=author).order
+    except submission_models.ArticleAuthorOrder.DoesNotExist:
+        order = 1
 
-        frozen_dict = {
-            'article': article,
-            'first_name': author.first_name,
-            'middle_name': author.middle_name,
-            'last_name': author.last_name,
-            'institution': author.institution or '',
-            'department': author.department,
-            'order': order,
-        }
-
-        submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
-
-    elif emails is not None:
-        author.snapshot_self(article)
-        emails.add(author.email)
-    else:
-        author.snapshot_self(article)
+    frozen_dict = {
+        'article': article,
+        'first_name': author.first_name,
+        'middle_name': author.middle_name,
+        'last_name': author.last_name,
+        'institution': author.institution or '',
+        'order': order,
+               'author': author,
+    }
+    if author_dict:
+        frozen_dict["first_name"] = author_dict["first_name"]
+        frozen_dict["last_name"] = author_dict["last_name"]
+        frozen_dict["middle_name"] = author_dict["middle_name"]
+        frozen_dict["institution"] = author_dict["affiliation"] or " "
+    submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
 
 
 def import_review_data(article_dict, article, client):
@@ -1078,7 +1075,7 @@ def import_user_metadata(user_data, journal):
     return account, created
 
 
-def get_or_create_account(data, update=True):
+def get_or_create_account(data, update=False):
     """ Gets or creates an account for the given OJS user data"""
     email = clean_email(data.get("email"))
     created = False
