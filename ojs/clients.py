@@ -363,7 +363,7 @@ class OJS3APIClient(OJSBaseClient):
     ROOT_PATH = '_'
     CONTEXTS_PATH = '/contexts/%s'
     AUTH_PATH = '/login/signIn'
-    USERS_PATH = "/users"
+    USERS_PATH = "/users/%s"
     SUBMISSIONS_PATH = '/submissions/%s'
     ISSUES_PATH = '/issues/%s'
     ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
@@ -380,6 +380,16 @@ class OJS3APIClient(OJSBaseClient):
     STATUS_SCHEDULED = 2
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
+
+    #Role IDs
+    ROLE_JOURNAL_MANAGER = 16
+    ROLE_SECTION_EDITOR = 17
+    ROLE_REVIEWER = 4096
+    ROLE_ASSISTANT = 4097 #  Production manager
+    ROLE_AUTHOR = 65536
+    ROLE_READER = 1048576
+    ROLE_SUBSCRIPTION_MANAGER = 2097152
+
 
     def fetch(self, request_url, headers=None, stream=False):
         resp = self.session.get(request_url, headers=headers, stream=stream)
@@ -526,12 +536,26 @@ class OJS3APIClient(OJSBaseClient):
         return self.fetch_file(request_url)
 
     def get_users(self):
+        """ Retrieves all journals from the contexts (sites) API"""
         request_url = (
-            self.journal_url
+            self.base_url
+            + self.ROOT_PATH
             + self.API_PATH
-            + self.USERS_PATH
+            + self.USERS_PATH % ''
+        )
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, user in enumerate(paginator):
+            # The site endpoint for each issue object provides more metadata
+            yield self.get_user(self, user["id"])
+
+    def get_user(self, ojs_user_id):
+        """ Retrieves all journals from the contexts (sites) API"""
+        request_url = (
+            self.base_url
+            + self.ROOT_PATH
+            + self.API_PATH
+            + self.USERS_PATH % ojs_user_id
         )
         response = self.fetch(request_url)
-        data = response.json()
-        for user in data:
-            yield user
+        return response.json()
