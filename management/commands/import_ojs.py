@@ -45,7 +45,6 @@ class Command(BaseCommand):
             ojs.import_users(client, journal)
 
         elif options["editorial"]:
-            ojs.import_users(client, journal)
             ojs.import_unassigned_articles(client, journal)
             ojs.import_in_review_articles(client, journal)
             ojs.import_in_editing_articles(client, journal)
@@ -58,6 +57,5 @@ class Command(BaseCommand):
         elif options["metrics"]:
             ojs.import_metrics(client, journal)
         else:
-            ojs.import_users(client, journal)
             ojs.import_published_articles(client, journal)
             ojs.import_issues(client, journal)
