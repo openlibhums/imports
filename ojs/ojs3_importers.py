@@ -509,6 +509,18 @@ def get_or_create_journal(journal_dict):
         return journal_models.Journal.objects.get(code=code)
 
 
+def import_editorial_team(journal_dict, journal):
+    html = delocalise(journal_dict["editorialTeam"])
+    if html:
+        core_models.EditorialGroup.objects.update_or_create(
+            name="Editorial Team",
+            journal=journal,
+            defaults={
+                "description": html,
+            }
+        )
+
+
 def delocalise(localised):
     """ Given a localised object, return the best possible value"""
     with_value = {k.split("_")[0]: v for k, v in localised.items() if v}
