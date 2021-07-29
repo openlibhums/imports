@@ -100,7 +100,6 @@ def import_issue(client, journal, issue_dict):
                 issue_galley.file = file_obj
                 issue_galley.save()
 
-
     issue.save()
     return issue
 
@@ -206,6 +205,29 @@ def import_article_galleys(article, publication, journal, client):
                 )
             else:
                 logger.error("Unable to fetch Galley %s" % galley["file"])
+
+def import_user(user_dict, journal):
+    account, created = core_models.Account.objects.get_or_create(
+        email=user_dict["email"],
+        defaults = {
+            "first_name": delocalise(user_dict["given_name"]),
+            "last_name": delocalise(user_dict["familyName"]),
+            "active": not user_dict.get("disabled", False),
+            "country": user_dict["country"]
+        }
+    )
+    if user_dict["biography"] and not account.biography:
+        account.biography = delocalise(user_dict["biography"])
+    if user_dict["signature"] and not account.signature:
+        account.signature = delocalise(user_dict["signature"])
+    if user_dict["orcid"] and not account.orcid:
+        orcid = user_dict["orcid"].split("orcid.org/")[-1]
+        account.orcid = orcid
+    for interest in user_dict["interests"]:
+        account.interest.get_or_create(name=interest["interest"])
+
+    return account, created
+
 
 
 def import_file(file_json, client, article, label=None, file_name=None, owner=None):
@@ -448,6 +470,7 @@ def import_localised_journal_setting(setting_dict, setting_group, setting_name, 
 
         return setting_value
     return None
+
 
 def import_journal_images(client, journal, journal_dict):
     journal_id = journal_dict["id"]

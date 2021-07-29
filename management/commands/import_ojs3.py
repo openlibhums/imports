@@ -38,5 +38,7 @@ class Command(BaseCommand):
         )
         if options["issues"]:
             ojs.import_ojs3_issues(client, journal)
+        elif options["users"]:
+            ojs.import_ojs3_users(client, journal)
         else:
             ojs.import_ojs3_articles(client, journal)
