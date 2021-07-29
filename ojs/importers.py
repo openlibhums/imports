@@ -112,7 +112,7 @@ def import_article_metadata(article_dict, journal, client):
             if editor_ass["role"] == 'editor':
                 acc.add_account_role('editor', journal)
             elif editor_ass["role"] == 'section-editor':
-                acc.add_account_role('editor', journal)
+                acc.add_account_role('section-editor', journal)
             review_models.EditorAssignment.objects.update_or_create(
                 article=article, editor=acc,
                 defaults={"editor_type": editor_ass["role"]},
