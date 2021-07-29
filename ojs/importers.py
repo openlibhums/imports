@@ -631,15 +631,15 @@ def import_typesetting(article_dict, article, client):
             email = clean_email(layout.get('email'))
             typesetter = core_models.Account.objects.get(
                 email__iexact=email)
-        elif article_dict["sent_for_typesetting"]:
-            try:
-                typesetter = core_models.AccountRole.objects.filter(
-                    slug="typesetter",
-                    journal=article.journal,
-                    ).first()
-            except core_models.AccountRole.DoesNotExist:
-                logger.warning(
-                    "Journal %s has no typesetters setup", article.journal.code)
+    elif layout["sent_for_typesetting"]:
+        try:
+            typesetter = core_models.AccountRole.objects.filter(
+                role__slug="typesetter",
+                journal=article.journal,
+                ).first().user
+        except core_models.AccountRole.DoesNotExist:
+            logger.warning(
+                "Journal %s has no typesetters setup", article.journal.code)
 
     if typesetter:
         logger.info(
@@ -685,19 +685,20 @@ def import_typesetting_plugin(article_dict, article, client):
         email = clean_email(layout.get('email'))
         typesetter = core_models.Account.objects.get(
             email__iexact=email)
-    elif article_dict["sent_for_typesetting"]:
+    elif layout["sent_for_typesetting"]:
         try:
             typesetter = core_models.AccountRole.objects.filter(
-                slug="typesetter",
+                role__slug="typesetter",
                 journal=article.journal,
-                ).first()
+                ).first().user
         except core_models.AccountRole.DoesNotExist:
             logger.warning(
                 "Journal %s has no typesetters setup", article.journal.code)
 
-    if typesetter:
-        assigned = attempt_to_make_timezone_aware(layout.get('notified'))
-        accepted = attempt_to_make_timezone_aware(layout.get('underway'))
+    if typesetter and not layout.get("galleys"):
+        sent = attempt_to_make_timezone_aware(layout.get('sent_for_typesetting'))
+        assigned = attempt_to_make_timezone_aware(layout.get('notified')) or sent
+        accepted = attempt_to_make_timezone_aware(layout.get('underway')) or sent
         complete = attempt_to_make_timezone_aware(layout.get('complete'))
 
         logger.info(
@@ -714,7 +715,7 @@ def import_typesetting_plugin(article_dict, article, client):
             typesetter=typesetter,
             defaults={
                 "assigned": assigned,
-                "notified": assigned,
+                "notified": bool(assigned),
                 "accepted": accepted,
                 "completed": complete,
             }
