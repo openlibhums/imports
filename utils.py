@@ -179,8 +179,6 @@ def prep_update(row):
         except submission_models.Article.DoesNotExist:
             pass
 
-    print(article, article_id)
-
     return journal, article, issue_type, issue
 
 
@@ -272,14 +270,15 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     article.license = license_obj
     article.language = row.get('Language')
 
-    split_keywords = row.get('Keywords').split(",")
-    for kw in split_keywords:
-        try:
-            keyword, c = submission_models.Keyword.objects.get_or_create(word=kw)
-        except submission_models.Keyword.MultipleObjectsReturned:
-            keyword = submission_models.Keyword.objects.filter(word=kw).first()
+    if row.get('Keywords') and row.get('Keywords') != '':
+        split_keywords = row.get('Keywords').split(",")
+        for kw in split_keywords:
+            try:
+                keyword, c = submission_models.Keyword.objects.get_or_create(word=kw)
+            except submission_models.Keyword.MultipleObjectsReturned:
+                keyword = submission_models.Keyword.objects.filter(word=kw).first()
 
-        article.keywords.add(keyword)
+            article.keywords.add(keyword)
 
     article.primary_issue = issue
     article.save()
@@ -336,7 +335,12 @@ def handle_file_import(row, article, zip_folder_path):
     partial_file_paths = row.get('Article filename').split(',')
     for partial_file_path in partial_file_paths:
         full_path = os.path.join(zip_folder_path, partial_file_path)
-        file_name = partial_file_path.split('/')[1]
+
+        try:
+            file_name = partial_file_path.split('/')[1]
+        except IndexError:
+            file_name = partial_file_path
+
         if os.path.isfile(full_path):
             file = files.copy_local_file_to_article(
                 file_to_handle=full_path,
@@ -449,32 +453,32 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-        salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
-        if not email:
-            email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
-        author, created = core_models.Account.objects.get_or_create(email=email)
-        if created:
-            author.salutation = salutation
-            author.first_name = first_name
-            author.middle_name = middle_name
-            author.last_name = last_name
-            author.institution = institution
-            author.biography = bio or None
-            author.save()
+    salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
+    if not email:
+        email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
+    author, created = core_models.Account.objects.get_or_create(email=email)
+    if created:
+        author.salutation = salutation
+        author.first_name = first_name
+        author.middle_name = middle_name
+        author.last_name = last_name
+        author.institution = institution
+        author.biography = bio or None
+        author.save()
 
-        article.authors.add(author)
-        article.save()
-        author.snapshot_self(article)
-        return author
+    article.authors.add(author)
+    article.save()
+    author.snapshot_self(article)
+    return author
 
 
 def import_corporate_author(author_fields, article):
-        *_, institution,_bio, _email = author_fields
-        submission_models.FrozenAuthor.objects.get_or_create(
-            article=article,
-            is_corporate=True,
-            institution=institution,
-        )
+    *_, institution,_bio, _email = author_fields
+    submission_models.FrozenAuthor.objects.get_or_create(
+        article=article,
+        is_corporate=True,
+        institution=institution,
+    )
 
 
 def import_galley_from_uri(article, uri, figures_uri=None):
