@@ -319,7 +319,10 @@ def get_or_create_article(article_dict, journal):
         created = True
         article = submission_models.Article(
             journal=journal,
-            title=delocalise(article_dict["publication"]['fullTitle']),
+            title=delocalise(
+                article_dict["publication"]['fullTitle']
+                or "NO TITLE"
+            )
             language=article_dict.get('locale'),
             stage=submission_models.STAGE_UNASSIGNED,
             is_import=True,
