@@ -170,6 +170,8 @@ class OJSJanewayClient(OJSBaseClient):
                 _, extension = os.path.splitext(url)
             content_file.name = filename + extension
         elif response_filename:
+            content_file.name = response_filename
+        else:
             content_file.name = os.path.basename(url)
         return content_file
 
@@ -343,7 +345,7 @@ def strip_scheme(url):
 def get_filename_from_headers(response):
     try:
         header = response.headers['content-disposition']
-        return re.findall("filename=(.+)", header)[0]
+        return re.findall("filename=(.+)", header)[0].strip('"')
     except KeyError:
         logger.debug("No content-disposition header")
     except IndexError:
