@@ -1234,6 +1234,7 @@ def extract_orcid(raw_orcid_data):
     :param raw_oricid_data: A dict from lang code to orcid URL or actual orcid
     """
     if raw_orcid_data:
+        if isinstance(raw_orcid_data, str): return raw_orcid_data
         for lang, value in raw_orcid_data.items():
             if value:
                 # ORCID might be in URL format
