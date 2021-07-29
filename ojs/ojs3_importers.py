@@ -58,6 +58,8 @@ def import_issue(client, journal, issue_dict):
         article_dict["publication"] = get_pub_article_dict(article_dict, client)
         article, c = get_or_create_article(article_dict, journal)
         article.primary_issue = issue
+        if not article.date_published:
+            article.date_published = issue.date
         article.save()
         issue.articles.add(article)
         journal_models.ArticleOrdering.objects.update_or_create(
@@ -258,6 +260,11 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
 def get_or_create_issue(issue_dict, journal):
     issue_type = journal_models.IssueType.objects.get(
         journal=journal, code='issue')
+    date_published = timezone.make_aware(
+        dateparser.parse(issue_dict['datePublished'])
+    )
+    if date_published and issue_dict["year"]:
+        date_published = date_published.replace(year=issue_dict["year"])
     issue, c = journal_models.Issue.objects.update_or_create(
         volume=issue_dict.get("volume", 0),
         issue=issue_dict.get("number"),
@@ -265,12 +272,11 @@ def get_or_create_issue(issue_dict, journal):
         defaults={
             "issue_title": (
                 delocalise(issue_dict["title"])
-                #or issue_dict["identification"]
                 or ""
             ),
             "issue_type": issue_type,
             "issue_description": delocalise(issue_dict["description"]) or None,
-            "date": timezone.now().replace(year=issue_dict["year"])
+            "date": date_published,
         }
     )
     return issue, c
