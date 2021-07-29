@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 def import_article(ojs_client, journal, ojs_id):
     article_dict = ojs_client.get_article(ojs_id)
     if article_dict:
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
@@ -36,7 +36,7 @@ def import_article(ojs_client, journal, ojs_id):
 def import_published_articles(ojs_client, journal):
     articles = ojs_client.get_articles("published")
     for article_dict in articles:
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
@@ -56,7 +56,7 @@ def import_in_progress_articles(ojs_client, journal):
     in_editing = ojs_client.get_articles("in_editing")
     seen = set()
     for article_dict in chain(in_review, in_editing):
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
@@ -73,7 +73,7 @@ def import_in_progress_articles(ojs_client, journal):
 def import_unassigned_articles(ojs_client, journal):
     articles = ojs_client.get_articles("unassigned")
     for article_dict in articles:
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created  = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
 
@@ -87,7 +87,7 @@ def import_unassigned_articles(ojs_client, journal):
 def import_in_review_articles(ojs_client, journal):
     articles = ojs_client.get_articles("in_review")
     for article_dict in articles:
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
 
@@ -100,7 +100,7 @@ def import_in_review_articles(ojs_client, journal):
 def import_in_editing_articles(ojs_client, journal):
     articles = ojs_client.get_articles("in_editing")
     for article_dict in articles:
-        article = import_article_metadata(article_dict, journal, ojs_client)
+        article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
