@@ -287,7 +287,8 @@ def import_review_data(article_dict, article, client):
 
     # Set for avoiding duplicate review files
     for review in article_dict.get('reviews'):
-        import_review_assignment(client, article, review, form)
+        decision = article_dict.get("latest_editor_decision")
+        import_review_assignment(client, article, review, form, decision)
 
     # Get Supp Files
     if article_dict.get('supp_files'):
@@ -309,7 +310,7 @@ def import_review_data(article_dict, article, client):
     return article
 
 
-def import_review_assignment(client, article, review, review_form):
+def import_review_assignment(client, article, review, review_form, decision):
     reviewer, _ = get_or_create_account(review)
     reviewer.add_account_role("author", journal)
 
@@ -340,6 +341,7 @@ def import_review_assignment(client, article, review, review_form):
         access_code=uuid.uuid4(),
         form=review_form
     )
+
     new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
         article=article,
         reviewer=reviewer,
@@ -353,6 +355,10 @@ def import_review_assignment(client, article, review, review_form):
             review['recommendation']]
         new_review.is_complete = True
 
+    if decision:
+        new_review.for_author_consumption = True
+        new_review.display_review_file = True
+
     if review.get("cancelled"):
         new_review.decision = "withdrawn"
 
@@ -360,7 +366,7 @@ def import_review_assignment(client, article, review, review_form):
         new_review.date_accepted = None
         new_review.date_declined = date_confirmed
         new_review.date_complete = None
-        is_complete = True
+        new_review.is_complete = True
 
     # Check for files at article level
     review_file_json = review.get("review_file")
