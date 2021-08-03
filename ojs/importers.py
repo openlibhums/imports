@@ -792,7 +792,13 @@ def import_collection_metadata(collection_dict, client, journal):
     if collection_dict.get("cover_file"):
         collection_img = client.fetch_file(collection_dict["cover_file"])
         file_name = os.path.basename(collection_dict["cover_file"]) or "cover.graphic"
-        collection.cover_image.save(file_name, collection_img)
+        if collection_img:
+            collection.cover_image.save(file_name, collection_img)
+        else:
+            logger.warning(
+                "Couldn't retrieve collection image: %s",
+                collection_dict["cover_file"],
+            )
     collection.save()
 
     # Handle Section orderings
