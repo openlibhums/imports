@@ -312,7 +312,7 @@ def import_review_data(article_dict, article, client):
 
 def import_review_assignment(client, article, review, review_form, decision):
     reviewer, _ = get_or_create_account(review)
-    reviewer.add_account_role("author", journal)
+    reviewer.add_account_role("author", article.journal)
 
 
     # Parse the dates
@@ -1212,7 +1212,7 @@ def scrape_editor_assignments(client, ojs_id, article):
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
         editor, _ = get_or_create_account({"email": editor_email}, update=False)
-        editor.add_account_role("author", journal)
+        editor.add_account_role("author", article.journal)
 
         # Get assignment date
         try:
