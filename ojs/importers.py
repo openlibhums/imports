@@ -637,7 +637,7 @@ def import_typesetting(article_dict, article, client):
                 role__slug="typesetter",
                 journal=article.journal,
                 ).first().user
-        except core_models.AccountRole.DoesNotExist:
+        except AttributeError:
             logger.warning(
                 "Journal %s has no typesetters setup", article.journal.code)
 
