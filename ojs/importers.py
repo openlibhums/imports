@@ -142,6 +142,7 @@ def import_article_metadata(article_dict, journal, client):
     for author in sorted(article_dict.get('authors'),
                          key=lambda x: x.get("sequence", 1)):
         author_record, _ = get_or_create_account(author)
+        author_record.add_account_role("author", journal)
 
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
@@ -310,6 +311,8 @@ def import_review_data(article_dict, article, client):
 
 def import_review_assignment(client, article, review, review_form):
     reviewer, _ = get_or_create_account(review)
+    reviewer.add_account_role("author", journal)
+
 
     # Parse the dates
     date_requested = timezone.make_aware(
@@ -1203,6 +1206,7 @@ def scrape_editor_assignments(client, ojs_id, article):
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
         editor, _ = get_or_create_account({"email": editor_email}, update=False)
+        editor.add_account_role("author", journal)
 
         # Get assignment date
         try:
