@@ -1,5 +1,6 @@
 import os
 import re
+import urllib
 from urllib import parse as urlparse
 
 import requests
@@ -377,7 +378,7 @@ class OJS3APIClient(OJSBaseClient):
 
     # Submission status codes from OJS 3
     STATUS_QUEUED = 1
-    STATUS_SCHEDULED = 2
+    STATUS_SCHEDULED = 5
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
 
@@ -452,12 +453,18 @@ class OJS3APIClient(OJSBaseClient):
             return data[0]
         return None
 
-    def get_articles(self):
+    def get_published_articles(self):
+        return self.get_articles(stages=[self.STATUS_PUBLISHED, self.STATUS_QUEUED])
+
+    def get_articles(self, stages=None):
         request_url = (
             self.journal_url
             + self.API_PATH
             + self.SUBMISSIONS_PATH % ''
         )
+        if stages:
+            params = {"stages": stages}
+            request_url += "?%s" % urllib.urlencode(params)
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
         for i, article in enumerate(paginator):
