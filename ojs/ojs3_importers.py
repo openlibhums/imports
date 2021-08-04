@@ -18,6 +18,23 @@ from utils import setting_handler
 from plugins.imports import models
 
 
+#Role IDs
+ROLE_JOURNAL_MANAGER = 16
+ROLE_SECTION_EDITOR = 17
+ROLE_REVIEWER = 4096
+ROLE_ASSISTANT = 4097 #  Production manager
+ROLE_AUTHOR = 65536
+ROLE_READER = 1048576
+ROLE_SUBSCRIPTION_MANAGER = 2097152
+
+ROLES_MAP = {
+    ROLE_JOURNAL_MANAGER: "editor",
+    ROLE_SECTION_EDITOR: "section-editor",
+    ROLE_REVIEWER: "reviewer",
+    ROLE_ASSISTANT: "production",
+}
+
+
 class DummyRequest():
     def __init__(self, user=None, files=None, journal=None):
         self.user = user
@@ -114,7 +131,7 @@ def import_section(section_dict, issue, client):
         logger.info("Created Section %s" % tracked_section.section)
     else:
         logger.info("Updating Section %s" % tracked_section.section)
-    
+
     journal_models.SectionOrdering.objects.update_or_create(
         issue=issue,
         section=tracked_section.section,
@@ -212,10 +229,8 @@ def import_user(user_dict, journal):
     account, created = core_models.Account.objects.get_or_create(
         email=user_dict["email"],
         defaults = {
-            "first_name": delocalise(user_dict["given_name"]),
+            "first_name": delocalise(user_dict["givenName"]),
             "last_name": delocalise(user_dict["familyName"]),
-            "active": not user_dict.get("disabled", False),
-            "country": user_dict["country"]
         }
     )
     if user_dict["biography"] and not account.biography:
@@ -223,13 +238,27 @@ def import_user(user_dict, journal):
     if user_dict["signature"] and not account.signature:
         account.signature = delocalise(user_dict["signature"])
     if user_dict["orcid"] and not account.orcid:
-        orcid = user_dict["orcid"].split("orcid.org/")[-1]
+        orcid = user_dict["orcid"].split("orcid.org/")[-1] or None
         account.orcid = orcid
+    if user_dict["disabled"] is True:
+        account.active = False
+    if user_dict["country"]:
+        account.country = core_models.Country.objects.filter(
+            name=user_dict["country"]
+        ).first()
+
+    import_user_roles(user_dict, account, journal)
     for interest in user_dict["interests"]:
         account.interest.get_or_create(name=interest["interest"])
 
     return account, created
 
+
+def import_user_roles(user_dict, account, journal):
+    account.add_account_role('author', journal)
+    for group in user_dict["groups"]:
+        if group["roleId"] in ROLES_MAP:
+            account.add_account_role(ROLES_MAP[group["roleId"]], journal)
 
 
 def import_file(file_json, client, article, label=None, file_name=None, owner=None):
@@ -322,7 +351,7 @@ def get_or_create_article(article_dict, journal):
             title=delocalise(
                 article_dict["publication"]['fullTitle']
                 or "NO TITLE"
-            )
+            ),
             language=article_dict.get('locale'),
             stage=submission_models.STAGE_UNASSIGNED,
             is_import=True,

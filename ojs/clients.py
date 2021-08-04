@@ -381,16 +381,6 @@ class OJS3APIClient(OJSBaseClient):
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
 
-    #Role IDs
-    ROLE_JOURNAL_MANAGER = 16
-    ROLE_SECTION_EDITOR = 17
-    ROLE_REVIEWER = 4096
-    ROLE_ASSISTANT = 4097 #  Production manager
-    ROLE_AUTHOR = 65536
-    ROLE_READER = 1048576
-    ROLE_SUBSCRIPTION_MANAGER = 2097152
-
-
     def fetch(self, request_url, headers=None, stream=False):
         resp = self.session.get(request_url, headers=headers, stream=stream)
         if not resp.ok:
@@ -545,9 +535,9 @@ class OJS3APIClient(OJSBaseClient):
         )
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
-        for i, user in enumerate(paginator):
+        for _, user in enumerate(paginator):
             # The site endpoint for each issue object provides more metadata
-            yield self.get_user(self, user["id"])
+            yield self.get_user(user["id"])
 
     def get_user(self, ojs_user_id):
         """ Retrieves all journals from the contexts (sites) API"""

@@ -196,7 +196,6 @@ def import_ojs3_journals(client, journal_acronym=None, include_content=True):
                 logger.warning(e)
 
 
-def import_ojs_3_users(client, journal):
+def import_ojs3_users(client, journal):
     for user_dict in client.get_users():
         ojs3_importers.import_user(user_dict, journal)
-
