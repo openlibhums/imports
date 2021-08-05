@@ -11,31 +11,12 @@ from core import logic as core_logic
 from core import models as core_models
 from identifiers import models as identifiers_models
 from journal import models as journal_models
+from review import models as review_models
 from submission import models as submission_models
 from utils.logger import get_logger
 from utils import setting_handler
 
 from plugins.imports import models
-
-"""
-1 // Define the file stage identifiers.
-17  define('SUBMISSION_FILE_SUBMISSION', 2);
-  1 define('SUBMISSION_FILE_NOTE', 3);
-  2 define('SUBMISSION_FILE_REVIEW_FILE', 4);
-  3 define('SUBMISSION_FILE_REVIEW_ATTACHMENT', 5);
-  4 //------SUBMISSION_FILE_REVIEW_REVISION defined below (FIXME: re-order before release)
-  5 define('SUBMISSION_FILE_FINAL', 6);
-  6 define('SUBMISSION_FILE_COPYEDIT', 9);
-  7 define('SUBMISSION_FILE_PROOF', 10);
-  8 define('SUBMISSION_FILE_PRODUCTION_READY', 11);
-  9 define('SUBMISSION_FILE_ATTACHMENT', 13);
- 10 define('SUBMISSION_FILE_REVIEW_REVISION', 15);
- 11 define('SUBMISSION_FILE_DEPENDENT', 17);
- 12 define('SUBMISSION_FILE_QUERY', 18);
- 13 define('SUBMISSION_FILE_INTERNAL_REVIEW_FILE', 19);
- 14 define('SUBMISSION_FILE_INTERNAL_REVIEW_REVISION', 20);
-"""
-
 
 #Role IDs
 ROLE_JOURNAL_MANAGER = 16
@@ -46,12 +27,43 @@ ROLE_AUTHOR = 65536
 ROLE_READER = 1048576
 ROLE_SUBSCRIPTION_MANAGER = 2097152
 
+
 ROLES_MAP = {
     ROLE_JOURNAL_MANAGER: "editor",
     ROLE_SECTION_EDITOR: "section-editor",
     ROLE_REVIEWER: "reviewer",
     ROLE_ASSISTANT: "production",
 }
+
+# review assignment statuses
+REVIEW_ASSIGNMENT_STATUS_AWAITING_RESPONSE = 0 # request has been sent but reviewer has not responded
+REVIEW_ASSIGNMENT_STATUS_DECLINED = 1 # reviewer declined review request
+REVIEW_ASSIGNMENT_STATUS_RESPONSE_OVERDUE = 4 # review not responded within due date
+REVIEW_ASSIGNMENT_STATUS_ACCEPTED = 5 # reviewer has agreed to the review
+REVIEW_ASSIGNMENT_STATUS_REVIEW_OVERDUE = 6 # review not submitted within due date
+REVIEW_ASSIGNMENT_STATUS_RECEIVED = 7 # review has been submitted
+REVIEW_ASSIGNMENT_STATUS_COMPLETE = 8 # review has been confirmed by an editor
+REVIEW_ASSIGNMENT_STATUS_THANKED = 9 # reviewer has been thanked
+REVIEW_ASSIGNMENT_STATUS_CANCELLED = 10 # reviewer cancelled review request
+
+
+# Review Recommendations
+SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT = 1
+SUBMISSION_REVIEWER_RECOMMENDATION_PENDING_REVISIONS = 2
+SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE = 3
+SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE = 4
+SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE = 5
+SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS = 6
+
+
+REVIEW_RECOMMENDATION_MAP = dict(
+    SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT = 'accept',
+    SUBMISSION_REVIEWER_RECOMMENDATION_PENDING_REVISIONS = 'minor_revisions',
+    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE = 'major_revisions',
+    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE = 'reject',
+    SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE = 'reject',
+    SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS = 'minor_revisions',
+)
 
 
 class DummyRequest():
@@ -73,10 +85,13 @@ GALLEY_TYPES = {
 }
 
 
-def import_article(client, journal, article_dict):
+def import_article(client, journal, article_dict, editorial=False):
     pub_article_dict = get_pub_article_dict(article_dict, client)
     article_dict["publication"] = pub_article_dict
     article = import_article_metadata(article_dict, journal, client)
+    if editorial:
+        if article_dict["reviewAssignments"]:
+            import_reviews(client, article, article_dict)
     import_article_galleys(article, pub_article_dict, journal, client)
 
 
@@ -252,6 +267,88 @@ def import_article_galleys(article, publication, journal, client):
                 )
             else:
                 logger.error("Unable to fetch Galley %s" % galley["file"])
+
+
+def import_reviews(client, article, article_dict):
+    default_form = review_models.ReviewForm.objects.get(
+        slug="default-form", journal=article.journal)
+    for round_dict in article_dict["reviewRounds"]:
+        round, c = review_models.ReviewRound.objects.get_or_create(
+            article=article,
+            round_number=round_dict["round"],
+        )
+        import_review_round_files(client, article_dict["id"], round_dict["id"], round)
+    for review_dict in article_dict["reviewAssignments"]:
+        try:
+            reviewer = models.OJSAccount.objects.get(
+                ojs_id=review_dict["reviewerId"],
+                journal=article.journal,
+            ).account
+        except models.OJSAccount.DoesNotExist:
+            user_dict = client.get_user(review_dict["reviewerId"])
+            reviewer = import_user(user_dict, article.journal)
+
+        review_defaults = dict(
+            review_type="traditional",
+            visibility="double-blind",
+            date_due=attempt_to_make_timezone_aware(review_dict["due"]),
+            date_requested=attempt_to_make_timezone_aware(review_dict["dateAssigned"]),
+            date_complete=attempt_to_make_timezone_aware(review_dict["dateCompleted"]),
+            date_accepted=attempt_to_make_timezone_aware(review_dict["dateConfirmed"]),
+            form=default_form,
+        )
+
+        assignment, _ = review_models.ReviewAssignment.objects.update_or_create(
+            article=article,
+            reviewer=reviewer,
+            review_round=review_models.ReviewRound.objects.get(
+                article=article,
+                round_number=review_dict["round"],
+            ),
+            defaults=review_defaults,
+        )
+        if review_dict["statusId"] == REVIEW_ASSIGNMENT_STATUS_DECLINED:
+            assignment.date_declined = assignment.date_confirme
+            assignment.date_accepted = assignment.date_complete = None
+            assignment.is_complete = True
+        elif review_dict["statusId"] == REVIEW_ASSIGNMENT_STATUS_CANCELLED:
+            assignment.decision = "withdrawn"
+
+        if review_dict["recommendation"]:
+            assignment.decision = REVIEW_RECOMMENDATION_MAP[
+                review_dict["recommendation"]]
+            assignment.is_complete = True
+        assignment.save()
+
+        import_reviewer_files(
+            client, article_dict["id"], assignment, review_dict["id"]
+        )
+        if review["comments"]:
+            handle_review_comment(
+                article, assignment, default_form, review_dict["comments"])
+
+        assignment.comments_for_editor = review_dict["commentsEditor"]
+        assignment.save()
+
+
+def import_review_round_files(client, submission_id, round_id, round):
+    label = "File for Peer Review"
+    files = client.get_submission_files(submission_id, round_ids=[round_id])
+    round.review_files.clear()
+    for file_json in files:
+        file_for_review = import_file(file_json, client, round.article, label)
+        round.review_files.add(file_for_review)
+
+
+def import_reviewer_files(client, submission_id, assignment, review_id):
+    label = "File from Reviewer"
+    files = client.get_submission_files(submission_id, review_ids=[review_id])
+    for file_json in files:
+        reviewer_file = import_file(file_json, client, assignment.article, label)
+        assignment.review_file = reviewer_file
+        assignment.save()
+
+
 
 def import_user(user_dict, journal):
     account, created = core_models.Account.objects.get_or_create(
@@ -670,3 +767,36 @@ def attempt_to_make_timezone_aware(datetime):
         return timezone.make_aware(dt.replace(hour=12))
     else:
         return None
+
+
+def handle_review_comment(article, review_obj, compublic=True):
+   element = form.elements.filter(kind="textarea").first()
+    if element:
+        soup = BeautifulSoup(comment, "html.parser")
+        for tag in soup.find_all(["br", "p"]):
+            tag.replace_with("\n" + tag.text)
+        comment = soup.text
+        answer, _ = review_models.ReviewAssignmentAnswer.objects.get_or_create(
+            assignment=review_obj,
+        )
+        element.snapshot(answer)
+        answer.answer = comment
+        answer.for_author_consumption=public
+        answer.save()
+    else:
+        comment = linebreaksbr(comment)
+        filepath = core_files.create_temp_file(
+            comment, 'comment-from-ojs.html')
+        f = open(filepath, 'r')
+        comment_file = core_files.save_file_to_article(
+            f,
+            article,
+            article.owner,
+            label='Review Comments',
+            save=False,
+        )
+
+        review_obj.review_file = comment_file
+    review_obj.save()
+
+    return review_obj

@@ -1,6 +1,5 @@
 import os
 import re
-import urllib
 from urllib import parse as urlparse
 
 import requests
@@ -366,6 +365,7 @@ class OJS3APIClient(OJSBaseClient):
     AUTH_PATH = '/login/signIn'
     USERS_PATH = "/users/%s"
     SUBMISSIONS_PATH = '/submissions/%s'
+    SUBMISSION_FILES_PATH = '/submissions/%s/files/%s'
     ISSUES_PATH = '/issues/%s'
     ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
     PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
@@ -381,6 +381,22 @@ class OJS3APIClient(OJSBaseClient):
     STATUS_SCHEDULED = 5
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
+
+    #File stages for OJS3
+    SUBMISSION_FILE_SUBMISSION = 2
+    SUBMISSION_FILE_NOTE = 3
+    SUBMISSION_FILE_REVIEW_FILE = 4
+    SUBMISSION_FILE_REVIEW_ATTACHMENT = 5
+    SUBMISSION_FILE_FINAL = 6
+    SUBMISSION_FILE_COPYEDIT = 9
+    SUBMISSION_FILE_PROOF = 10
+    SUBMISSION_FILE_PRODUCTION_READY = 11
+    SUBMISSION_FILE_ATTACHMENT = 13
+    SUBMISSION_FILE_REVIEW_REVISION = 15
+    SUBMISSION_FILE_DEPENDENT = 17
+    SUBMISSION_FILE_QUERY = 18
+    SUBMISSION_FILE_INTERNAL_REVIEW_FILE = 19
+    SUBMISSION_FILE_INTERNAL_REVIEW_REVISION = 20
 
     def fetch(self, request_url, headers=None, stream=False):
         resp = self.session.get(request_url, headers=headers, stream=stream)
@@ -441,18 +457,6 @@ class OJS3APIClient(OJSBaseClient):
         response = self.session.post(request_url, headers=headers, data=body)
         return response
 
-    def get_article(self, ojs_id):
-        request_url = (
-            self.journal_url
-            + self.API_PATH
-            + "?%s" % urlparse.urlencode({"article_id": ojs_id})
-        )
-        response = self.fetch(request_url)
-        data = response.json()
-        if data:
-            return data[0]
-        return None
-
     def get_published_articles(self):
         return self.get_articles(stages=[self.STATUS_PUBLISHED, self.STATUS_QUEUED])
 
@@ -464,11 +468,20 @@ class OJS3APIClient(OJSBaseClient):
         )
         if stages:
             params = {"stages": stages}
-            request_url += "?%s" % urllib.urlencode(params)
+            request_url += "?%s" % urlparse.urlencode(params)
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
         for i, article in enumerate(paginator):
             yield article
+
+    def get_article(self, ojs_id):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SUBMISSIONS_PATH % ojs_id
+        )
+        response = self.fetch(request_url)
+        return response.json()
 
     def get_publication(self, ojs_id, publication_id):
         request_url = (
@@ -495,6 +508,36 @@ class OJS3APIClient(OJSBaseClient):
         for i, journal in enumerate(paginator):
             # The site endpoint for each issue object provides more metadata
             yield self.fetch(journal["_href"]).json()
+
+
+    def get_submission_files(self, submission_id, review_ids=None, round_ids=None):
+        """ Gets all the files linked to a given ojs submission
+        :param submission_id: The OJS submission ID
+        :param review_ids: A list of review assignment ids to filter by
+        :round_ids: A list of review round ids to filter by
+        """
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SUBMISSION_FILES_PATH % (submission_id, '')
+        )
+        query_params = {}
+        if review_ids:
+            query_params["reviewIds"] = ','.join(str(i) for i in review_ids)
+            query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_ATTACHMENT
+
+        elif round_ids:
+            query_params["reviewRoundIds"] = ','.join(str(i) for i in round_ids)
+            query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
+        if query_params:
+            request_url += "?%s" % urlparse.urlencode(query_params)
+
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+
+        for f in paginator:
+            yield f
+
 
     def get_issues(self):
         request_url = (
