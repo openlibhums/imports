@@ -102,11 +102,50 @@ def import_article(client, journal, article_dict, editorial=False):
     pub_article_dict = get_pub_article_dict(article_dict, client)
     article_dict["publication"] = pub_article_dict
     article = import_article_metadata(article_dict, journal, client)
+    if not article:
+        return
+    import_author_assignments(article, article_dict)
     if editorial:
+        import_editor_assignments(article, article_dict)
         if article_dict["reviewAssignments"]:
             import_reviews(client, article, article_dict)
     import_article_galleys(article, pub_article_dict, journal, client)
 
+
+def import_author_assignments(article, article_dict):
+    for i, author_id in enumerate(article_dict["authors"]):
+        account = models.OJSAccount.objects.get(
+            ojs_id=author_id).account
+        article.authors.add(account)
+        if i == 0:
+            article.owner = account
+            article.correspondence_author = account
+            article.save()
+
+
+def import_editor_assignments(article, article_dict):
+    for editor_id in set(article_dict["editors"]):
+        account = models.OJSAccount.objects.get(
+            ojs_id=editor_id, journal=article.journal).account
+        review_models.EditorAssignment.objects.get_or_create(
+            article=article,
+            editor=account,
+            defaults={
+                "editor_type": "editor",
+                "assigned": article.date_submitted,
+            }
+        )
+    for editor_id in set(article_dict["section-editors"]):
+        account = models.OJSAccount.objects.get(
+            ojs_id=editor_id, journal=article.journal).account
+        review_models.EditorAssignment.objects.get_or_create(
+            article=article,
+            editor=account,
+            defaults={
+                "editor_type": "section-editor",
+                "assigned": article.date_submitted,
+            }
+        )
 
 def import_issue(client, journal, issue_dict):
     issue, c = get_or_create_issue(issue_dict, journal)
@@ -288,15 +327,12 @@ def import_reviews(client, article, article_dict):
     logger.info("Importing peer reviews")
     default_form = review_models.ReviewForm.objects.get(
         slug="default-form", journal=article.journal)
-    total_rounds = len(article_dict["reviewRounds"])
     for round_dict in article_dict["reviewRounds"]:
         round, c = review_models.ReviewRound.objects.get_or_create(
             article=article,
             round_number=round_dict["round"],
         )
         import_review_round_files(client, article_dict["id"], round_dict["id"], round)
-
-        # If it is the last round, check if there are active revisions
         import_revision(client, article_dict["id"], article, round_dict)
 
     for review_dict in article_dict["reviewAssignments"]:
