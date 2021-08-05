@@ -168,8 +168,11 @@ def import_users(ojs_client, journal):
             logger.info("re-imported user: %s", account.username)
 
 
-def import_ojs3_articles(client, journal, editorial=False):
-    articles = client.get_articles()
+def import_ojs3_articles(client, journal, ojs_id=None, editorial=False):
+    if ojs_id:
+        articles = [client.get_article(ojs_id)]
+    else:
+        articles = client.get_articles()
     for d in articles:
         ojs3_importers.import_article(client, journal, d, editorial=editorial)
 

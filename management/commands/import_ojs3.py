@@ -22,8 +22,10 @@ class Command(BaseCommand):
                             help="Imports only issues")
         parser.add_argument('--users', action="store_true", default=False,
                             help="Imports only users")
-        parser.add_argument('--ojs_id', default=False,
+        parser.add_argument('--ojs_id', default=None,
                             help="Imports only the article matching by ojs id")
+        parser.add_argument('--editorial', action="store_true", default=False,
+                            help="Include editorial data such as peer reviews")
 
 
     def handle(self, *args, **options):
@@ -41,4 +43,8 @@ class Command(BaseCommand):
         elif options["users"]:
             ojs.import_ojs3_users(client, journal)
         else:
-            ojs.import_ojs3_articles(client, journal)
+            ojs.import_ojs3_articles(
+                client, journal,
+                ojs_id=options["ojs_id"],
+                editorial=options["editorial"],
+            )
