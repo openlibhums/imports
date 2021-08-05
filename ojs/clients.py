@@ -533,10 +533,9 @@ class OJS3APIClient(OJSBaseClient):
         return self.fetch_file(request_url)
 
     def get_users(self):
-        """ Retrieves all journals from the contexts (sites) API"""
+        """ Retrieves all users for the given journal"""
         request_url = (
-            self.base_url
-            + self.ROOT_PATH
+            self.journal_url
             + self.API_PATH
             + self.USERS_PATH % ''
         )
@@ -547,10 +546,9 @@ class OJS3APIClient(OJSBaseClient):
             yield self.get_user(user["id"])
 
     def get_user(self, ojs_user_id):
-        """ Retrieves all journals from the contexts (sites) API"""
+        """ Retrieves the user matching the provided ID"""
         request_url = (
-            self.base_url
-            + self.ROOT_PATH
+            self.journal_url
             + self.API_PATH
             + self.USERS_PATH % ojs_user_id
         )
