@@ -261,6 +261,11 @@ def import_user(user_dict, journal):
             "last_name": delocalise(user_dict["familyName"]),
         }
     )
+    if created:
+        logger.info("Imported new OJS3 user: %s", account)
+    else:
+        logger.info("Updating OJS3 user: %s", account)
+
     if user_dict["biography"] and not account.biography:
         account.biography = delocalise(user_dict["biography"])
     if user_dict["signature"] and not account.signature:
@@ -278,6 +283,17 @@ def import_user(user_dict, journal):
     import_user_roles(user_dict, account, journal)
     for interest in user_dict["interests"]:
         account.interest.get_or_create(name=interest["interest"])
+
+    _, c = models.OJSAccount.objects.get_or_create(
+        journal=journal,
+        account=account,
+        ojs_id=user_dict["id"],
+    )
+    if c:
+        logger.debug(
+            "Linked user %s with ojs id %s on %s",
+            account, user_dict["id"], journal,
+        )
 
     return account, created
 

@@ -25,8 +25,21 @@ class OJS3Section(models.Model):
         'submission.Section', blank=True, null=True,
         on_delete=models.CASCADE,
     )
+
     class Meta:
         unique_together = (
             ('ojs_id', 'journal'),
             ('ojs_id', 'section'),
+        )
+
+class OJSAccount(models.Model):
+    ojs_id = models.IntegerField()
+    journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
+    account = models.ForeignKey(
+        'core.Account', blank=True, null=True,
+    )
+
+    class Meta:
+        unique_together = (
+            ('ojs_id', 'journal', 'account'),
         )
