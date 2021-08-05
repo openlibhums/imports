@@ -17,6 +17,25 @@ from utils import setting_handler
 
 from plugins.imports import models
 
+"""
+1 // Define the file stage identifiers.
+17  define('SUBMISSION_FILE_SUBMISSION', 2);
+  1 define('SUBMISSION_FILE_NOTE', 3);
+  2 define('SUBMISSION_FILE_REVIEW_FILE', 4);
+  3 define('SUBMISSION_FILE_REVIEW_ATTACHMENT', 5);
+  4 //------SUBMISSION_FILE_REVIEW_REVISION defined below (FIXME: re-order before release)
+  5 define('SUBMISSION_FILE_FINAL', 6);
+  6 define('SUBMISSION_FILE_COPYEDIT', 9);
+  7 define('SUBMISSION_FILE_PROOF', 10);
+  8 define('SUBMISSION_FILE_PRODUCTION_READY', 11);
+  9 define('SUBMISSION_FILE_ATTACHMENT', 13);
+ 10 define('SUBMISSION_FILE_REVIEW_REVISION', 15);
+ 11 define('SUBMISSION_FILE_DEPENDENT', 17);
+ 12 define('SUBMISSION_FILE_QUERY', 18);
+ 13 define('SUBMISSION_FILE_INTERNAL_REVIEW_FILE', 19);
+ 14 define('SUBMISSION_FILE_INTERNAL_REVIEW_REVISION', 20);
+"""
+
 
 #Role IDs
 ROLE_JOURNAL_MANAGER = 16
@@ -152,7 +171,16 @@ def import_article_metadata(article_dict, journal, client):
         logger.info("Updating article %d" % article.pk)
 
     # Update Metadata
-    article.abstract = delocalise(article_dict["publication"]["abstract"])
+    abstract_translations = get_localised(
+        article_dict["publication"]["abstract"], prefix="abstract",
+    )
+    article.__dict__.update(abstract_translations)
+
+    title_translations = get_localised(
+        article_dict["publication"]["fullTitle"], prefix="title",
+    )
+    article.__dict__.update(title_translations)
+
     article.page_numbers = article_dict["publication"]["pages"]
     if article_dict["publication"].get("datePublished"):
         date_published = timezone.make_aware(

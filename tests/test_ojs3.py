@@ -52,9 +52,18 @@ class OJS3ImportArticles(TestCase):
         self.assertEqual(
             id_models.Identifier.objects.get(
                 id_type="doi", identifier='10.0001/test'
-                ).article.get_identifier("ojs_id"),
+            ).article.get_identifier("ojs_id"),
             '17660',
         )
+
+    def test_import_article_languages(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test'
+        ).article
+        self.assertEqual(article.title_de, "titel")
 
 
 class MockOJS3Client():
@@ -121,7 +130,7 @@ class MockOJS3Client():
                         'coverImage': {'en_US': None},
                         'datePublished': '2021-02-23',
                         'doiSuffix': None,
-                        'fullTitle': {'en_US': 'title'},
+                        'fullTitle': {'en_US': 'title', 'en_DE': 'titel'},
                         'galleys': [{'doiSuffix': None,
                                     'file': {'_href': 'url',
                                                 'assocId': 15052,
