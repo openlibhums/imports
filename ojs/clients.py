@@ -510,7 +510,7 @@ class OJS3APIClient(OJSBaseClient):
             yield self.fetch(journal["_href"]).json()
 
 
-    def get_submission_files(self, submission_id, review_ids=None, round_ids=None):
+    def get_submission_files(self, submission_id, review_ids=None, round_ids=None, revisions=False):
         """ Gets all the files linked to a given ojs submission
         :param submission_id: The OJS submission ID
         :param review_ids: A list of review assignment ids to filter by
@@ -528,7 +528,10 @@ class OJS3APIClient(OJSBaseClient):
 
         elif round_ids:
             query_params["reviewRoundIds"] = ','.join(str(i) for i in round_ids)
-            query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
+            if revisions:
+                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_REVISION
+            else:
+                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
         if query_params:
             request_url += "?%s" % urlparse.urlencode(query_params)
 

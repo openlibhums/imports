@@ -1,9 +1,13 @@
+from datetime import timedelta
+
+from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
-from django.utils import timezone
-from django.utils.html import strip_tags
 from django.conf import settings
 from django.core.management import call_command
 from django.core.exceptions import ObjectDoesNotExist
+from django.template.defaultfilters import linebreaksbr
+from django.utils import timezone
+from django.utils.html import strip_tags
 
 from cms import models as cms_models
 from core import files as core_files
@@ -56,14 +60,23 @@ SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE = 5
 SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS = 6
 
 
-REVIEW_RECOMMENDATION_MAP = dict(
-    SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT = 'accept',
-    SUBMISSION_REVIEWER_RECOMMENDATION_PENDING_REVISIONS = 'minor_revisions',
-    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE = 'major_revisions',
-    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE = 'reject',
-    SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE = 'reject',
-    SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS = 'minor_revisions',
-)
+REVIEW_RECOMMENDATION_MAP = {
+    SUBMISSION_REVIEWER_RECOMMENDATION_ACCEPT: 'accept',
+    SUBMISSION_REVIEWER_RECOMMENDATION_PENDING_REVISIONS: 'minor_revisions',
+    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_HERE: 'major_revisions',
+    SUBMISSION_REVIEWER_RECOMMENDATION_RESUBMIT_ELSEWHERE: 'reject',
+    SUBMISSION_REVIEWER_RECOMMENDATION_DECLINE: 'reject',
+    SUBMISSION_REVIEWER_RECOMMENDATION_SEE_COMMENTS: 'minor_revisions',
+}
+
+REVIEW_ROUND_STATUS_REVISIONS_REQUESTED = 1
+REVIEW_ROUND_STATUS_RESUBMIT_FOR_REVIEW = 2
+REVIEW_ROUND_STATUS_SENT_TO_EXTERNAL = 3
+REVIEW_ROUND_STATUS_ACCEPTED = 4
+REVIEW_ROUND_STATUS_DECLINED = 5
+REVIEW_ROUND_STATUS_REVISIONS_SUBMITTED = 11
+
+REVISION_STATUSES = {2, 3, 11}
 
 
 class DummyRequest():
@@ -180,6 +193,8 @@ def import_section(section_dict, issue, client):
 def import_article_metadata(article_dict, journal, client):
     logger.info("Processing OJS ID %s" % article_dict["id"])
     article, created = get_or_create_article(article_dict, journal)
+    if not article:
+        return None
     if created:
         logger.info("Created article %d" % article.pk)
     else:
@@ -270,14 +285,20 @@ def import_article_galleys(article, publication, journal, client):
 
 
 def import_reviews(client, article, article_dict):
+    logger.info("Importing peer reviews")
     default_form = review_models.ReviewForm.objects.get(
         slug="default-form", journal=article.journal)
+    total_rounds = len(article_dict["reviewRounds"])
     for round_dict in article_dict["reviewRounds"]:
         round, c = review_models.ReviewRound.objects.get_or_create(
             article=article,
             round_number=round_dict["round"],
         )
         import_review_round_files(client, article_dict["id"], round_dict["id"], round)
+
+        # If it is the last round, check if there are active revisions
+        import_revision(client, article_dict["id"], article, round_dict)
+
     for review_dict in article_dict["reviewAssignments"]:
         try:
             reviewer = models.OJSAccount.objects.get(
@@ -323,12 +344,47 @@ def import_reviews(client, article, article_dict):
         import_reviewer_files(
             client, article_dict["id"], assignment, review_dict["id"]
         )
-        if review["comments"]:
+        if review_dict["comments"]:
             handle_review_comment(
                 article, assignment, default_form, review_dict["comments"])
 
         assignment.comments_for_editor = review_dict["commentsEditor"]
         assignment.save()
+
+
+def import_revision(client, submission_id, article, round_dict):
+    logger.info("Importing revision for round %s" % round_dict["round"])
+    revision_files = []
+    date_completed = None
+    files = client.get_submission_files(
+        submission_id, round_ids=[round_dict["id"]], revisions=True)
+    label = "Author Revision"
+    for file_json in files:
+        revision = import_file(file_json, client, article, label)
+        revision_files.append(revision)
+    if revision_files:
+        date_completed = revision_files[-1].date_uploaded
+
+    if revision_files or round_dict["statusId"] in {1, 2}:
+        request, c  = review_models.RevisionRequest.objects.get_or_create(
+            article=article,
+            date_completed=date_completed,
+            defaults={
+                "editor_note": round_dict["status"],
+                "editor": article.editor_list()[0],
+                "date_due": timezone.now() + timedelta(7),
+                "type": "major_revisions",
+            }
+        )
+        for revision in revision_files:
+            article.manuscript_files.add(revision)
+            request.actions.update_or_create(
+                text="Author Uploaded: %s" % revision.original_filename,
+                defaults={
+                    "logged": revision.date_uploaded,
+                    "user": revision.owner or article.owner,
+                }
+            )
 
 
 def import_review_round_files(client, submission_id, round_id, round):
@@ -407,10 +463,19 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
         label = file_json.get("label", "file")
     if not file_name:
         file_name = delocalise(file_json["name"])
+    if not owner:
+        if file_json["uploaderUserId"]:
+            owner = models.OJSAccount.objects.get(
+                ojs_id=file_json["uploaderUserId"],
+                journal=article.journal
+            ).account
+        else:
+            owner = article.owner
+
     django_file = client.fetch_file(file_json["url"])
     if django_file:
         janeway_file = core_files.save_file_to_article(
-            django_file, article, owner or article.owner, label=label or file_json["label"]
+            django_file, article, owner, label=label or file_json["label"]
         )
         if file_json["mimetype"]:
             janeway_file.mime_type = file_json["mimetype"]
@@ -455,6 +520,8 @@ def get_or_create_issue(issue_dict, journal):
 def get_or_create_article(article_dict, journal):
     """Get or create article, looking up by OJS ID or DOI"""
     created = False
+    if not article_dict['dateSubmitted']:
+        return None, created
     date_started = timezone.make_aware(
         dateparser.parse(article_dict['dateSubmitted'])
     )
@@ -753,7 +820,7 @@ def get_localised(localised, prefix=None):
     if prefix:
         transformed = {
             # "en_US" => "prefix_en"
-            "%s_%s" % (prefix, k.split("_")[0]): v 
+            "%s_%s" % (prefix, k.split("_")[0]): v
             for k, v in transformed.items()
             if k.split("_")[0] in langs
         }
@@ -769,8 +836,8 @@ def attempt_to_make_timezone_aware(datetime):
         return None
 
 
-def handle_review_comment(article, review_obj, compublic=True):
-   element = form.elements.filter(kind="textarea").first()
+def handle_review_comment(article, review_obj, form, comment, public=True):
+    element = form.elements.filter(kind="textarea").first()
     if element:
         soup = BeautifulSoup(comment, "html.parser")
         for tag in soup.find_all(["br", "p"]):
