@@ -474,7 +474,6 @@ class OJS3APIClient(OJSBaseClient):
         for i, article in enumerate(paginator):
             yield self.get_article(article["id"])
 
-
     def get_article(self, ojs_id):
         request_url = (
             self.journal_url
@@ -509,6 +508,10 @@ class OJS3APIClient(OJSBaseClient):
         for i, journal in enumerate(paginator):
             # The site endpoint for each issue object provides more metadata
             yield self.fetch(journal["_href"]).json()
+
+    def get_manuscript_files(self, submission_id):
+        return self.get_submission_files(
+            submission_id, fileStages=self.SUBMISSION_FILE_SUBMISSION)
 
     def get_copyediting_files(self, submission_id, drafts=False):
         query_params = {}

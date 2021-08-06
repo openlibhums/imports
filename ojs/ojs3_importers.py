@@ -107,8 +107,9 @@ def import_article(client, journal, article_dict, editorial=False):
         return
     import_author_assignments(article, article_dict)
     if editorial:
+        import_manuscripts(article, article_dict)
         import_editor_assignments(article, article_dict)
-        if article_dict["reviewAssignments"]:
+        if article_dict["reviewAssignments"] or article_dict["reviewRounds"]:
             import_reviews(client, article, article_dict)
         import_copyedits(client, article, article_dict)
     import_article_galleys(article, pub_article_dict, journal, client)
@@ -123,6 +124,13 @@ def import_author_assignments(article, article_dict):
             article.owner = account
             article.correspondence_author = account
             article.save()
+
+
+def import_mansucripts(article, article_dict)
+    files = client.get_manuscript_files(article_dict["id"])
+    for file_json in files:
+        manuscript = import_file(file_json, client, article)
+        article.manuscript_files.add(draft)
 
 
 def import_editor_assignments(article, article_dict):
