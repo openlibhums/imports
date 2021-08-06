@@ -23,6 +23,12 @@ from utils import setting_handler
 
 from plugins.imports import models
 
+# Submission stages
+STATUS_QUEUED = 1
+STATUS_PUBLISHED = 3
+STATUS_DECLINED = 4
+STATUS_SCHEDULED = 5
+
 #Role IDs
 ROLE_JOURNAL_MANAGER = 16
 ROLE_SECTION_EDITOR = 17
@@ -972,3 +978,51 @@ def handle_review_comment(article, review_obj, form, comment, public=True):
     review_obj.save()
 
     return review_obj
+
+def create_workflow_log(article, stage):
+    element = core_models.WorkflowElement.objects.get(
+        journal=article.journal,
+        stage=stage,
+    )
+
+    return core_models.WorkflowLog.objects.get_or_create(
+        article=article,
+        element=element,
+    )
+
+
+def set_stage(article, article_dict):
+    stage = None
+
+    if article_dict["stageId"] in {STATUS_PUBLISHED, STATUS_SCHEDULED}:
+        stage = submission_models.STAGE_PUBLISHED;
+
+    elif article_dict["stages"]:
+        for stage_dict in article_dict["stages"]:
+            if stage_dict["isActiveStage"] is True:
+                if stage_dict["label"] == "Review":
+                    stage = submission_models.STAGE_UNDER_REVIEW
+                    create_workflow_log(
+                        article, submission_models.STAGE_UNASSIGNED)
+                elif stage_dict["label"] == "Copyediting":
+                    stage = submission_models.STAGE_EDITOR_COPYEDITING
+                    create_workflow_log( article, stage)
+                elif stage_dict["label"] == "Production":
+                    typesetting_plugin = article.journal.element_in_workflow(
+                        "Typesetting Plugin")
+                    if typesetting_plugin:
+                        stage = typesetting_settings.STAGE
+                        create_workflow_log( article, stage)
+                    else:
+                        stage = submission_models.STAGE_TYPESETTING
+                        create_workflow_log(article, stage)
+
+    if stage == submission_models.STAGE_PUBLISHED:
+        create_workflow_log(
+            article, submission_models.STAGE_READY_FOR_PUBLICATION)
+
+    if not stage:
+        stage = submission_models.STAGE_UNASSIGNED
+
+    article.stage = stage
+    article.save()
