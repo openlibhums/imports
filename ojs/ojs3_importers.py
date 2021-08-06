@@ -593,12 +593,18 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
         if file_json["createdAt"]:
             janeway_file.date_uploaded = attempt_to_make_timezone_aware(
                 file_json["createdAt"])
+
+        janeway_file.original_filename = file_name
+        janeway_file.save()
+
         if file_json["updatedAt"]:
             core_models.File.objects.filter(id=janeway_file.pk).update(
                 date_modified=attempt_to_make_timezone_aware(file_json["updatedAt"])
             )
-        janeway_file.original_filename = file_name
-        janeway_file.save()
+        elif file_json["createdAt"]:
+            core_models.File.objects.filter(id=janeway_file.pk).update(
+                date_modified=attempt_to_make_timezone_aware(file_json["createdAt"])
+            )
 
         return janeway_file
 
@@ -729,10 +735,9 @@ def update_or_create_section(journal, ojs_section_id, section_dict=None):
 def create_frozen_record(author, article):
     """ Creates a frozen record for the article from author metadata
 
-    We create a frozen record that is not linked to a user
-    account. This is because email addresses are not unique for author
-    records on OJS, so there will be only a single account for all those
-    authors which would then update itself instead of creating a new record
+    We create frozen records directly from the author data in OJS, since the
+    same email address can be shared across multiple authors in OJS3. We then
+    link the account to the frozen record if one exists for the given email
     :param author: an author object from OJS
     :param article: an instance of submission.models.Article
     """
@@ -749,6 +754,15 @@ def create_frozen_record(author, article):
         logger.debug("Added Frozen Author %s", frozen_dict)
     else:
         logger.debug("Updated Frozen Author %s", frozen_dict)
+
+    if author["email"]:
+        try:
+            account = core_models.Account.objects.get(
+                email__iexact=author["email"])
+            frozen.account = account
+            frozen.save()
+        except core_models.Account.DoesNotExist:
+            logger.warning("No account matching %s" % author["email"])
 
     return frozen, created
 
