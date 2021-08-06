@@ -106,13 +106,15 @@ def import_article(client, journal, article_dict, editorial=False):
     if not article:
         return
     import_author_assignments(article, article_dict)
+    import_article_galleys(article, pub_article_dict, journal, client)
     if editorial:
-        import_manuscripts(article, article_dict)
+        import_manuscripts(client, article, article_dict)
         import_editor_assignments(article, article_dict)
         if article_dict["reviewAssignments"] or article_dict["reviewRounds"]:
             import_reviews(client, article, article_dict)
         import_copyedits(client, article, article_dict)
-    import_article_galleys(article, pub_article_dict, journal, client)
+        import_production(client, article, article_dict)
+    set_stage(article, article_dict)
 
 
 def import_author_assignments(article, article_dict):
@@ -126,11 +128,13 @@ def import_author_assignments(article, article_dict):
             article.save()
 
 
-def import_mansucripts(article, article_dict)
+def import_manuscripts(client, article, article_dict):
     files = client.get_manuscript_files(article_dict["id"])
+    label = "Author Manuscript"
     for file_json in files:
-        manuscript = import_file(file_json, client, article)
-        article.manuscript_files.add(draft)
+        manuscript = import_file(file_json, client, article, label=label)
+        if manuscript:
+            article.manuscript_files.add(manuscript)
 
 
 def import_editor_assignments(article, article_dict):
@@ -334,6 +338,7 @@ def import_article_galleys(article, publication, journal, client):
 
 
 def import_reviews(client, article, article_dict):
+    create_workflow_log(article, submission_models.STAGE_UNASSIGNED)
     logger.info("Importing peer reviews")
     default_form = review_models.ReviewForm.objects.get(
         slug="default-form", journal=article.journal)
@@ -401,15 +406,18 @@ def import_reviews(client, article, article_dict):
 def import_copyedits(client, article, article_dict):
     drafts = []
     draft_files = client.get_copyediting_files(article_dict["id"], drafts=True)
+    draft_label = "Draft"
     for file_json in draft_files:
-        draft = import_file(file_json, client, article)
+        draft = import_file(file_json, client, article, label=draft_label)
         article.manuscript_files.add(draft)
         drafts.append(draft)
 
     copyedited_files = client.get_copyediting_files(article_dict["id"])
     copyediting_models.CopyeditAssignment.objects.filter(article=article).delete()
+    copyedits = []
+    copyedit_label = "Copyedited Manuscript"
     for file_json in copyedited_files:
-        copyedit = import_file(file_json, client, article)
+        copyedit = import_file(file_json, client, article, label=copyedit_label)
         assignment = copyediting_models.CopyeditAssignment.objects.create(
             article=article,
             copyeditor=copyedit.owner,
@@ -418,10 +426,35 @@ def import_copyedits(client, article, article_dict):
             date_decided=copyedit.date_uploaded,
             copyeditor_completed=copyedit.date_modified or copyedit.date_uploaded
         )
-        assignment.copyeditor_files.add(copyedit)
-        assignment.files_for_copyediting.add(*drafts)
-        assignment.save()
+        if copyedit:
+            assignment.copyeditor_files.add(copyedit)
+            assignment.files_for_copyediting.add(*drafts)
+            assignment.save()
+            copyedits.append(copyedit)
 
+    if drafts or copyedits:
+        create_workflow_log(article, submission_models.STAGE_EDITOR_COPYEDITING)
+
+
+def import_production(client, article, article_dict):
+    logger.info("Importing Production Ready files")
+    files = client.get_prod_ready_files(article_dict["id"])
+    prod_ready_files = []
+    label = "Production Ready File"
+    for file_json in files:
+        prod_ready_file = import_file(file_json, client, article, label=label)
+        if prod_ready_file:
+            article.manuscript_files.add(prod_ready_file)
+            prod_ready_files.append(prod_ready_file)
+
+    if prod_ready_files:
+        typesetting_plugin = article.journal.element_in_workflow(
+            "Typesetting Plugin")
+        if typesetting_plugin:
+            stage = typesetting_settings.STAGE
+            create_workflow_log( article, typesetting_settings.STAGE)
+        else:
+            create_workflow_log(article, submission_models.STAGE_TYPESETTING)
 
 def import_revision(client, submission_id, article, round_dict):
     logger.info("Importing revision for round %s" % round_dict["round"])
@@ -432,7 +465,8 @@ def import_revision(client, submission_id, article, round_dict):
     label = "Author Revision"
     for file_json in files:
         revision = import_file(file_json, client, article, label)
-        revision_files.append(revision)
+        if revision:
+            revision_files.append(revision)
     if revision_files:
         date_completed = revision_files[-1].date_uploaded
 

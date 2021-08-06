@@ -509,6 +509,10 @@ class OJS3APIClient(OJSBaseClient):
             # The site endpoint for each issue object provides more metadata
             yield self.fetch(journal["_href"]).json()
 
+    def get_prod_ready_files(self, submission_id):
+        return self.get_submission_files(
+            submission_id, fileStages=self.SUBMISSION_FILE_PRODUCTION_READY)
+
     def get_manuscript_files(self, submission_id):
         return self.get_submission_files(
             submission_id, fileStages=self.SUBMISSION_FILE_SUBMISSION)
