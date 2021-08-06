@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 
 from cms import models as cms_models
+from copyediting import models as copyediting_models
 from core import files as core_files
 from core import logic as core_logic
 from core import models as core_models
@@ -109,6 +110,7 @@ def import_article(client, journal, article_dict, editorial=False):
         import_editor_assignments(article, article_dict)
         if article_dict["reviewAssignments"]:
             import_reviews(client, article, article_dict)
+        import_copyedits(client, article, article_dict)
     import_article_galleys(article, pub_article_dict, journal, client)
 
 
@@ -388,11 +390,36 @@ def import_reviews(client, article, article_dict):
         assignment.save()
 
 
+def import_copyedits(client, article, article_dict):
+    drafts = []
+    draft_files = client.get_copyediting_files(article_dict["id"], drafts=True)
+    for file_json in draft_files:
+        draft = import_file(file_json, client, article)
+        article.manuscript_files.add(draft)
+        drafts.append(draft)
+
+    copyedited_files = client.get_copyediting_files(article_dict["id"])
+    copyediting_models.CopyeditAssignment.objects.filter(article=article).delete()
+    for file_json in copyedited_files:
+        copyedit = import_file(file_json, client, article)
+        assignment = copyediting_models.CopyeditAssignment.objects.create(
+            article=article,
+            copyeditor=copyedit.owner,
+            notified=True,
+            decision="accept",
+            date_decided=copyedit.date_uploaded,
+            copyeditor_completed=copyedit.date_modified or copyedit.date_uploaded
+        )
+        assignment.copyeditor_files.add(copyedit)
+        assignment.files_for_copyediting.add(*drafts)
+        assignment.save()
+
+
 def import_revision(client, submission_id, article, round_dict):
     logger.info("Importing revision for round %s" % round_dict["round"])
     revision_files = []
     date_completed = None
-    files = client.get_submission_files(
+    files = client.get_review_files(
         submission_id, round_ids=[round_dict["id"]], revisions=True)
     label = "Author Revision"
     for file_json in files:
@@ -425,7 +452,7 @@ def import_revision(client, submission_id, article, round_dict):
 
 def import_review_round_files(client, submission_id, round_id, round):
     label = "File for Peer Review"
-    files = client.get_submission_files(submission_id, round_ids=[round_id])
+    files = client.get_review_files(submission_id, round_ids=[round_id])
     round.review_files.clear()
     for file_json in files:
         file_for_review = import_file(file_json, client, round.article, label)
@@ -434,7 +461,7 @@ def import_review_round_files(client, submission_id, round_id, round):
 
 def import_reviewer_files(client, submission_id, assignment, review_id):
     label = "File from Reviewer"
-    files = client.get_submission_files(submission_id, review_ids=[review_id])
+    files = client.get_review_files(submission_id, review_ids=[review_id])
     for file_json in files:
         reviewer_file = import_file(file_json, client, assignment.article, label)
         assignment.review_file = reviewer_file

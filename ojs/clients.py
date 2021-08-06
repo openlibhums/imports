@@ -472,7 +472,8 @@ class OJS3APIClient(OJSBaseClient):
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
         for i, article in enumerate(paginator):
-            yield article
+            yield self.get_article(article["id"])
+
 
     def get_article(self, ojs_id):
         request_url = (
@@ -509,18 +510,16 @@ class OJS3APIClient(OJSBaseClient):
             # The site endpoint for each issue object provides more metadata
             yield self.fetch(journal["_href"]).json()
 
+    def get_copyediting_files(self, submission_id, drafts=False):
+        query_params = {}
+        if drafts:
+            query_params["fileStages"] = self.SUBMISSION_FILE_FINAL
+        else:
+            query_params["fileStages"] = self.SUBMISSION_FILE_COPYEDIT
 
-    def get_submission_files(self, submission_id, review_ids=None, round_ids=None, revisions=False):
-        """ Gets all the files linked to a given ojs submission
-        :param submission_id: The OJS submission ID
-        :param review_ids: A list of review assignment ids to filter by
-        :round_ids: A list of review round ids to filter by
-        """
-        request_url = (
-            self.journal_url
-            + self.API_PATH
-            + self.SUBMISSION_FILES_PATH % (submission_id, '')
-        )
+        return self.get_submission_files(submission_id, **query_params)
+
+    def get_review_files(self, submission_id, review_ids=None, round_ids=None, revisions=False):
         query_params = {}
         if review_ids:
             query_params["reviewIds"] = ','.join(str(i) for i in review_ids)
@@ -532,6 +531,21 @@ class OJS3APIClient(OJSBaseClient):
                 query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_REVISION
             else:
                 query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
+
+        return self.get_submission_files(submission_id, **query_params)
+
+    def get_submission_files(self, submission_id, **query_params):
+        """ Gets all the files linked to a given ojs submission
+        :param submission_id: The OJS submission ID
+        :param review_ids: A list of review assignment ids to filter by
+        :round_ids: A list of review round ids to filter by
+        """
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SUBMISSION_FILES_PATH % (submission_id, '')
+        )
+
         if query_params:
             request_url += "?%s" % urlparse.urlencode(query_params)
 
