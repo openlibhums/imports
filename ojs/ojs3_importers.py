@@ -183,17 +183,18 @@ def import_issue(client, journal, issue_dict):
     for order, article_dict in enumerate(issue_dict["articles"]):
         article_dict["publication"] = get_pub_article_dict(article_dict, client)
         article, c = get_or_create_article(article_dict, journal)
-        article.primary_issue = issue
-        if not article.date_published:
-            article.date_published = issue.date
-        article.save()
-        issue.articles.add(article)
-        journal_models.ArticleOrdering.objects.update_or_create(
-            section=article.section,
-            issue=issue,
-            article=article,
-            defaults={"order": order}
-        )
+        if article:
+            article.primary_issue = issue
+            if not article.date_published:
+                article.date_published = issue.date
+            article.save()
+            issue.articles.add(article)
+            journal_models.ArticleOrdering.objects.update_or_create(
+                section=article.section,
+                issue=issue,
+                article=article,
+                defaults={"order": order}
+            )
     if issue_dict["coverImageUrl"].values():
         url = delocalise(issue_dict["coverImageUrl"])
         if url:
@@ -616,14 +617,17 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
 def get_or_create_issue(issue_dict, journal):
     issue_type = journal_models.IssueType.objects.get(
         journal=journal, code='issue')
-    date_published = timezone.make_aware(
-        dateparser.parse(issue_dict['datePublished'])
-    )
+    date_published = attempt_to_make_timezone_aware(issue_dict['datePublished'])
+    if not date_published:
+        # Date published is required in Janeway but not on OJS
+        date_published = timezone.now()
     if date_published and issue_dict["year"]:
+        # Year does not need to match pub date in OJS.
+        # In Janeway, year is taken from date.year
         date_published = date_published.replace(year=issue_dict["year"])
     issue, c = journal_models.Issue.objects.update_or_create(
-        volume=issue_dict.get("volume", 0),
-        issue=issue_dict.get("number"),
+        volume=issue_dict.get("volume") or 0,
+        issue=issue_dict.get("number") or "0",
         journal=journal,
         defaults={
             "issue_title": (
