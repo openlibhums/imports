@@ -185,6 +185,8 @@ def import_ojs3_issues(client, journal):
 def import_ojs3_journals(client, journal_acronym=None, include_content=True):
     journals = client.get_journals(journal_acronym)
     for journal_dict in journals:
+        logger.set_prefix(journal_dict["urlPath"])
+        logger.info("Importing journal %s", journal_dict["urlPath"])
         journal = ojs3_importers.import_journal_metadata(client, journal_dict)
         if include_content:
             journal_client = clients.OJS3APIClient(
