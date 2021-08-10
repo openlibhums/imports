@@ -125,13 +125,16 @@ def import_article(client, journal, article_dict, editorial=False):
 
 def import_author_assignments(article, article_dict):
     for i, author_id in enumerate(article_dict["authors"]):
-        account = models.OJSAccount.objects.get(
-            ojs_id=author_id).account
-        article.authors.add(account)
-        if i == 0:
-            article.owner = account
-            article.correspondence_author = account
-            article.save()
+        try:
+            account = models.OJSAccount.objects.get(
+                ojs_id=author_id, journal=article.journal).account
+            article.authors.add(account)
+            if i == 0:
+                article.owner = account
+                article.correspondence_author = account
+                article.save()
+        except models.OJSAccount.DoesNotExist:
+            logger.error("Author does not exist %s", author_id)
 
 
 def import_manuscripts(client, article, article_dict):
@@ -424,15 +427,15 @@ def import_copyedits(client, article, article_dict):
     copyedit_label = "Copyedited Manuscript"
     for file_json in copyedited_files:
         copyedit = import_file(file_json, client, article, label=copyedit_label)
-        assignment = copyediting_models.CopyeditAssignment.objects.create(
-            article=article,
-            copyeditor=copyedit.owner,
-            notified=True,
-            decision="accept",
-            date_decided=copyedit.date_uploaded,
-            copyeditor_completed=copyedit.date_modified or copyedit.date_uploaded
-        )
         if copyedit:
+            assignment = copyediting_models.CopyeditAssignment.objects.create(
+                article=article,
+                copyeditor=copyedit.owner,
+                notified=True,
+                decision="accept",
+                date_decided=copyedit.date_uploaded,
+                copyeditor_completed=copyedit.date_modified or copyedit.date_uploaded
+            )
             assignment.copyeditor_files.add(copyedit)
             assignment.files_for_copyediting.add(*drafts)
             assignment.save()
@@ -518,6 +521,7 @@ def import_reviewer_files(client, submission_id, assignment, review_id):
 
 
 def import_user(user_dict, journal):
+    if len(user_dict["email"]) >= 48: return (None, None)
     account, created = core_models.Account.objects.get_or_create(
         email=user_dict["email"],
         defaults = {
