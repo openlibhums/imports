@@ -504,7 +504,7 @@ class OJS3APIClient(OJSBaseClient):
             params = {"searchPhrase": journal_acronym}
             request_url += '?%s' % urlparse.urlencode(params)
         client = self.fetch
-        paginator = OJS3PaginatedResults(request_url, client)
+        paginator = OJS3PaginatedResults(request_url, client, per_page=100)
         for i, journal in enumerate(paginator):
             # The site endpoint for each issue object provides more metadata
             yield self.fetch(journal["_href"]).json()
