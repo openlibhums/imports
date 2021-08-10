@@ -29,7 +29,37 @@ STATUS_PUBLISHED = 3
 STATUS_DECLINED = 4
 STATUS_SCHEDULED = 5
 
-#Role IDs
+#WORKFLOW STAGES
+WORKFLOW_STAGE_ID_SUBMISSION = 1
+WORKFLOW_STAGE_ID_INTERNAL_REVIEW = 2
+WORKFLOW_STAGE_ID_EXTERNAL_REVIEW = 3
+WORKFLOW_STAGE_ID_EDITING = 4
+WORKFLOW_STAGE_ID_PRODUCTION = 5
+
+WORKFLOW_STAGE_MAP = {
+    WORKFLOW_STAGE_ID_SUBMISSION: {
+        "stage": submission_models.STAGE_UNASSIGNED,
+        "workflow": None,
+    },
+    WORKFLOW_STAGE_ID_INTERNAL_REVIEW: {
+        "stage": submission_models.STAGE_UNDER_REVIEW,
+        "workflow": submission_models.STAGE_UNASSIGNED,
+    },
+    WORKFLOW_STAGE_ID_EDITING: {
+        "stage": submission_models.STAGE_EDITOR_COPYEDITING,
+        "workflow": submission_models.STAGE_EDITOR_COPYEDITING,
+    },
+    WORKFLOW_STAGE_ID_PRODUCTION: {
+        "stage": submission_models.STAGE_TYPESETTING,
+        "workflow": submission_models.STAGE_TYPESETTING,
+
+    },
+}
+# Alias internal and external review stages
+WORKFLOW_STAGE_MAP[WORKFLOW_STAGE_ID_EXTERNAL_REVIEW] = WORKFLOW_STAGE_MAP[
+        WORKFLOW_STAGE_ID_INTERNAL_REVIEW]
+
+#R ole IDs
 ROLE_JOURNAL_MANAGER = 16
 ROLE_SECTION_EDITOR = 17
 ROLE_REVIEWER = 4096
@@ -181,6 +211,7 @@ def import_issue(client, journal, issue_dict):
         section = import_section(section_dict, issue, client)
 
     for order, article_dict in enumerate(issue_dict["articles"]):
+        logger.warning(article_dict["stageId"])
         article_dict["publication"] = get_pub_article_dict(article_dict, client)
         article, c = get_or_create_article(article_dict, journal)
         if article:
@@ -1001,6 +1032,7 @@ def handle_review_comment(article, review_obj, form, comment, public=True):
 
     return review_obj
 
+
 def create_workflow_log(article, stage):
     element = core_models.WorkflowElement.objects.get(
         journal=article.journal,
@@ -1014,30 +1046,26 @@ def create_workflow_log(article, stage):
 
 
 def set_stage(article, article_dict):
+    """ Calculates the Stage for the given article and sets it
+    The article dict contains an attribute "status" that corresponds to one
+    of the STATUS_* constants, while the "stageId" Attribute corresponds to
+    the stage in the workflow (WORKFLOW_STAGE_ID_*)
+    :param article: an instance of submission.Article
+    :param article_dict: The OJS3 submission deserialised into a dict
+    """
     stage = None
 
-    if article_dict["stageId"] in {STATUS_PUBLISHED, STATUS_SCHEDULED}:
-        stage = submission_models.STAGE_PUBLISHED;
+    if article_dict["status"] in {STATUS_PUBLISHED, STATUS_SCHEDULED}:
+        stage = submission_models.STAGE_PUBLISHED
 
-    elif article_dict["stages"]:
-        for stage_dict in article_dict["stages"]:
-            if stage_dict["isActiveStage"] is True:
-                if stage_dict["label"] == "Review":
-                    stage = submission_models.STAGE_UNDER_REVIEW
-                    create_workflow_log(
-                        article, submission_models.STAGE_UNASSIGNED)
-                elif stage_dict["label"] == "Copyediting":
-                    stage = submission_models.STAGE_EDITOR_COPYEDITING
-                    create_workflow_log( article, stage)
-                elif stage_dict["label"] == "Production":
-                    typesetting_plugin = article.journal.element_in_workflow(
-                        "Typesetting Plugin")
-                    if typesetting_plugin:
-                        stage = typesetting_settings.STAGE
-                        create_workflow_log( article, stage)
-                    else:
-                        stage = submission_models.STAGE_TYPESETTING
-                        create_workflow_log(article, stage)
+    elif article_dict["stageId"] in WORKFLOW_STAGE_MAP:
+        for id, stage_dict in WORKFLOW_STAGE_MAP:
+            # Create all workflow logs for previoys stages
+            if id < article_dict["stageId"] and stage_dict["workflow"]:
+                create_workflow_log(article, stage_dict["workflow"])
+            elif id == article_dict["stageId"]:
+                create_workflow_log(article, stage_dict["workflow"])
+                stage = stage_dict["stage"]
 
     if stage == submission_models.STAGE_PUBLISHED:
         create_workflow_log(
