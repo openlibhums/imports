@@ -121,6 +121,7 @@ class OJSJanewayClient(OJSBaseClient):
     USERS_PATH = "/users"
     METRICS_PATH = "/metrics"
     SUBMISSION_PATH = '/editor/submission/%s'
+    JOURNAL_SETTINGS_PATH = '/journal_settings'
     SUPPORTED_STAGES = {
         'published',
         'in_editing',
@@ -169,6 +170,8 @@ class OJSJanewayClient(OJSBaseClient):
                 _, extension = os.path.splitext(url)
             content_file.name = filename + extension
         elif response_filename:
+            content_file.name = response_filename
+        else:
             content_file.name = os.path.basename(url)
         return content_file
 
@@ -243,15 +246,13 @@ class OJSJanewayClient(OJSBaseClient):
             + self.API_PATH
             + self.USERS_PATH
         )
-        response = self.fetch(request_url)
-        data = response.json()
         client = self.fetch
         paginator = OJS2PaginatedResults(request_url, client)
         for user in paginator:
             yield user
 
     def get_metrics(self):
-        """ Retrievesd the metrics as exposed by the Janeway Plugin for OJS
+        """ Retrieves the metrics as exposed by the Janeway Plugin for OJS
         :return: A mapping from metric type to a list of ojs ids and metric
             values e.g:
             {"views": [
@@ -267,6 +268,27 @@ class OJSJanewayClient(OJSBaseClient):
             self.journal_url
             + self.API_PATH
             + self.METRICS_PATH
+        )
+        response = self.fetch(request_url)
+        data = response.json()
+
+        return data
+
+    def get_journal_settings(self):
+        """ Retrieves journal settignsas exposed by the Janeway Plugin for OJS
+        Values are returned in a raw format
+        :return: A mapping from a setting key to its value
+            value types can be one of:
+            - bool
+            - int
+            - str
+            - list
+            - A localised setting (mapping from a locale to another value)
+        """
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.JOURNAL_SETTINGS_PATH
         )
         response = self.fetch(request_url)
         data = response.json()
@@ -323,7 +345,7 @@ def strip_scheme(url):
 def get_filename_from_headers(response):
     try:
         header = response.headers['content-disposition']
-        return re.findall("filename=(.+)", header)[0]
+        return re.findall("filename=(.+)", header)[0].strip('"')
     except KeyError:
         logger.debug("No content-disposition header")
     except IndexError:

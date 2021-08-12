@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import timedelta
 from urllib import parse as urlparse
@@ -7,7 +8,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
@@ -111,7 +112,7 @@ def import_article_metadata(article_dict, journal, client):
             if editor_ass["role"] == 'editor':
                 acc.add_account_role('editor', journal)
             elif editor_ass["role"] == 'section-editor':
-                acc.add_account_role('editor', journal)
+                acc.add_account_role('section-editor', journal)
             review_models.EditorAssignment.objects.update_or_create(
                 article=article, editor=acc,
                 defaults={"editor_type": editor_ass["role"]},
@@ -141,6 +142,7 @@ def import_article_metadata(article_dict, journal, client):
     for author in sorted(article_dict.get('authors'),
                          key=lambda x: x.get("sequence", 1)):
         author_record, _ = get_or_create_account(author)
+        author_record.add_account_role("author", journal)
 
         # Add authors to m2m and create an order record
         article.authors.add(author_record)
@@ -149,7 +151,7 @@ def import_article_metadata(article_dict, journal, client):
             author=author_record,
         )
         order.order = author.get("sequence", 999)
-        create_frozen_record(author_record, article, emails)
+        create_frozen_record(author_record, article, emails, author_dict=author)
 
     # Set the primary author
     email = clean_email(article_dict.get('correspondence_author'))
@@ -180,10 +182,10 @@ def import_article_metadata(article_dict, journal, client):
         )
         article.save()
 
-    return article
+    return article, created
 
 
-def create_frozen_record(author, article, emails=None):
+def create_frozen_record(author, article, emails=None, author_dict=None):
     """ Creates a frozen record for the article from author metadata
 
     We create a frozen record that is not linked to a user
@@ -194,31 +196,27 @@ def create_frozen_record(author, article, emails=None):
     :param article: an instance of submission.models.Article
     :param emails: a set cotaining the author emails seen in this article
     """
-    if emails and author.email in emails:
-        # Copy behaviour of snapshot_self, without liking acccount
-        try:
-            order = submission_models.ArticleAuthorOrder.objects.get(
-                article=article, author=author).order
-        except submission_models.ArticleAuthorOrder.DoesNotExist:
-            order = 1
+    try:
+        order = submission_models.ArticleAuthorOrder.objects.get(
+            article=article, author=author).order
+    except submission_models.ArticleAuthorOrder.DoesNotExist:
+        order = 1
 
-        frozen_dict = {
-            'article': article,
-            'first_name': author.first_name,
-            'middle_name': author.middle_name,
-            'last_name': author.last_name,
-            'institution': author.institution or '',
-            'department': author.department,
-            'order': order,
-        }
-
-        submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
-
-    elif emails is not None:
-        author.snapshot_self(article)
-        emails.add(author.email)
-    else:
-        author.snapshot_self(article)
+    frozen_dict = {
+        'article': article,
+        'first_name': author.first_name,
+        'middle_name': author.middle_name,
+        'last_name': author.last_name,
+        'institution': author.institution or '',
+        'order': order,
+               'author': author,
+    }
+    if author_dict:
+        frozen_dict["first_name"] = author_dict["first_name"]
+        frozen_dict["last_name"] = author_dict["last_name"]
+        frozen_dict["middle_name"] = author_dict["middle_name"]
+        frozen_dict["institution"] = author_dict["affiliation"] or " "
+    submission_models.FrozenAuthor.objects.get_or_create(**frozen_dict)
 
 
 def import_review_data(article_dict, article, client):
@@ -289,7 +287,8 @@ def import_review_data(article_dict, article, client):
 
     # Set for avoiding duplicate review files
     for review in article_dict.get('reviews'):
-        import_review_assignment(client, article, review, form)
+        decision = article_dict.get("latest_editor_decision")
+        import_review_assignment(client, article, review, form, decision)
 
     # Get Supp Files
     if article_dict.get('supp_files'):
@@ -311,8 +310,10 @@ def import_review_data(article_dict, article, client):
     return article
 
 
-def import_review_assignment(client, article, review, review_form):
+def import_review_assignment(client, article, review, review_form, decision):
     reviewer, _ = get_or_create_account(review)
+    reviewer.add_account_role("author", article.journal)
+
 
     # Parse the dates
     date_requested = timezone.make_aware(
@@ -340,6 +341,7 @@ def import_review_assignment(client, article, review, review_form):
         access_code=uuid.uuid4(),
         form=review_form
     )
+
     new_review, _ = review_models.ReviewAssignment.objects.get_or_create(
         article=article,
         reviewer=reviewer,
@@ -353,6 +355,10 @@ def import_review_assignment(client, article, review, review_form):
             review['recommendation']]
         new_review.is_complete = True
 
+    if decision:
+        new_review.for_author_consumption = True
+        new_review.display_review_file = True
+
     if review.get("cancelled"):
         new_review.decision = "withdrawn"
 
@@ -360,7 +366,7 @@ def import_review_assignment(client, article, review, review_form):
         new_review.date_accepted = None
         new_review.date_declined = date_confirmed
         new_review.date_complete = None
-        is_complete = True
+        new_review.is_complete = True
 
     # Check for files at article level
     review_file_json = review.get("review_file")
@@ -605,7 +611,6 @@ def import_copyediting(article_dict, article, client):
                 if final_file_json:
                     final_version = import_file(
                         client, final_file_json, article, "Final copyedit")
-                    author_review.files_updated.add(author_version)
                     final_assignment.copyeditor_files.add(final_version)
                     imported_files.add("final_file")
 
@@ -635,15 +640,15 @@ def import_typesetting(article_dict, article, client):
             email = clean_email(layout.get('email'))
             typesetter = core_models.Account.objects.get(
                 email__iexact=email)
-        elif article_dict["sent_for_typesetting"]:
-            try:
-                typesetter = core_models.AccountRole.objects.filter(
-                    slug="typesetter",
-                    journal=article.journal,
-                    ).first()
-            except core_models.AccountRole.DoesNotExist:
-                logger.warning(
-                    "Journal %s has no typesetters setup", article.journal.code)
+    elif layout["sent_for_typesetting"]:
+        try:
+            typesetter = core_models.AccountRole.objects.filter(
+                role__slug="typesetter",
+                journal=article.journal,
+                ).first().user
+        except AttributeError:
+            logger.warning(
+                "Journal %s has no typesetters setup", article.journal.code)
 
     if typesetter:
         logger.info(
@@ -689,19 +694,20 @@ def import_typesetting_plugin(article_dict, article, client):
         email = clean_email(layout.get('email'))
         typesetter = core_models.Account.objects.get(
             email__iexact=email)
-    elif article_dict["sent_for_typesetting"]:
+    elif layout["sent_for_typesetting"]:
         try:
             typesetter = core_models.AccountRole.objects.filter(
-                slug="typesetter",
+                role__slug="typesetter",
                 journal=article.journal,
-                ).first()
+                ).first().user
         except core_models.AccountRole.DoesNotExist:
             logger.warning(
                 "Journal %s has no typesetters setup", article.journal.code)
 
-    if typesetter:
-        assigned = attempt_to_make_timezone_aware(layout.get('notified'))
-        accepted = attempt_to_make_timezone_aware(layout.get('underway'))
+    if typesetter and not layout.get("galleys"):
+        sent = attempt_to_make_timezone_aware(layout.get('sent_for_typesetting'))
+        assigned = attempt_to_make_timezone_aware(layout.get('notified')) or sent
+        accepted = attempt_to_make_timezone_aware(layout.get('underway')) or sent
         complete = attempt_to_make_timezone_aware(layout.get('complete'))
 
         logger.info(
@@ -718,7 +724,7 @@ def import_typesetting_plugin(article_dict, article, client):
             typesetter=typesetter,
             defaults={
                 "assigned": assigned,
-                "notified": assigned,
+                "notified": bool(assigned),
                 "accepted": accepted,
                 "completed": complete,
             }
@@ -783,9 +789,16 @@ def import_collection_metadata(collection_dict, client, journal):
     collection = get_or_create_collection(collection_dict, journal)
 
     # Handle cover
-    if collection_dict.get("cover_file") and not collection.cover_image:
+    if collection_dict.get("cover_file"):
         collection_img = client.fetch_file(collection_dict["cover_file"])
-        collection.cover_image = collection_img
+        file_name = os.path.basename(collection_dict["cover_file"]) or "cover.graphic"
+        if collection_img:
+            collection.cover_image.save(file_name, collection_img)
+        else:
+            logger.warning(
+                "Couldn't retrieve collection image: %s",
+                collection_dict["cover_file"],
+            )
     collection.save()
 
     # Handle Section orderings
@@ -795,6 +808,25 @@ def import_collection_metadata(collection_dict, client, journal):
         link_article_to_collection(collection, ojs_id, order=i)
 
     return collection
+
+
+def import_journal_settings(settings_dict, journal):
+    if 'focusScopeDesc' in settings_dict:
+        import_multilingual_setting("general", "focus_and_scope", journal, settings_dict.get("focusScopeDesc"))
+
+
+
+def import_multilingual_setting(group, setting_name, journal, setting_dict):
+    """ Import a multilingual setting from OJS into the Janeway journal
+    """
+    default_lang = settings.LANGUAGE_CODE
+    values = []
+    for locale, value in setting_dict.items():
+        lang_code = locale_to_lang(locale)
+        if lang_code and value:
+            with translation.activate(lang_code):
+                print(setting_name, lang_code, value)
+                #save_setting( group, setting_name, journal, value)
 
 
 def import_section_metadata(section_dict, client, journal):
@@ -893,16 +925,17 @@ def import_galleys(article, layout_dict, client, owner=None):
                 owner=owner,
             )
 
-            new_galley, c = core_models.Galley.objects.get_or_create(
-                article=article,
-                type=GALLEY_TYPES.get(galley.get("label"), "other"),
-                defaults={
-                    "label": galley.get("label"),
-                    "file": galley_file,
-                },
-            )
-            if c:
-                galleys.append(new_galley)
+            if galley_file:
+                new_galley, c = core_models.Galley.objects.get_or_create(
+                    article=article,
+                    type=GALLEY_TYPES.get(galley.get("label"), "other"),
+                    defaults={
+                        "label": galley.get("label"),
+                        "file": galley_file,
+                    },
+                )
+                if c:
+                    galleys.append(new_galley)
 
     return galleys
 
@@ -1058,7 +1091,7 @@ def import_user_metadata(user_data, journal):
     return account, created
 
 
-def get_or_create_account(data, update=True):
+def get_or_create_account(data, update=False):
     """ Gets or creates an account for the given OJS user data"""
     email = clean_email(data.get("email"))
     created = False
@@ -1185,6 +1218,7 @@ def scrape_editor_assignments(client, ojs_id, article):
         display_name = get_query_param(mailto_url, "to[]")[0]
         editor_email = DISPLAY_NAME_EMAIL_RE.findall(display_name)[0]
         editor, _ = get_or_create_account({"email": editor_email}, update=False)
+        editor.add_account_role("author", article.journal)
 
         # Get assignment date
         try:
@@ -1216,6 +1250,7 @@ def extract_orcid(raw_orcid_data):
     :param raw_oricid_data: A dict from lang code to orcid URL or actual orcid
     """
     if raw_orcid_data:
+        if isinstance(raw_orcid_data, str): return raw_orcid_data
         for lang, value in raw_orcid_data.items():
             if value:
                 # ORCID might be in URL format
@@ -1260,3 +1295,19 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
         date_modified=date_modified)
 
     return janeway_file
+
+
+def locale_to_lang(locale):
+    """Return the correct configured language code for the given locale"""
+    try:
+        # Convert OJS locale to LCID: es_MX -> es-mx
+        lang_code = locale.replace("_", "-").lower()
+        if lang_code in settings.LANGUAGES:
+            return lang_code
+        # Try lang code without suffix 'es-mx' -> 'es'
+        lang_code, *_ = lang_code.split("-")
+        if lang_code in settings.LANGUAGES:
+            return lang_code
+    except Exception as err:
+        logger.warning("unable to parse locale %s: %s", locale, err)
+    return None

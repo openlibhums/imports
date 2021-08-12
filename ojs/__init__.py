@@ -10,5 +10,6 @@ from plugins.imports.ojs.main import (
     import_metrics,
     import_sections,
     import_users,
+    import_journal_settings,
 )
 from plugins.imports.ojs.clients import OJSJanewayClient
