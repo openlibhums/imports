@@ -875,6 +875,7 @@ def import_journal_metadata(client, journal_dict, update_journal_data=False):
             item.save()
 
         import_journal_images(client, journal, journal_dict)
+        import_editorial_team(journal_dict, journal)
 
     return journal
 
@@ -967,6 +968,7 @@ def import_editorial_team(journal_dict, journal):
             journal=journal,
             defaults={
                 "description": html,
+                "sequence": 0,
             }
         )
 
@@ -1074,19 +1076,16 @@ def set_stage(article, article_dict):
 
     if article_dict["status"] in {STATUS_PUBLISHED, STATUS_SCHEDULED}:
         stage = submission_models.STAGE_PUBLISHED
-
-    elif article_dict["stageId"] in WORKFLOW_STAGE_MAP:
-        for id, stage_dict in WORKFLOW_STAGE_MAP:
-            # Create all workflow logs for previoys stages
-            if id < article_dict["stageId"] and stage_dict["workflow"]:
-                create_workflow_log(article, stage_dict["workflow"])
-            elif id == article_dict["stageId"]:
-                create_workflow_log(article, stage_dict["workflow"])
-                stage = stage_dict["stage"]
-
-    if stage == submission_models.STAGE_PUBLISHED:
         create_workflow_log(
-            article, submission_models.STAGE_READY_FOR_PUBLICATION)
+            article, submission_models.STAGE_READY_FOR_PUBLICATION
+        )
+
+    for id, stage_dict in WORKFLOW_STAGE_MAP.items():
+        # Create all workflow logs for previoys stages
+        if id <= article_dict["stageId"] and stage_dict["workflow"]:
+            create_workflow_log(article, stage_dict["workflow"])
+        if id == article_dict["stageId"] and not stage:
+            stage = stage_dict["stage"]
 
     if not stage:
         stage = submission_models.STAGE_UNASSIGNED
