@@ -16,6 +16,11 @@ class Command(BaseCommand):
         parser.add_argument('username')
         parser.add_argument('--password', default=None)
         parser.add_argument('--journal_acronym', default=None)
+        parser.add_argument(
+            '--update_journals', action="store_true",
+            default=False,
+            help="Whether existing journal metadata should be updated"
+        )
         parser.add_argument('--include_articles', action="store_true",
                             default=False,
                             help="Include importing journal articles")
@@ -34,4 +39,5 @@ class Command(BaseCommand):
             client,
             journal_acronym=options["journal_acronym"],
             include_content=options["include_articles"],
+            update_journals=options["update_journals"],
         )

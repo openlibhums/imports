@@ -801,67 +801,77 @@ def create_frozen_record(author, article):
             frozen.account = account
             frozen.save()
         except core_models.Account.DoesNotExist:
-            logger.warning("No account matching %s" % author["email"])
+            logger.info("No account matching %s" % author["email"])
+            frozen.frozen_email = author["email"]
 
+    if author["orcid"]:
+        if not account or not account.orcid:
+            frozen.frozen_orcid = author["orcid"].rsplit("/")[-1]
+
+    frozen.save()
     return frozen, created
 
 
-def import_journal_metadata(client, journal_dict):
-    journal = get_or_create_journal(journal_dict)
-    journal.issn = journal_dict["onlineIssn"]
-    description = delocalise(journal_dict["description"])
-    journal.description = description
-    journal.save()
+def import_journal_metadata(client, journal_dict, update_journal_data=False):
+    journal, created = get_or_create_journal(journal_dict)
+    if journal_dict["printIssn"]:
+        journal.print_issn = journal_dict["printIssn"]
 
-    import_localised_journal_setting(
-        journal_dict["description"], "general", "journal_description", journal)
+    if update_journal_data or created:
+        journal.issn = journal_dict["onlineIssn"]
+        description = delocalise(journal_dict["description"])
+        journal.description = description
+        journal.save()
 
-    import_localised_journal_setting(
-        journal_dict["about"], "general", "focus_and_scope", journal)
+        import_localised_journal_setting(
+            journal_dict["description"], "general", "journal_description", journal)
 
-    import_localised_journal_setting(
-        journal_dict["authorGuidelines"],
-        "general", "submission_checklist", journal,
-    )
+        import_localised_journal_setting(
+            journal_dict["about"], "general", "focus_and_scope", journal)
 
-    if journal_dict.get("disableSubmissions", False) is True:
-        setting_handler.save_setting(
-            "general", "disable_journal_submission", journal, True)
-
-    import_localised_journal_setting(
-        journal_dict["publicationFeeDescription"],
-        "general", "publication_fees", journal,
-    )
-
-    try:
-        setting_handler.get_setting("general", "open_access_policy", journal=None)
-    except ObjectDoesNotExist:
-        setting_handler.create_setting(
-            "general", "open_access_policy",
-            type='text',
-            pretty_name="Open Access Policy",
-            description="Open Access Policy",
-            is_translatable=True,
-        )
-        setting_handler.save_setting(
-            "general", "open_access_policy",
-            journal=None,
-            value="",
+        import_localised_journal_setting(
+            journal_dict["authorGuidelines"],
+            "general", "submission_checklist", journal,
         )
 
-    setting = import_localised_journal_setting(
-        journal_dict["openAccessPolicy"],
-        "general", "open_access_policy", journal,
-    )
-    if setting and setting.value:
-        item, created = cms_models.SubmissionItem.objects.get_or_create(
-            title="Open Access",
-            journal=journal,
-        )
-        item.existing_setting = setting.setting
-        item.save()
+        if journal_dict.get("disableSubmissions", False) is True:
+            setting_handler.save_setting(
+                "general", "disable_journal_submission", journal, True)
 
-    import_journal_images(client, journal, journal_dict)
+        import_localised_journal_setting(
+            journal_dict["publicationFeeDescription"],
+            "general", "publication_fees", journal,
+        )
+
+        try:
+            setting_handler.get_setting("general", "open_access_policy", journal=None)
+        except ObjectDoesNotExist:
+            setting_handler.create_setting(
+                "general", "open_access_policy",
+                type='text',
+                pretty_name="Open Access Policy",
+                description="Open Access Policy",
+                is_translatable=True,
+            )
+            setting_handler.save_setting(
+                "general", "open_access_policy",
+                journal=None,
+                value="",
+            )
+
+        setting = import_localised_journal_setting(
+            journal_dict["openAccessPolicy"],
+            "general", "open_access_policy", journal,
+        )
+        if setting and setting.value:
+            item, created = cms_models.SubmissionItem.objects.get_or_create(
+                title="Open Access",
+                journal=journal,
+            )
+            item.existing_setting = setting.setting
+            item.save()
+
+        import_journal_images(client, journal, journal_dict)
 
     return journal
 
@@ -928,8 +938,9 @@ def import_journal_images(client, journal, journal_dict):
 
 def get_or_create_journal(journal_dict):
     code = journal_dict["urlPath"].lower()
+    created = False
     try:
-        return journal_models.Journal.objects.get(code=code)
+        journal = journal_models.Journal.objects.get(code=code)
     except journal_models.Journal.DoesNotExist:
         name = delocalise(journal_dict["name"])
         default_domain = "localhost/%s" % code
@@ -939,7 +950,10 @@ def get_or_create_journal(journal_dict):
             journal_name=name,
             base_url=default_domain,
         )
-        return journal_models.Journal.objects.get(code=code)
+        created = True
+        journal = journal_models.Journal.objects.get(code=code)
+
+    return journal, created
 
 
 def import_editorial_team(journal_dict, journal):
