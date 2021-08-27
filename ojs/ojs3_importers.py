@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.management import call_command
 from django.core.exceptions import ObjectDoesNotExist
@@ -308,7 +309,9 @@ def import_article_metadata(article_dict, journal, client):
     article.page_numbers = article_dict["publication"]["pages"]
     if article_dict["publication"].get("datePublished"):
         date_published = timezone.make_aware(
-            dateparser.parse(article_dict['dateSubmitted']).replace(hour=12)
+            dateparser.parse(
+                article_dict["publication"]['datePublished']).replace(hour=12
+            )
         )
         article.date_published = date_published
         article.stage = submission_models.STAGE_PUBLISHED
@@ -649,13 +652,13 @@ def get_or_create_issue(issue_dict, journal):
     issue_type = journal_models.IssueType.objects.get(
         journal=journal, code='issue')
     date_published = attempt_to_make_timezone_aware(issue_dict['datePublished'])
-    if not date_published:
-        # Date published is required in Janeway but not on OJS
-        date_published = timezone.now()
     if date_published and issue_dict["year"]:
         # Year does not need to match pub date in OJS.
         # In Janeway, year is taken from date.year
         date_published = date_published.replace(year=issue_dict["year"])
+    if not date_published:
+        # Date published is required in Janeway, so set 10 years into the future
+        date_published = timezone.now() + relativedelta(years=10)
     issue, c = journal_models.Issue.objects.update_or_create(
         volume=issue_dict.get("volume") or 0,
         issue=issue_dict.get("number") or "0",
