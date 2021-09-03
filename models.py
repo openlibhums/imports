@@ -16,3 +16,30 @@ class WordPressImport(models.Model):
     
     def __str__(self):
         return 'Import from {url}'.format(url=self.url)
+
+class OJS3Section(models.Model):
+    """Stores an ojs 3 section ID and maps it to the section in Janeway"""
+    ojs_id = models.IntegerField()
+    journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
+    section = models.ForeignKey(
+        'submission.Section', blank=True, null=True,
+        on_delete=models.CASCADE,
+    )
+
+    class Meta:
+        unique_together = (
+            ('ojs_id', 'journal'),
+            ('ojs_id', 'section'),
+        )
+
+class OJSAccount(models.Model):
+    ojs_id = models.IntegerField()
+    journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
+    account = models.ForeignKey(
+        'core.Account', blank=True, null=True,
+    )
+
+    class Meta:
+        unique_together = (
+            ('ojs_id', 'journal', 'account'),
+        )
