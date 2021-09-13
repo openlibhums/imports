@@ -1,3 +1,4 @@
+import cgi
 import csv
 import os
 import re
@@ -389,6 +390,8 @@ def import_article_metadata(request, reader):
                 line, request.journal, issue_type, article)
         except Exception as e:
             errors[i] = e
+            if settings.DEBUG:
+                logger.exception(e)
             error_writer.writerow(line)
         articles[line_id] = article
     error_file.close()
@@ -493,8 +496,19 @@ def import_galley_from_uri(article, uri, figures_uri=None):
         blob = read_local_file(path)
         django_file = ContentFile(blob)
         django_file.name = os.path.basename(path)
+    elif parsed.scheme in {"http", "https"}:
+        response = requests.get(uri)
+        response.raise_for_status()
+        filename = get_filename_from_headers(response)
+        if not filename:
+            filename = uri.split("/")[-1]
+        if not filename:
+            filename = uuid.uuid4()
+        django_file = ContentFile(response.content)
+        django_file.name = filename
     else:
         raise NotImplementedError("Scheme not supported: %s" % parsed.scheme)
+
 
     if django_file:
         request = get_current_request()
@@ -658,4 +672,13 @@ def proofing_files(workflow_type, proofing_assignments, article):
     return set(files)
 
 
-
+def get_filename_from_headers(response):
+    try:
+        header = response.headers["Content-Disposition"]
+        _, params = cgi.parse_header(header)
+        return params["filename"]
+    except Exception as e:
+        logger.info(
+            "No filename available in headers: %s" % response.headers
+        )
+    return None
