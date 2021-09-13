@@ -17,6 +17,22 @@ class WordPressImport(models.Model):
     def __str__(self):
         return 'Import from {url}'.format(url=self.url)
 
+      
+class ExportFile(models.Model):
+    article = models.ForeignKey('submission.Article')
+    file = models.ForeignKey('core.File')
+    journal = models.ForeignKey('journal.Journal')
+
+    class Meta:
+        unique_together = ('article', 'file', 'journal')
+
+    def __str__(self):
+        return '{} export file for {}'.format(
+            self.file,
+            self.article.title,
+        )
+
+      
 class OJS3Section(models.Model):
     """Stores an ojs 3 section ID and maps it to the section in Janeway"""
     ojs_id = models.IntegerField()

@@ -15,12 +15,27 @@
         <div class="title-area">
             <h2>Errors found</h2>
         </div>
-            {% if error_file %}
-                <p><a class="button alert" href="{% url 'imports_failed_rows' error_file %}"><span class="fa fa-download"></span> Download CSV with failed rows</a></p>
+        {% if error_file %}
+            <p><a class="button alert" href="{% url 'imports_failed_rows' error_file %}"><span
+                    class="fa fa-download"></span> Download CSV with failed rows</a></p>
+        {% endif %}
+        {% if type == 'update' %}
+            {% if errors %}
+            <div class="callout alert">
+            <ul>
+            {% for error in errors %}
+                {% for key,value in error.items %}
+                    <li>{{ key }}: {{ value }}</li>
+                {% endfor %}
+            {% endfor %}
+            </ul>
+            </div>
             {% endif %}
-              {% for line_no, error in errors.items %}
-              <div class="callout alert"><p>Line {{ line_no }}: {{ error }}</p></div>
-              {% endfor %}
+        {% else %}
+            {% for line_no, error in errors.items %}
+                <div class="callout alert"><p>Line {{ line_no }}: {{ error }}</p></div>
+            {% endfor %}
+        {% endif %}
         </div>
     </div>
     {% endif %}

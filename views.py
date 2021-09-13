@@ -1,5 +1,6 @@
 import csv
 import os
+import shutil
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -7,9 +8,15 @@ from django.core.urlresolvers import reverse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import Http404
 
-from core import files
-from plugins.imports import utils, forms, logic, models
+from rest_framework import viewsets
+from rest_framework.decorators import api_view, permission_classes
+
+from api import permissions as api_permissions
+from core import files, models as core_models
+from plugins.imports import utils, forms, logic, models, export, serializers
 from journal import models as journal_models
+from submission import models as submission_models
+from security import decorators
 
 
 @staff_member_required
@@ -43,8 +50,12 @@ def import_load(request):
     if request.POST and request.FILES:
         file = request.FILES.get('file')
         filename, path = files.save_file_to_temp(file)
-        reverse_url = '{url}?type={type}'.format(url=reverse('imports_action', kwargs={'filename': filename}),
-                                                 type=type)
+        reverse_url = '{url}?type={type}'.format(
+            url=reverse(
+                'imports_action',
+                kwargs={'filename': filename}),
+            type=type,
+        )
         return redirect(reverse_url)
 
     template = 'import/editorial_load.html'
@@ -70,8 +81,28 @@ def import_action(request, filename):
     if not os.path.exists(path):
         raise Http404()
 
+    if type == 'update':
+        path, zip_folder_path, errors = utils.unzip_update_file(path)
+
+        if errors:
+            # If we have any errors delete the temp folder and redirect back.
+            messages.add_message(
+                request,
+                messages.ERROR,
+                ', '.join(errors)
+            )
+            shutil.rmtree(zip_folder_path)
+            return redirect(
+                reverse(
+                    'import_export_articles_all'
+                )
+            )
+
     file = open(path, 'r')
-    reader = csv.reader(file)
+    if type == 'update':
+        reader = csv.DictReader(file)
+    else:
+        reader = csv.reader(file)
 
     if request.POST:
         if type == 'editorial':
@@ -83,8 +114,16 @@ def import_action(request, filename):
         elif type == 'submission':
             utils.import_submission_settings(request, reader)
         elif type == 'article_metadata':
-            _, errors, error_file  = utils.import_article_metadata(
+            _, errors, error_file = utils.import_article_metadata(
                 request, reader)
+        elif type == 'update':
+            headers_verified = utils.verify_headers(reader)
+            errors, actions = utils.update_article_metadata(
+                request,
+                reader,
+                zip_folder_path,
+            )
+            print(actions, errors)
         else:
             raise Http404
         files.unlink_temp_file(path)
@@ -96,8 +135,9 @@ def import_action(request, filename):
     context = {
         'filename': filename,
         'reader': reader,
-        'errors': errors ,
+        'errors': errors,
         'error_file': error_file,
+        'type': type,
     }
 
     return render(request, template, context)
@@ -195,7 +235,7 @@ def csv_example(request):
     filepath = files.get_temp_file_path_from_name('metadata.csv')
 
     with open(filepath, "w") as f:
-        wr = csv.writer(f)
+        wr = csv.writer(f, quoting=csv.QUOTE_ALL)
         wr.writerow(utils.CSV_HEADER_ROW.split(","))
         wr.writerow(utils.CSV_MAURO.split(","))
 
@@ -281,3 +321,108 @@ def wordpress_posts(request, import_id):
     }
 
     return render(request, template, context)
+
+
+@decorators.has_journal
+@decorators.editor_user_required
+def export_article(request, article_id, format='csv'):
+    """
+    A view that exports either a CSV or HTML representation of an article.
+    :param request: HttpRequest object
+    :param article_id: Article object PK
+    :param format: string, csv or html
+    :return: HttpResponse or Http404
+    """
+    article = get_object_or_404(
+        submission_models.Article,
+        pk=article_id,
+        journal=request.journal,
+    )
+    files = core_models.File.objects.filter(
+        article_id=article.pk,
+    )
+
+    if request.GET.get('action') == 'output_html':
+        context = {
+            'article': article,
+            'journal': request.journal,
+            'files': files,
+        }
+
+        return render(
+            request,
+            'import/export.html',
+            context,
+        )
+
+    if format == 'csv':
+        return export.export_csv(request, article, files)
+    elif format == 'html':
+        return export.export_html(request, article, files)
+
+    raise Http404
+
+
+@decorators.has_journal
+@decorators.editor_user_required
+def export_articles_all(request):
+    """
+    A view that displays all articles in a journal and allows export.
+    """
+    element = request.GET.get('element')
+
+    articles = submission_models.Article.objects.filter(
+        journal=request.journal,
+    ).select_related(
+        'correspondence_author',
+    )
+
+    if element in ['Published', 'Rejected']:
+        articles = articles.filter(stage=element)
+    elif element:
+        workflow_element = core_models.WorkflowElement.objects.get(
+            journal=request.journal,
+            stage=element,
+        )
+        articles = articles.filter(stage__in=workflow_element.stages)
+
+    workflow_type, proofing_assignments = utils.get_proofing_assignments_for_journal(
+        request.journal,
+    )
+
+    for article in articles:
+        article.export_files = article.exportfile_set.all()
+        article.export_file_pks = [ef.file.pk for ef in article.exportfile_set.all()]
+
+        article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
+
+    if request.POST:
+        if 'export_all' in request.POST:
+            csv_path, csv_name = export.export_using_import_format(articles)
+            return export.zip_export_files(request.journal, articles, csv_path)
+
+    template = 'import/articles_all.html'
+    context = {
+        'articles_in_stage': articles,
+        'stages': submission_models.STAGE_CHOICES,
+        'selected_element': element,
+    }
+
+    return render(request, template, context)
+
+
+@permission_classes((api_permissions.IsEditor, ))
+class ExportFilesViewSet(viewsets.ModelViewSet):
+    serializer_class = serializers.ExportFileSerializer
+    http_method_names = ['get', 'post', 'delete']
+
+    def get_queryset(self):
+        if self.request.journal:
+            queryset = models.ExportFile.objects.filter(
+                article__journal=self.request.journal,
+            )
+        else:
+            queryset = models.ExportFile.objects.all()
+
+        return queryset
+

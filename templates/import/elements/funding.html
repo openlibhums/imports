@@ -1,0 +1,16 @@
+{% if article.funders %}
+<table class="table table-bordered">
+    <tr>
+        <th>Name</th>
+        <th>Fundref ID</th>
+        <th>Grant ID</th>
+    </tr>
+    {% for funder in article.funders.all %}
+    <tr>
+        <td>{{ funder.name }}</td>
+        <td>{{ funder.fundref_id }}</td>
+        <td>{{ funder.funding_id }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}

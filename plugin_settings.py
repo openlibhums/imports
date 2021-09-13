@@ -22,7 +22,39 @@ def install():
 
 
 def hook_registry():
-    # On site load, the load function is run for each
-    # installed plugin to generate
-    # a list of hooks.
-    return {}
+    return {
+        'journal_admin_nav_block': {'module': 'plugins.imports.hooks', 'function': 'nav_hook'}
+    }
+
+
+UPDATE_CSV_HEADERS = [
+    'Article title',
+    'Article filename',
+    'Article section',
+    'Keywords',
+    'License',
+    'Language',
+    'Author Salutation',
+    'Author surname',
+    'Author given name',
+    'Author email',
+    'Author institution',
+    'Author is primary (Y/N)',
+    'Author ORCID',
+    'Article ID',
+    'DOI',
+    'DOI (URL form)',
+    'Article sequence',
+    'Journal Code',
+    'Journal title',
+    'ISSN',
+    'Delivery formats',
+    'Typesetting template',
+    'Volume number',
+    'Issue number',
+    'Issue name',
+    'Issue pub date',
+    'Date Accepted',
+    'Date Published',
+    'Stage',
+]

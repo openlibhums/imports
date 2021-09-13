@@ -4,6 +4,7 @@ import re
 import requests
 from urllib.parse import urlparse, unquote
 import uuid
+from zipfile import ZipFile
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -11,8 +12,7 @@ from django.db import transaction
 from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
 
-from core import models as core_models, files
-from core import logic as core_logic
+from core import models as core_models, files, logic as core_logic, workflow
 from identifiers import models as id_models
 from journal import models as journal_models
 from production.logic import handle_zipped_galley_images, save_galley
@@ -20,6 +20,8 @@ from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
 from utils.logic import get_current_request
+from plugins.imports.templatetags import row_identifier
+from plugins.imports.plugin_settings import UPDATE_CSV_HEADERS
 
 logger = get_logger(__name__)
 
@@ -124,6 +126,243 @@ def import_submission_settings(request, reader):
         setting_handler.save_setting('general', 'reviewer_guidelines', journal, linebreaksbr(row[4]))
 
 
+def prepare_reader_rows(reader):
+    article_groups = []
+
+    for i, row in enumerate(reader):
+        row_type = row_identifier.identify(row)
+
+        if row_type in ['Update', 'New Article']:
+            article_groups.append(
+                {
+                    'type': row_type,
+                    'primary_row': row,
+                    'author_rows': [],
+                    'primary_row_number': i,
+                    'article_id': row.get('Article ID') if row_type == 'Update' else ''
+                }
+            )
+        elif row_type == 'Author':
+            last_article_group = article_groups[-1]
+            last_article_group['author_rows'].append(row)
+
+    return article_groups
+
+
+def prep_update(row):
+
+    try:
+        journal = journal_models.Journal.objects.get(code=row.get('Journal Code'))
+        issue_type = journal_models.IssueType.objects.get(
+            code="issue",
+            journal=journal,
+        )
+        parsed_issue_date = parse_datetime(row.get('Issue pub date'))
+        issue, created = journal_models.Issue.objects.get_or_create(
+            journal=journal,
+            volume=row.get('Volume number') or 0,
+            issue=row.get('Issue number') or 0,
+            defaults={
+                'issue_title': row.get('Issue name'),
+                'issue_type': issue_type,
+                'date': parsed_issue_date,
+            }
+        )
+    except journal_models.Journal.DoesNotExist:
+        journal, issue_type, issue = None, None, None
+
+    article_id = row.get('Article ID')
+    article = None
+    if article_id:
+        try:
+            article = submission_models.Article.objects.get(pk=article_id)
+        except submission_models.Article.DoesNotExist:
+            pass
+
+    print(article, article_id)
+
+    return journal, article, issue_type, issue
+
+
+def update_article_metadata(request, reader, zip_folder_path):
+    """
+    Takes a dictreader and creates or updates article records.
+    """
+    errors = []
+    actions = []
+
+    prepared_reader_rows = prepare_reader_rows(reader)
+
+    for prepared_row in prepared_reader_rows:
+        journal, article, issue_type, issue = prep_update(prepared_row.get('primary_row'))
+
+        if not journal:
+            errors.append(
+                {
+                    'row': prepared_row.get('primary_row_number'),
+                    'error': 'No journal found.',
+                }
+            )
+            continue  # Loop should end here, we cannot import without a journal object.
+
+        if article and article.journal != journal:
+            errors.append(
+                {
+                    'row': prepared_row.get('primary_row_number'),
+                    'error': 'article.journal ({}) and journal ({}) do not match.'.format(
+                        article.journal,
+                        journal
+                    ),
+                }
+            )
+            continue  # Loop breaks here if article.journal and journal aren't the same.
+
+        if article:
+            try:
+                article = update_article(article, issue, prepared_row, zip_folder_path)
+                actions.append(
+                    'Article {} updated.'.format(article.title)
+                )
+            except Exception as e:
+                errors.append(
+                    {
+                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'error': e,
+                    }
+                )
+        else:
+            try:
+                article = submission_models.Article.objects.create(
+                    journal=journal,
+                    title=prepared_row.get('primary_row').get('Article title'),
+                )
+                update_article(article, issue, prepared_row, zip_folder_path)
+                article.stage = prepared_row.get('primary_row').get('Stage', submission_models.STAGE_UNASSIGNED)
+                article.save()
+                actions.append(
+                    'Article {} created.'.format(article.title)
+                )
+            except Exception as e:
+                errors.append(
+                    {
+                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'error': e,
+                    }
+                )
+
+    return errors, actions
+
+
+def update_article(article, issue, prepared_row, zip_folder_path):
+    row = prepared_row.get('primary_row')
+
+    article.title = row.get('Article title')
+    section_obj, created = submission_models.Section.objects.language(
+        'en',
+    ).get_or_create(
+        journal=article.journal,
+        name=row.get('Article section'),
+    )
+    article.section = section_obj
+    license_obj, created = submission_models.Licence.objects.get_or_create(
+        short_name=row.get('License'),
+        journal=article.journal,
+        defaults={
+            'name': row.get('License'),
+        }
+    )
+    article.license = license_obj
+    article.language = row.get('Language')
+
+    split_keywords = row.get('Keywords').split(",")
+    for kw in split_keywords:
+        try:
+            keyword, c = submission_models.Keyword.objects.get_or_create(word=kw)
+        except submission_models.Keyword.MultipleObjectsReturned:
+            keyword = submission_models.Keyword.objects.filter(word=kw).first()
+
+        article.keywords.add(keyword)
+
+    article.primary_issue = issue
+    article.save()
+    issue.articles.add(article)
+    issue.save()
+
+    if row.get('DOI'):
+        id_models.Identifier.objects.get_or_create(
+            id_type='doi',
+            identifier=row.get('DOI'),
+            article=article,
+        )
+
+    # import author from the primary row and then secondary rows
+    handle_author_import(row, article)
+    for author_row in prepared_row.get('author_rows'):
+        handle_author_import(author_row, article)
+
+    handle_file_import(row, article, zip_folder_path)
+
+    if row.get('Stage') == 'typesetting_plugin':
+        workflow_element = core_models.WorkflowElement.objects.get(
+            journal=article.journal,
+            stage=row.get('Stage'),
+        )
+        core_models.WorkflowLog.objects.get_or_create(
+            article=article,
+            element=workflow_element,
+        )
+
+    return article
+
+
+def handle_author_import(row, article):
+    author_fields = [
+        row.get('Author Salutation'),
+        row.get('Author given name'),
+        row.get(''),
+        row.get('Author surname'),
+        row.get('Author institution'),
+        row.get(''),
+        row.get('Author email'),
+    ]
+    author = import_author(author_fields, article)
+    author.orcid = row.get('orcid')
+    if row.get('Author is primary (Y/N)') in 'Yy':
+        article.correspondence_author = author
+        article.save()
+
+    return author
+
+
+def handle_file_import(row, article, zip_folder_path):
+    partial_file_paths = row.get('Article filename').split(',')
+    for partial_file_path in partial_file_paths:
+        full_path = os.path.join(zip_folder_path, partial_file_path)
+        file_name = partial_file_path.split('/')[1]
+        if os.path.isfile(full_path):
+            file = files.copy_local_file_to_article(
+                file_to_handle=full_path,
+                file_name=file_name,
+                article=article,
+                owner=article.correspondence_author if article.correspondence_author else None,
+                label='Imported File',
+                description='A file imported into Janeway',
+            )
+            file.privacy = 'typesetters'
+
+            if file.mime_type in files.EDITABLE_FORMAT:
+                article.manuscript_files.add(file)
+            else:
+                article.data_figure_files.add(file)
+            
+
+def verify_headers(reader):
+    header_set = set(reader.fieldnames)
+    expected_headers = set(UPDATE_CSV_HEADERS)
+
+    return header_set == expected_headers
+
+
 def import_article_metadata(request, reader):
     headers = next(reader)  # skip headers
     errors = {}
@@ -188,7 +427,7 @@ def import_article_row(row, journal, issue_type, article=None):
             article.section = sec_obj
             split_keywords = keywords.split("|")
             for kw in split_keywords:
-                new_key = submission_models.Keyword.objects.create(word = kw)
+                new_key = submission_models.Keyword.objects.create(word=kw)
                 article.keywords.add(new_key)
             article.save()
             issue.articles.add(article)
@@ -229,6 +468,7 @@ def import_author(author_fields, article):
         article.authors.add(author)
         article.save()
         author.snapshot_self(article)
+        return author
 
 
 def import_corporate_author(author_fields, article):
@@ -271,6 +511,7 @@ def read_local_file(path):
     if os.path.exists(path):
         with open(path, "rb") as f:
             return f.read()
+
 
 def generate_review_forms(request):
     from review import models as review_models
@@ -348,3 +589,70 @@ def orcid_from_url(orcid_url):
         return orcid_url.split("orcid.org/")[-1]
     except (AttributeError, ValueError, TypeError, IndexError):
         raise ValueError("%s is not a valid orcid URL" % orcid_url)
+
+
+def unzip_update_file(path):
+    errors = []
+
+    folder_name = str(uuid.uuid4())
+    temp_folder_path = os.path.join(settings.BASE_DIR, 'files', 'temp', folder_name)
+    os.mkdir(temp_folder_path)
+
+    with ZipFile(path, 'r') as zipObj:
+        # Extract all the contents of zip file in different directory
+        zipObj.extractall(temp_folder_path)
+
+    csv_path = os.path.join(temp_folder_path, 'article_data.csv')
+    if not os.path.isfile(csv_path):
+        errors.append('No article_data.csv file found in zip.')
+
+    return csv_path, temp_folder_path, errors
+
+
+def get_proofing_assignments_for_journal(journal):
+    try:
+        proofing_workflow_element = core_models.WorkflowElement.objects.get(
+            journal=journal,
+            stage=submission_models.STAGE_PROOFING,
+        )
+
+        if journal.element_in_workflow(proofing_workflow_element.element_name):
+            from proofing import models as proofing_models
+            return 'proofing', proofing_models.ProofingTask.objects.filter(
+                round__assignment__article__journal=journal,
+            )
+    except core_models.WorkflowElement.DoesNotExist:
+        pass
+
+    try:
+        from plugins.typesetting import plugin_settings, models as typesetting_models
+        typesetting_workflow_element = core_models.WorkflowElement.objects.get(
+            journal=journal,
+            stage=plugin_settings.STAGE,
+        )
+        if journal.element_in_workflow(typesetting_workflow_element.element_name):
+            return 'typesetting', typesetting_models.GalleyProofing.objects.filter(
+                round__article__journal=journal,
+            )
+    except ImportError:
+        pass
+
+    return None, []
+
+
+def proofing_files(workflow_type, proofing_assignments, article):
+    article_assignments = proofing_assignments.filter(round__article=article)
+    if workflow_type == 'proofing':
+        proofreader_file_queries = [proof.proofed_files.all() for proof in article_assignments]
+    else:
+        proofreader_file_queries = [proof.annotated_files.all() for proof in article_assignments]
+
+    files = []
+    for proofed_file_query in proofreader_file_queries:
+        for file in proofed_file_query:
+            files.append(file)
+
+    return set(files)
+
+
+

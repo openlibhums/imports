@@ -1,0 +1,44 @@
+<table class="table table-bordered">
+    <tr>
+        <th width="20%">Journal</th>
+        <td>{{ journal.name }}</td>
+    </tr>
+    <tr>
+        <th width="20%">ID</th>
+        <td>{{ article.pk }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Title</th>
+        <td>{{ article.title|safe }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Section</th>
+        <td>{{ article.section.name }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Correspondence Author</th>
+        <td>{{ article.correspondence_author.full_name }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Licence</th>
+        <td>{{ article.license.name }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Language</th>
+        <td>{{ article.get_language_display }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Abstract</th>
+        <td>{{ article.abstract|safe }}</td>
+    </tr>
+    <tr>
+        <th width="20%">Keywords</th>
+        <td>{% for keyword in article.keywords.all %}{{ keyword }}{% if not forloop.last %}, {% endif %}{% empty %}No
+            keywords recorded{% endfor %}</td>
+    </tr>
+
+    <tr>
+        <th width="20%">Comments to the Editor</th>
+        <td>{{ article.comments_editor|safe }}</td>
+    </tr>
+</table>

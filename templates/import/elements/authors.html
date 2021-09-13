@@ -1,0 +1,20 @@
+<table class="table table-bordered">
+    <tr>
+        <th>First Name</th>
+        <th>Middle Name</th>
+        <th>Last name</th>
+        <th>Email Address</th>
+        <th>Affiliation</th>
+        <th>ORCiD</th>
+    </tr>
+    {% for ao in article.frozenauthor_set.all %}
+        <tr>
+            <td>{{ ao.first_name }}</td>
+            <td>{{ ao.middle_name }}</td>
+            <td>{{ ao.last_name }}</td>
+            <td>{{ ao.author.email }}</td>
+            <td>{{ ao.affiliation }}</td>
+            <td>{{ ao.author.orcid }}</td>
+        </tr>
+    {% endfor %}
+</table>

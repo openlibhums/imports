@@ -1,0 +1,16 @@
+<table class="table table-bordered">
+    <tr>
+        <th>ID</th>
+        <th>Original Filename</th>
+        <th>Janeway Filename</th>
+        <th>Download Link</th>
+    </tr>
+    {% for file in files %}
+        <tr>
+            <td>{{ file.pk }}</td>
+            <td>{{ file.original_filename }}</td>
+            <td>{{ file.uuid_filename }}</td>
+            <td><a href="{% url 'article_file_download' 'id' article.pk file.pk %}">Download</a></td>
+        </tr>
+    {% endfor %}
+</table>
