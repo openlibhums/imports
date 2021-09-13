@@ -98,7 +98,7 @@ def import_action(request, filename):
                 )
             )
 
-    file = open(path, 'r')
+    file = open(path, 'r', encoding="utf-8-sig")
     if type == 'update':
         reader = csv.DictReader(file)
     else:
