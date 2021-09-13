@@ -3,22 +3,31 @@ Set of functions for importing articles from JATS XML
 """
 import datetime
 import hashlib
+import mimetypes
+import os
+import tempfile
 import uuid
+import zipfile
 
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
+from core import files
 from core.models import Account
 from identifiers.models import Identifier
 from journal import models as journal_models
-from production.logic import save_galley
+from production.logic import save_galley, save_galley_image
 from plugins.imports.utils import DummyRequest
 from submission import models as submission_models
 
 
-def import_jats_article(jats_contents, journal, persist=True, filename=None, owner=None):
+def import_jats_article(
+        jats_contents, journal,
+        persist=True, filename=None, owner=None,
+        images=None, request=None
+):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
     :param journal: Journal in which to import the article
@@ -60,8 +69,51 @@ def import_jats_article(jats_contents, journal, persist=True, filename=None, own
         # Save Galleys
         xml_file = ContentFile(jats_contents.encode("utf-8"))
         xml_file.name = filename or uuid.uuid4()
-        request = DummyRequest(owner)
-        save_galley(article, request, xml_file, True, "XML")
+        request = request or DummyRequest(owner)
+        galley = save_galley(article, request, xml_file, True, "XML")
+
+    if images:
+        load_jats_images(images, galley, request)
+    return article
+
+
+def import_jats_zipped(zip_file, journal, owner=None, persist=True):
+    """ Import a batch of Zipped JATS articles and their figures
+    :param zip_file: The zipped jats to be imported
+    :param journal: Journal in which to import the articles
+    :param owner: An instance of core.models.Account
+    """
+    articles = []
+    jats_files_info = []
+    image_map = {}
+    temp_path = os.path.join(settings.BASE_DIR, 'files/temp')
+    with zipfile.ZipFile(zip_file, 'r') as zf:
+        with tempfile.TemporaryDirectory(dir=temp_path) as temp_dir:
+            zf.extractall(path=temp_dir)
+
+            for root, path, filenames in os.walk(temp_dir):
+                jats_path = None
+                jats_filename = None
+                supplements = []
+
+                for filename in filenames:
+                    mimetype, _ = mimetypes.guess_type(filename)
+                    file_path = os.path.join(root, filename)
+                    if mimetype in files.XML_MIMETYPES:
+                        jats_path = file_path
+                        jats_filename = filename
+                    else:
+                        supplements.append(file_path)
+
+                if jats_path:
+                    with open(jats_path, 'r') as jats_file:
+                        articles.append(import_jats_article(
+                            jats_file.read(), journal, persist,
+                            jats_filename, owner, supplements,
+                        ))
+
+    return articles
+
 
 
 def get_jats_title(soup):
@@ -160,10 +212,15 @@ def get_jats_authors(soup, author_notes=None):
         if author.find("aff"):
             institution = author.find("aff").text
         if author.find("surname"):
+            email_jats = author.find("email")
+            if email_jats:
+                email = email_jats.text
+            else:
+                email = default_email(author)
             author_data = {
                 "first_name": author.find("given-names").text,
                 "last_name": author.find("surname").text,
-                "email": author.find("email") or default_email(author),
+                "email": email,
                 "correspondence": False,
                 "institution": institution,
             }
@@ -209,6 +266,12 @@ def save_article(journal, metadata, issue=None, owner=None):
             Identifier.objects.get_or_create(
                 id_type="pubid",
                 identifier=metadata["identifiers"]["pubid"],
+                defaults={"article": article},
+            )
+        if metadata["identifiers"]["handle"]:
+            Identifier.objects.get_or_create(
+                id_type="handle",
+                identifier=metadata["identifiers"]["handle"],
                 defaults={"article": article},
             )
         for idx, author in enumerate(metadata["authors"]):
@@ -258,16 +321,40 @@ def get_jats_identifiers(soup):
     ids = {
         "pubid": None,
         "doi": None,
+        "handle": None,
     }
     for article_id in soup.find_all("article-id"):
         if article_id.attrs.get("pub-id-type") == "doi":
             ids["doi"] = article_id.text
         elif article_id.attrs.get("pub-id-type") == "publisher-id":
             ids["pubid"] = article_id.text
+        elif article_id.attrs.get("pub-id-type") == "handle":
+            ids["handle"] = article_id.text
+
 
     return ids
 
 
 def default_email(seed):
     hashed = hashlib.md5(str(seed).encode("utf-8")).hexdigest()
-    return "{0}@{1}".format(hashed, settings.DUMMY_EMAIL_DOMAIN)
+    return "{0}{1}".format(hashed, settings.DUMMY_EMAIL_DOMAIN)
+
+
+def load_jats_images(images, galley, request):
+    for img_path in images:
+        _, filename = os.path.split(img_path)
+        missing_images = galley.has_missing_image_files()
+        all_images = galley.all_images()
+        if filename in all_images:
+            with open(img_path, 'rb') as image:
+                content_file = ContentFile(image.read())
+                content_file.name = filename
+
+                if filename in missing_images:
+                    save_galley_image(galley, request, content_file)
+                else:
+                    to_replace = galley.images.get(original_filename=filename)
+                    files.overwrite_file(
+                        content_file, to_replace,
+                        ('articles', galley.article.pk)
+                    )
