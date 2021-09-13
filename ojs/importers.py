@@ -162,9 +162,7 @@ def import_article_metadata(article_dict, journal, client):
 
     # Get or create the article's section
     section_name = article_dict.get('section', 'Article')
-    section, _ = submission_models.Section.objects.language(
-        settings.LANGUAGE_CODE
-    ).get_or_create(journal=journal, name=section_name)
+    section, _ = submission_models.Section.objects.get_or_create(journal=journal, name=section_name)
 
     article.section = section
     article.save()
@@ -770,9 +768,7 @@ def import_issue_metadata(issue_dict, client, journal):
         issue_dict.get("sections", []), 1
     ):
         section_name = section_dict["title"]
-        section, _ = submission_models.Section.objects.language(
-            settings.LANGUAGE_CODE
-        ).get_or_create(journal=journal, name=section_name)
+        section, _ = submission_models.Section.objects.get_or_create(journal=journal, name=section_name)
         journal_models.SectionOrdering.objects.get_or_create(
             issue=issue,
             section=section,
@@ -830,9 +826,7 @@ def import_multilingual_setting(group, setting_name, journal, setting_dict):
 
 
 def import_section_metadata(section_dict, client, journal):
-    section, _ = submission_models.Section.objects.language(
-        settings.LANGUAGE_CODE
-    ).get_or_create(
+    section, _ = submission_models.Section.objects.get_or_create(
         journal=journal,
         name=section_dict["title"],
     )

@@ -10,10 +10,10 @@ from django.template.loader import render_to_string
 
 from core import files
 
-UPDATE_HEADER_ROW = "Article title,Article filename, Article section, Keywords,License,Language,Author Salutation,Author surname," \
+UPDATE_HEADER_ROW = "Article title,Article filename,Article section,Keywords,License,Language,Author Salutation,Author surname," \
                     "Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID," \
                     "DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN,Delivery formats,Typesetting template," \
-                    "Volume number,Issue number,Issue name,Issue pub date"
+                    "Volume number,Issue number,Issue name,Issue pub date,Stage"
 
 CSV_HEADER_ROW = "Article identifier, Article title, Section Name, Volume number, Issue number, Subtitle, Abstract," \
                  "publication stage, keywords, date/time accepted, date/time publishded , DOI, Author Salutation," \
@@ -234,6 +234,7 @@ def export_using_import_format(articles):
             issue.issue if issue and issue.issue else '',
             issue.issue_title if issue and issue.issue_title else '',
             issue.date if issue else '',
+            article.stage,
         ]
         article_initial_details.extend(additional_details)
         author_rows = add_author_information(
