@@ -11,5 +11,11 @@ from plugins.imports.ojs.main import (
     import_sections,
     import_users,
     import_journal_settings,
+
+    #OJS3
+    import_ojs3_articles,
+    import_ojs3_issues,
+    import_ojs3_journals,
+    import_ojs3_users,
 )
 from plugins.imports.ojs.clients import OJSJanewayClient

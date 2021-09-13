@@ -13,8 +13,9 @@ logger = get_logger(__name__)
 class PaginatedResults():
     OFFSET_KEY = ""
     PAGE_KEY = ""
+    RESULTS_KEY = None
 
-    def __init__(self, url, client, per_page=20, key=None, **client_params):
+    def __init__(self, url, client, per_page=20, **client_params):
         """ An iterator that yields results from an API using pagination
         :param URL: URL of the API endpoint.
         :param client: The request client to use for fetching results.
@@ -23,11 +24,10 @@ class PaginatedResults():
             To be used if the api doesnt return an array but an object like
             {"results": [...]}
         """
-        self._page = 0
+        self._page = None
         self._per_page = per_page
         self._url = url
         self._client = client
-        self._key = key
         self._results = iter([])
         self._client_params = client_params
         self._cached = None
@@ -44,13 +44,19 @@ class PaginatedResults():
             self._fetch_results()
             return next(self)
 
+    def _next_page(self):
+        if self._page == None:
+            self._page = 1
+        else:
+            self._page += 1
+
     def _fetch_results(self):
-        self._page += 1
+        self._next_page()
         url = self.build_url(self._url, self._page, self._per_page)
         data = self._client(url, **self._client_params).json()
         if data:
-            if self._key:
-                data = data.get(self._key)
+            if self.RESULTS_KEY:
+                data = data.get(self.RESULTS_KEY, [])
         if not data:
             raise StopIteration
         if self._cached and self._cached == data:
@@ -74,6 +80,24 @@ class OJS2PaginatedResults(PaginatedResults):
     OFFSET_KEY = "limit"
     PAGE_KEY = "page"
 
+
+class OJS3PaginatedResults(PaginatedResults):
+    OFFSET_KEY = "count"
+    PAGE_KEY = "offset"
+    RESULTS_KEY = "items"
+
+    def _next_page(self):
+        """Calculate next page parameter for the next request
+        OJS 3 uses an offset rather than a page number, so we calculate the next
+        page number as current page + count of items returned per page
+        e.g with a count of 10, to get page 2 we set the offset to  0 + 10
+        """
+        if self._page == None:
+            self._page = 0 # We start at 0 because it is an offset not a page
+        else:
+            self._page += self._per_page
+
+
 class OJSBaseClient():
     API_PATH = ''  # Path to the OJS API to be consumed
     AUTH_PATH = '/login/signIn' # Path where the auth details should be posted
@@ -86,16 +110,19 @@ class OJSBaseClient():
         "Content-Type": "application/x-www-form-urlencoded",
     }
 
-    def __init__(self, journal_url, user=None, password=None, session=None):
+    def __init__(self, journal_url, username=None, password=None, session=None):
         """"A Client for consumption of OJS APIs"""
         self.journal_url = journal_url
+        self.base_url = urlparse.urlunsplit(
+            urlparse.urlsplit(journal_url)._replace(path="/")
+        )
         self._auth_dict = {}
         self.session = session or requests.Session()
         self.session.headers.update(**self.HEADERS)
         self.authenticated = False
-        if user and password:
+        if username and password:
             self._auth_dict = {
-                'username': user,
+                'username': username,
                 'password': password,
             }
             self.login()
@@ -354,31 +381,44 @@ def get_filename_from_headers(response):
 
 
 class OJS3APIClient(OJSBaseClient):
-    PATH = '/api/v1/'
+    API_PATH = '/api/v1'
+    ROOT_PATH = '_'
+    CONTEXTS_PATH = '/contexts/%s'
     AUTH_PATH = '/login/signIn'
-    ISSUES_PATH = "/issues"
-    SECTIONS_PATH = "/sections"
-    USERS_PATH = "/users"
-    METRICS_PATH = "/metrics"
-    SUBMISSION_PATH = '/editor/submission/%s'
+    USERS_PATH = "/users/%s"
+    SUBMISSIONS_PATH = '/submissions/%s'
+    SUBMISSION_FILES_PATH = '/submissions/%s/files/%s'
+    ISSUES_PATH = '/issues/%s'
+    ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
+    PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
+    PUBLIC_PATH = '/public/journals/%s/'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/39.0.2171.95 Safari/537.36"
     }
 
+    # Submission status codes from OJS 3
     STATUS_QUEUED = 1
-    STATUS_SCHEDULED = 2
+    STATUS_SCHEDULED = 5
     STATUS_PUBLISHED = 3
     STATUS_DECLINED = 4
 
-    # A mapping from STAGE to (status code, filter)
-    SUPPORTED_STAGES = {
-        'published',
-        'in_editing',
-        'in_review',
-        'unassigned',
-    }
+    #File stages for OJS3
+    SUBMISSION_FILE_SUBMISSION = 2
+    SUBMISSION_FILE_NOTE = 3
+    SUBMISSION_FILE_REVIEW_FILE = 4
+    SUBMISSION_FILE_REVIEW_ATTACHMENT = 5
+    SUBMISSION_FILE_FINAL = 6
+    SUBMISSION_FILE_COPYEDIT = 9
+    SUBMISSION_FILE_PROOF = 10
+    SUBMISSION_FILE_PRODUCTION_READY = 11
+    SUBMISSION_FILE_ATTACHMENT = 13
+    SUBMISSION_FILE_REVIEW_REVISION = 15
+    SUBMISSION_FILE_DEPENDENT = 17
+    SUBMISSION_FILE_QUERY = 18
+    SUBMISSION_FILE_INTERNAL_REVIEW_FILE = 19
+    SUBMISSION_FILE_INTERNAL_REVIEW_REVISION = 20
 
     def fetch(self, request_url, headers=None, stream=False):
         resp = self.session.get(request_url, headers=headers, stream=stream)
@@ -423,64 +463,183 @@ class OJS3APIClient(OJSBaseClient):
             content_file.name = os.path.basename(url)
         return content_file
 
+    def fetch_public_file(self, journal_id, filename):
+        url = (
+            self.base_url
+            + self.PUBLIC_PATH % journal_id
+            + filename
+
+        )
+        return self.fetch_file(url, filename=filename)
+
+
     def post(self, request_url, headers=None, body=None):
         if not headers:
             headers = {}
         response = self.session.post(request_url, headers=headers, data=body)
         return response
 
+    def get_published_articles(self):
+        return self.get_articles(stages=[self.STATUS_PUBLISHED, self.STATUS_QUEUED])
+
+    def get_articles(self, stages=None):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SUBMISSIONS_PATH % ''
+        )
+        if stages:
+            params = {"stages": stages}
+            request_url += "?%s" % urlparse.urlencode(params)
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, article in enumerate(paginator):
+            yield self.get_article(article["id"])
+
     def get_article(self, ojs_id):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + "?%s" % urlparse.urlencode({"article_id": ojs_id})
+            + self.SUBMISSIONS_PATH % ojs_id
         )
         response = self.fetch(request_url)
-        data = response.json()
-        if data:
-            return data[0]
-        return None
+        return response.json()
 
-    def get_articles(self):
+    def get_publication(self, ojs_id, publication_id):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + '/submissions'
+            + self.PUBLICATIONS_PATH % (ojs_id, publication_id)
         )
         response = self.fetch(request_url)
-        data = response.json()
-        for article in data['results']:
-            yield article
+        return response.json()
+
+    def get_journals(self, journal_acronym=None):
+        """ Retrieves all journals from the contexts (sites) API"""
+        request_url = (
+            self.base_url
+            + self.ROOT_PATH
+            + self.API_PATH
+            + self.CONTEXTS_PATH % ''
+        )
+        if journal_acronym:
+            params = {"searchPhrase": journal_acronym}
+            request_url += '?%s' % urlparse.urlencode(params)
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client, per_page=100)
+        for i, journal in enumerate(paginator):
+            # The site endpoint for each issue object provides more metadata
+            yield self.fetch(journal["_href"]).json()
+
+    def get_prod_ready_files(self, submission_id):
+        return self.get_submission_files(
+            submission_id, fileStages=self.SUBMISSION_FILE_PRODUCTION_READY)
+
+    def get_manuscript_files(self, submission_id):
+        return self.get_submission_files(
+            submission_id, fileStages=self.SUBMISSION_FILE_SUBMISSION)
+
+    def get_copyediting_files(self, submission_id, drafts=False):
+        query_params = {}
+        if drafts:
+            query_params["fileStages"] = self.SUBMISSION_FILE_FINAL
+        else:
+            query_params["fileStages"] = self.SUBMISSION_FILE_COPYEDIT
+
+        return self.get_submission_files(submission_id, **query_params)
+
+    def get_review_files(self, submission_id, review_ids=None, round_ids=None, revisions=False):
+        query_params = {}
+        if review_ids:
+            query_params["reviewIds"] = ','.join(str(i) for i in review_ids)
+            query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_ATTACHMENT
+
+        elif round_ids:
+            query_params["reviewRoundIds"] = ','.join(str(i) for i in round_ids)
+            if revisions:
+                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_REVISION
+            else:
+                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
+
+        return self.get_submission_files(submission_id, **query_params)
+
+    def get_submission_files(self, submission_id, **query_params):
+        """ Gets all the files linked to a given ojs submission
+        :param submission_id: The OJS submission ID
+        :param review_ids: A list of review assignment ids to filter by
+        :round_ids: A list of review round ids to filter by
+        """
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.SUBMISSION_FILES_PATH % (submission_id, '')
+        )
+
+        if query_params:
+            request_url += "?%s" % urlparse.urlencode(query_params)
+
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+
+        for f in paginator:
+            yield f
+
 
     def get_issues(self):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + self.ISSUES_PATH
+            + self.ISSUES_PATH % ''
         )
-        response = self.fetch(request_url)
-        data = response.json()
-        for issue in data:
-            yield issue
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for i, issue in enumerate(paginator):
+            # The issue endpoint for each issue object provides more data
+            yield self.get_issue(issue["id"])
 
-    def get_sections(self):
+    def get_issue(self, ojs_issue_id):
         request_url = (
             self.journal_url
             + self.API_PATH
-            + self.SECTIONS_PATH
+            + self.ISSUES_PATH % (ojs_issue_id)
         )
         response = self.fetch(request_url)
-        data = response.json()
-        for section in data:
-            yield section
+        return response.json()
+
+    def get_issue_galley(self, issue_id, galley_id):
+        """ Fetch an issue galley from its URL (not from the rest API)
+        It seems the REST API won't return URLS or file paths for issue galleys,
+        instead we construct the regular download path from the issue and 
+        :param issue_id: The OJS ID of the issue
+        :param galley_id: The OJS ID of the issue's galley
+        :return: A django file wrapping the galley file or None
+        """
+        request_url = (
+            self.journal_url
+            + self.ISSUE_GALLEY_PATH.format(issue=issue_id, galley=galley_id)
+        )
+
+        return self.fetch_file(request_url)
 
     def get_users(self):
+        """ Retrieves all users for the given journal"""
         request_url = (
             self.journal_url
             + self.API_PATH
-            + self.USERS_PATH
+            + self.USERS_PATH % ''
+        )
+        client = self.fetch
+        paginator = OJS3PaginatedResults(request_url, client)
+        for _, user in enumerate(paginator):
+            # The site endpoint for each issue object provides more metadata
+            yield self.get_user(user["id"])
+
+    def get_user(self, ojs_user_id):
+        """ Retrieves the user matching the provided ID"""
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.USERS_PATH % ojs_user_id
         )
         response = self.fetch(request_url)
-        data = response.json()
-        for user in data:
-            yield user
+        return response.json()
