@@ -428,8 +428,10 @@ def import_article_row(row, journal, issue_type, article=None):
             article.section = sec_obj
             split_keywords = keywords.split("|")
             for kw in split_keywords:
-                new_key = submission_models.Keyword.objects.create(word=kw)
-                article.keywords.add(new_key)
+                if kw.strip():
+                    new_kw, _ = submission_models.Keyword.objects.get_or_create(
+                        word=kw)
+                    article.keywords.add(new_kw)
             article.save()
             issue.articles.add(article)
             issue.save()
