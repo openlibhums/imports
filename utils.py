@@ -367,6 +367,7 @@ def verify_headers(reader):
 
 
 def import_article_metadata(request, reader):
+    import pdb;pdb.set_trace()
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
@@ -443,7 +444,7 @@ def import_article_row(row, journal, issue_type, article=None):
 
         # author import
         *author_fields, is_corporate = author_fields
-        if is_corporate in "Yy":
+        if is_corporate and is_corporate in "Yy":
             import_corporate_author(author_fields, article)
         else:
             import_author(author_fields, article)
