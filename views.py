@@ -2,11 +2,13 @@ import csv
 import os
 import shutil
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
 from django.contrib import messages
-from django.core.urlresolvers import reverse
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.urlresolvers import reverse
 from django.http import Http404
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import translation
 
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
@@ -114,8 +116,9 @@ def import_action(request, filename):
         elif type == 'submission':
             utils.import_submission_settings(request, reader)
         elif type == 'article_metadata':
-            _, errors, error_file = utils.import_article_metadata(
-                request, reader)
+            with translation.override(settings.LANGUAGE_CODE):
+                _, errors, error_file = utils.import_article_metadata(
+                    request, reader)
         elif type == 'update':
             headers_verified = utils.verify_headers(reader)
             errors, actions = utils.update_article_metadata(
