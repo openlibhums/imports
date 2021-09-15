@@ -367,7 +367,6 @@ def verify_headers(reader):
 
 
 def import_article_metadata(request, reader):
-    import pdb;pdb.set_trace()
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
