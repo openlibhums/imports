@@ -324,10 +324,11 @@ def handle_author_import(row, article):
         row.get('Author email'),
     ]
     author = import_author(author_fields, article)
-    author.orcid = row.get('orcid')
+    if row.get("orcid"):
+        author.orcid = orcid_from_url(row["orcid"])
     if row.get('Author is primary (Y/N)') in 'Yy':
         article.correspondence_author = author
-        article.save()
+    article.save()
 
     return author
 
