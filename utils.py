@@ -30,22 +30,21 @@ logger = get_logger(__name__)
 TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
-                 "publication stage, keywords, date/time accepted, date/time publishded , DOI, Author Salutation, " \
-                 "Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
-                 "PDF URI,XML URI, HTML URI, Figures URI (zip)"
+    "publication stage, keywords, date/time accepted, date/time publishded , DOI, First Page, Last Page, Is Peer Reviewed (Y/N) " \
+    "Author Salutation, Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
+    "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
-CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
-                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
+CSV_MAURO = "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
+    "2018-01-02T09:00:00,10.1000/xyz123,1,3,Y,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
     "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images.zip"
-CSV_MARTIN = "1,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
-CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
+CSV_MARTIN = "1,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,Y,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
     def __init__(self, user):
         self.user = user
-
 
 
 def import_editorial_team(request, reader):
@@ -402,7 +401,8 @@ def import_article_metadata(request, reader):
 def import_article_row(row, journal, issue_type, article=None):
         *a_row, pdf, xml, html, figures = row
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, keywords, date_accepted, date_published, doi, *author_fields = a_row
+            stage, keywords, date_accepted, date_published, doi, \
+            first_page, last_page, is_reviewed, *author_fields = a_row
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=vol_num or 0,
@@ -435,6 +435,14 @@ def import_article_row(row, journal, issue_type, article=None):
                     new_kw, _ = submission_models.Keyword.objects.get_or_create(
                         word=kw)
                     article.keywords.add(new_kw)
+            if first_page and first_page.is_digit():
+                article.first_page = first_page
+            if last_page and last_page.is_digit():
+                article.last_page = last_page
+            if is_reviewed and is_reviewed in "Yy":
+                article.peer_reviewed = True
+            else:
+                article.peer_reviewed = False
             article.save()
             issue.articles.add(article)
             issue.save()
