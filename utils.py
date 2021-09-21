@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
-    "publication stage, keywords, date/time accepted, date/time publishded , DOI, First Page, Last Page, Is Peer Reviewed (Y/N) " \
+    "publication stage, keywords, date/time accepted, date/time publishded , DOI, First Page, Last Page, Total pages, Is Peer Reviewed (Y/N), License URL," \
     "Author Salutation, Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
     "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
@@ -399,55 +399,70 @@ def import_article_metadata(request, reader):
 
 @transaction.atomic
 def import_article_row(row, journal, issue_type, article=None):
-        *a_row, pdf, xml, html, figures = row
-        article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, keywords, date_accepted, date_published, doi, \
-            first_page, last_page, is_reviewed, *author_fields = a_row
-        issue, created = journal_models.Issue.objects.get_or_create(
-            journal=journal,
-            volume=vol_num or 0,
-            issue=issue_num or 0,
-        )
-        if created:
-            issue.issue_type = issue_type
-            issue.save()
+    *a_row, pdf, xml, html, figures = row
+    article_id, title, section, vol_num, issue_num, subtitle, abstract, \
+        stage, keywords, date_accepted, date_published, doi, \
+        first_page, last_page, total_pages, is_reviewed, license_url, \
+        *author_fields = a_row
+    parsed_date_published = datetime_parser(date_published)
+    issue, created = journal_models.Issue.objects.get_or_create(
+        journal=journal,
+        volume=vol_num or 0,
+        issue=issue_num or 0,
+    )
+    if created:
+        issue.issue_type = issue_type
+        issue.date = parsed_date_published
+        issue.save()
 
-        if not article:
-            if not title:
-                # New article row found with no author
-                raise ValueError("Row refers to an unknown article")
-            article = submission_models.Article.objects.create(
-                journal=journal,
-                title=title,
+
+    if not article:
+        if not title:
+            # New article row found with no author
+            raise ValueError("Row refers to an unknown article")
+        article = submission_models.Article.objects.create(
+            journal=journal,
+            title=title,
+        )
+        article.subtitle = subtitle
+        article.abstract = abstract
+        article.date_accepted = datetime_parser(date_accepted)
+        article.date_published = parsed_date_published
+        article.stage = stage
+        sec_obj, created = submission_models.Section.objects.get_or_create(journal=journal, name=section)
+        article.section = sec_obj
+        split_keywords = keywords.split("|")
+        for kw in split_keywords:
+            if kw.strip():
+                new_kw, _ = submission_models.Keyword.objects.get_or_create(
+                    word=kw)
+                article.keywords.add(new_kw)
+        if first_page and first_page.isdigit():
+            article.first_page = first_page
+        if last_page and last_page.isdigit():
+            article.last_page = last_page
+        if total_pages and total_pages.isdigit():
+            article.total_pages = total_pages
+        if is_reviewed and is_reviewed in "Yy":
+            article.peer_reviewed = True
+        else:
+            article.peer_reviewed = False
+        if license_url:
+            license, _ = submission_models.Licence.objects.get_or_create(
+                url=license_url,
+                journal=article.journal,
+                defaults={
+                    'name': row.get('CSV License'),
+                    'short_name': row.get('imported'),
+                }
             )
-            article.subtitle = subtitle
-            article.abstract = abstract
-            article.date_accepted = (parse_datetime(date_accepted)
-                    or parse_date(date_accepted))
-            article.date_published = (parse_datetime(date_published)
-                    or parse_date(date_published))
-            article.stage = stage
-            sec_obj, created = submission_models.Section.objects.get_or_create(journal=journal, name=section)
-            article.section = sec_obj
-            split_keywords = keywords.split("|")
-            for kw in split_keywords:
-                if kw.strip():
-                    new_kw, _ = submission_models.Keyword.objects.get_or_create(
-                        word=kw)
-                    article.keywords.add(new_kw)
-            if first_page and first_page.is_digit():
-                article.first_page = first_page
-            if last_page and last_page.is_digit():
-                article.last_page = last_page
-            if is_reviewed and is_reviewed in "Yy":
-                article.peer_reviewed = True
-            else:
-                article.peer_reviewed = False
-            article.save()
-            issue.articles.add(article)
-            issue.save()
-            id_models.Identifier.objects.create(
-                id_type='doi', identifier=doi, article=article)
+            article.license = license
+
+        article.save()
+        issue.articles.add(article)
+        issue.save()
+        id_models.Identifier.objects.create(
+            id_type='doi', identifier=doi, article=article)
 
         # author import
         *author_fields, is_corporate = author_fields
