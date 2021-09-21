@@ -7,6 +7,7 @@ from urllib.parse import urlparse, unquote
 import uuid
 from zipfile import ZipFile
 
+from dateutil import parser as dateutil_parser
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -705,3 +706,19 @@ def get_filename_from_headers(response):
             "No filename available in headers: %s" % response.headers
         )
     return None
+
+
+def datetime_parser(date_time_str):
+    if not date_time_str:
+        return
+
+    # Try ISO datetime
+    datetime_obj = parse_datetime(date_time_str)
+    # Try ISO Date
+    if not datetime_obj:
+        datetime_obj = parse_date(date_time_str)
+    # Try our best
+    if not datetime_obj:
+        datetime_obj = dateutil_parser.parse(date_time_str)
+
+    return datetime_obj
