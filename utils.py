@@ -44,8 +44,9 @@ CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|
 
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
-    def __init__(self, user):
+    def __init__(self, user, journal=None):
         self.user = user
+        self.journal = journal
 
 
 def import_editorial_team(request, reader):
@@ -357,7 +358,7 @@ def handle_file_import(row, article, zip_folder_path):
                 article.manuscript_files.add(file)
             else:
                 article.data_figure_files.add(file)
-            
+
 
 def verify_headers(reader):
     header_set = set(reader.fieldnames)
@@ -366,7 +367,7 @@ def verify_headers(reader):
     return header_set == expected_headers
 
 
-def import_article_metadata(request, reader):
+def import_article_metadata(request, reader, id_type=None):
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
@@ -393,6 +394,13 @@ def import_article_metadata(request, reader):
             if settings.DEBUG:
                 logger.exception(e)
             error_writer.writerow(line)
+        if line_id not in articles and id_type:
+            id_models.Identifier.objects.get_or_create(
+                id_type=id_type,
+                identifier=line_id,
+                article=article
+            )
+
         articles[line_id] = article
     error_file.close()
     return articles, errors, uuid_filename
@@ -406,20 +414,25 @@ def import_article_row(row, journal, issue_type, article=None):
         first_page, last_page, total_pages, is_reviewed, license_url, \
         *author_fields = a_row
     parsed_date_published = datetime_parser(date_published)
-    issue, created = journal_models.Issue.objects.get_or_create(
-        journal=journal,
-        volume=vol_num or 0,
-        issue=issue_num or 0,
-    )
+
+    # Only create issue for first row
+    if  article and article.primary_issue:
+        issue = article.primary_issue
+        created = False
+    else:
+        issue, created = journal_models.Issue.objects.get_or_create(
+            journal=journal,
+            volume=vol_num or 0,
+            issue=issue_num or 0,
+        )
+
     if created:
         issue.issue_type = issue_type
-        issue.date = parsed_date_published
+        issue.date = parsed_date_published or issue.date
         issue.save()
-
-
     if not article:
         if not title:
-            # New article row found with no author
+            # New article row found with no title
             raise ValueError("Row refers to an unknown article")
         article = submission_models.Article.objects.create(
             journal=journal,
@@ -453,39 +466,40 @@ def import_article_row(row, journal, issue_type, article=None):
                 url=license_url,
                 journal=article.journal,
                 defaults={
-                    'name': row.get('CSV License'),
-                    'short_name': row.get('imported'),
+                    'name': 'CSV License',
+                    'short_name': 'imported',
                 }
             )
             article.license = license
 
+        article.primary_issue = issue
         article.save()
         issue.articles.add(article)
         issue.save()
         id_models.Identifier.objects.create(
             id_type='doi', identifier=doi, article=article)
 
-        # author import
-        *author_fields, is_corporate = author_fields
-        if is_corporate and is_corporate in "Yy":
-            import_corporate_author(author_fields, article)
-        else:
-            import_author(author_fields, article)
+    # author import
+    *author_fields, is_corporate = author_fields
+    if is_corporate and is_corporate in "Yy":
+        import_corporate_author(author_fields, article)
+    else:
+        import_author(author_fields, article)
 
 
-        #files import
-        for uri in (pdf, html, xml):
-            if uri:
-                import_galley_from_uri(article, uri, figures)
+    #files import
+    for uri in (pdf, html, xml):
+        if uri:
+            import_galley_from_uri(article, uri, figures)
 
-        return article
+    return article
 
 
 def import_author(author_fields, article):
     salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
-    author, created = core_models.Account.objects.get_or_create(email=email)
+    author, created = core_models.Account.objects.get_or_create(email=email.strip())
     if created:
         author.salutation = salutation
         author.first_name = first_name
