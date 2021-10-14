@@ -321,7 +321,7 @@ def handle_author_import(row, article):
         row.get('Author surname'),
         row.get('Author institution'),
         row.get(''),
-        row.get('Author email').strip(),
+        row.get('Author email').strip() if row.get('Author email') else None,
     ]
     author = import_author(author_fields, article)
     if row.get("orcid"):
