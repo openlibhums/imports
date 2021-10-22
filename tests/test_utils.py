@@ -8,6 +8,7 @@ Debug with
 from nose.tools import set_trace; set_trace()
 
 """
+
 from django.test import TestCase
 
 from plugins.imports import utils
@@ -41,15 +42,17 @@ def run_import(csv_string):
     Simulates the import
     """
 
+    # print('SETUP')
     reader = csv.DictReader(csv_string.splitlines())
     zip_folder_path = "test_zip_1.zip"
 
-    utils.update_article_metadata(
+    errors, actions = utils.update_article_metadata(
         MOCK_REQUEST,
         reader,
         zip_folder_path,
     )
 
+    # print(errors, actions)
 
 def read_saved_article_data(article):
     """
@@ -83,6 +86,7 @@ def read_saved_article_data(article):
         'Issue name': article.issue.issue_title,
         'Issue pub date': article.issue.date.strftime('%Y-%m-%d %H:%M:%S%z')
     }
+
 
     author_rows = {}
 
@@ -127,7 +131,7 @@ def read_saved_frozen_author_data(frozen_author, article):
     with the expected account data
     """
 
-    return {
+    author_data = {
         'Author Salutation': frozen_author.author.salutation,
         'Author surname': frozen_author.last_name,
         'Author given name': frozen_author.first_name,
@@ -139,6 +143,9 @@ def read_saved_frozen_author_data(frozen_author, article):
         'Author ORCID': None,  # not desired behavior
     }
 
+    # from nose.tools import set_trace; set_trace()
+
+    return author_data
 
 class TestUpdateArticleMetadata(TestCase):
     @classmethod
@@ -176,11 +183,12 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(CSV_DATA_1, saved_article_data)
 
     def testChangesToArticleMetadata(self):
-        csv_data_3 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Article sequence,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000
-,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,,
-,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,,
-"""
+
+        # change article data
+        csv_data_3 = CSV_DATA_1.replace(
+            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,',
+            'Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1'
+        )
 
         run_import(csv_data_3)
 
@@ -196,11 +204,18 @@ Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,Frenc
         self.assertEqual(csv_data_3, saved_article_data)
 
     def testChangesToAuthorMetadata(self):
-        csv_data_4 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Article sequence,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Personne3,Surreal,unrealperson3@example.com,University of Toronto,N,https://orcid.org/0000-1234-5678-901X,1,,,,,Article,Editor Copyediting,,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000
-,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,,
-,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,,
-"""
+
+        # change data for unrealperson3@example.com
+        csv_data_4 = CSV_DATA_1.replace(
+            'Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,',
+            'Prof,Personne3,Surreal,unrealperson3@example.com,University of Toronto,N,https://orcid.org/0000-1234-5678-901X,1'
+        )
+
+        # make unrealperson6@example.com primary
+        csv_data_4 = csv_data_4.replace(
+            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,,',
+            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,,'
+        )
 
         run_import(csv_data_4)
 
@@ -222,3 +237,56 @@ Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,Eng
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
         self.assertEqual(csv_data_4, saved_article_data)
+
+    def testChangesToSection(self):
+
+        # add article id
+        # change section
+        csv_data_5 = CSV_DATA_1.replace(
+            'University of Michigan Medical School,Y,,,,,,,Article,',
+            'University of Michigan Medical School,Y,,1,,,,,Interview,'
+            )
+
+        run_import(csv_data_5)
+
+        article_1 = submission_models.Article.objects.get(id=1)
+        saved_article_data = read_saved_article_data(article_1)
+        self.assertEqual(csv_data_5, saved_article_data)
+
+    def testDifferentStages(self):
+
+        # import "new" article with different section
+        csv_data_6 = CSV_DATA_1.replace(
+            'Y,,,,,,,Article,Editor Copyediting',
+            'Y,,,,,,,Article,Typesetting Plugin'
+        )
+
+        run_import(csv_data_6)
+
+        # add article id
+        csv_data_6 = csv_data_6.replace(
+            'Y,,',
+            'Y,,2'
+        )
+
+        article_2 = submission_models.Article.objects.get(id=2)
+        saved_article_data = read_saved_article_data(article_2)
+        self.assertEqual(csv_data_6, saved_article_data)
+
+    def testBadData(self):
+        csv_data_7 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Article sequence,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+£$^^£&&££&££££$,;;;;;;,£%^^£&,%^*%^&*%^&*,$*^%*^%*&,%^*%&*,%^&*%^&*,%^&*%^UY,$^&*^%&(^%()),%^&(&^%()),,,,,,,$%^&$%^&$%*,$%*^$%^*$,,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000
+"""
+
+        run_import(csv_data_7)
+
+        # add article id
+        # account for human-legible N for non corresondence author
+        csv_data_7 = csv_data_7.replace(
+            '%^&(&^%()),,',
+            'N,,2'
+        )
+
+        article_2 = submission_models.Article.objects.get(id=2)
+        saved_article_data = read_saved_article_data(article_2)
+        self.assertEqual(csv_data_7, saved_article_data)
