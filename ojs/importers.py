@@ -368,12 +368,21 @@ def import_review_assignment(client, article, review, review_form, decision):
 
     # Check for files at article level
     review_file_json = review.get("review_file")
+    review_file_url = review.get("review_file_url")
     if review_file_json:
         review_file = import_file(
             client, review_file_json, article, "Review File",
             owner=reviewer,
         )
         new_review.review_file = review_file
+    elif review_file_url:
+        fetched_review_file = client.fetch_file(review_file_url)
+        if fetched_review_file:
+            review_file = core_files.save_file_to_article(
+                fetched_review_file, article, reviewer,
+                label="Review File",
+            )
+            new_review.review_file = review_file
 
     if review.get('comments'):
         handle_review_comment(
