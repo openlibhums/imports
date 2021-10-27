@@ -6,6 +6,7 @@ import requests
 from urllib.parse import urlparse, unquote
 import uuid
 from zipfile import ZipFile
+from string import whitespace
 
 from dateutil import parser as dateutil_parser
 from django.conf import settings
@@ -134,19 +135,24 @@ def prepare_reader_rows(reader):
     for i, row in enumerate(reader):
         row_type = row_identifier.identify(row)
 
+        clean_row = {}
+        for k, v in row.items():
+            clean_row[k] = v.strip(whitespace) if isinstance(v, str) else None
+
         if row_type in ['Update', 'New Article']:
             article_groups.append(
                 {
                     'type': row_type,
-                    'primary_row': row,
+                    'primary_row': clean_row,
                     'author_rows': [],
                     'primary_row_number': i,
-                    'article_id': row.get('Article ID') if row_type == 'Update' else ''
+                    'article_id': row.get(
+                        'Article ID') if row_type == 'Update' else ''
                 }
             )
         elif row_type == 'Author':
             last_article_group = article_groups[-1]
-            last_article_group['author_rows'].append(row)
+            last_article_group['author_rows'].append(clean_row)
 
     return article_groups
 
@@ -170,6 +176,13 @@ def prep_update(row):
                 'date': parsed_issue_date,
             }
         )
+
+        if not created:
+            issue.date = parsed_issue_date
+            issue.issue_title = row.get('Issue name')
+            issue.save()
+
+
     except journal_models.Journal.DoesNotExist:
         journal, issue_type, issue = None, None, None
 
@@ -238,6 +251,7 @@ def update_article_metadata(request, reader, zip_folder_path):
                 )
                 update_article(article, issue, prepared_row, zip_folder_path)
                 article.stage = prepared_row.get('primary_row').get('Stage', submission_models.STAGE_UNASSIGNED)
+                article.owner = request.user
                 article.save()
                 actions.append(
                     'Article {} created.'.format(article.title)
@@ -273,14 +287,18 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     article.language = row.get('Language')
 
     if row.get('Keywords') and row.get('Keywords') != '':
-        split_keywords = row.get('Keywords').split(",")
-        for kw in split_keywords:
-            try:
-                keyword, c = submission_models.Keyword.objects.get_or_create(word=kw)
-            except submission_models.Keyword.MultipleObjectsReturned:
-                keyword = submission_models.Keyword.objects.filter(word=kw).first()
+        keywords = row.get('Keywords').split(",")
+        update_keywords(keywords, article)
 
-            article.keywords.add(keyword)
+    article.date_accepted = (
+        parse_datetime(row.get('Date accepted'))
+        or parse_date(row.get('Date accepted'))
+    )
+
+    article.date_published = (
+        parse_datetime(row.get('Date published'))
+        or parse_date(row.get('Date published'))
+    )
 
     article.primary_issue = issue
     article.save()
@@ -314,6 +332,28 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     return article
 
 
+def update_keywords(keywords, article):
+    new_keywords = [w.strip(whitespace) for w in keywords]
+
+    current_keywords = [str(kw) for kw in article.keywords.all()]
+    if (len(current_keywords) > 0) and (current_keywords != new_keywords):
+        article.keywords.clear()
+
+    for kw in new_keywords:
+        try:
+            keyword, c = submission_models.Keyword.objects.get_or_create(
+                word=kw
+            )
+        except submission_models.Keyword.MultipleObjectsReturned:
+            keyword = submission_models.Keyword.objects.filter(
+                word=kw
+            ).first()
+
+        article.keywords.add(keyword)
+
+    article.save()
+
+
 def handle_author_import(row, article):
     author_fields = [
         row.get('Author Salutation'),
@@ -322,11 +362,12 @@ def handle_author_import(row, article):
         row.get('Author surname'),
         row.get('Author institution'),
         row.get(''),
-        row.get('Author email').strip() if row.get('Author email') else None,
+        row.get('Author email'),
     ]
     author = import_author(author_fields, article)
-    if row.get("orcid"):
-        author.orcid = orcid_from_url(row["orcid"])
+    if row.get("Author ORCID"):
+        author.orcid = orcid_from_url(row["Author ORCID"])
+        author.save()
     if row.get('Author is primary (Y/N)') in 'Yy':
         article.correspondence_author = author
     article.save()
@@ -513,7 +554,25 @@ def import_author(author_fields, article):
     article.authors.add(author)
     article.save()
     author.snapshot_self(article)
+
+    update_frozen_author(author_fields, article)
+
     return author
+
+def update_frozen_author(author_fields, article):
+
+    """
+    Updates frozen author records from import data, not author object fields.
+    """
+
+    salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
+    author = core_models.Account.objects.get(email=email)
+    frozen_author = author.frozen_author(article)
+    frozen_author.first_name = first_name
+    frozen_author.middle_name = middle_name
+    frozen_author.last_name = last_name
+    frozen_author.institution = institution
+    frozen_author.save()
 
 
 def import_corporate_author(author_fields, article):
