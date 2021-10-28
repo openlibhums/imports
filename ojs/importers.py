@@ -372,7 +372,8 @@ def import_review_assignment(client, article, review, review_form, decision):
                 label="Review File",
             )
             new_review.review_file = review_file
-
+    if not review.get("comments") and review.get("comments_to_editor"):
+        review["comments"] = review["comments_to_editor"]
     if review.get('comments'):
         handle_review_comment(
             article, new_review, review['comments'],
