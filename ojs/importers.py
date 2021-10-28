@@ -259,29 +259,18 @@ def import_review_data(article_dict, article, client):
     if author_revision:
         article.manuscript_files.add(author_revision)
 
-
     # Attempt to get the default review form
-    form = setting_handler.get_setting(
-        'general',
-        'default_review_form',
-        article.journal,
-    ).processed_value
-    if form:
+    try:
         form = review_models.ReviewForm.objects.get(
-            id=form,
+            journal=article.journal,
+            slug="default-form",
         )
-
-    else:
-        try:
-            form = review_models.ReviewForm.objects.filter(
-                journal=article.journal)[0]
-        except Exception:
-            form = None
-            logger.error(
-                'You must have at least one review form for the journal before'
-                ' importing.'
-            )
-            raise
+    except review_models.ReviewForm.DoesNotExit:
+        logger.error(
+            'You must have at least one review form for the journal before'
+            ' importing.'
+        )
+        raise
 
     # Set for avoiding duplicate review files
     for review in article_dict.get('reviews'):
