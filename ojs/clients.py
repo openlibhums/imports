@@ -460,6 +460,8 @@ class OJS3APIClient(OJSBaseClient):
                 _, extension = os.path.splitext(url)
             content_file.name = filename + extension
         elif response_filename:
+            content_file.name = response_filename
+        else:
             content_file.name = os.path.basename(url)
         return content_file
 
@@ -618,7 +620,6 @@ class OJS3APIClient(OJSBaseClient):
             self.journal_url
             + self.ISSUE_GALLEY_PATH.format(issue=issue_id, galley=galley_id)
         )
-
         return self.fetch_file(request_url)
 
     def get_users(self):
