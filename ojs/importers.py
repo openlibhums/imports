@@ -165,20 +165,21 @@ def import_article_metadata(article_dict, journal, client):
     section, _ = submission_models.Section.objects.get_or_create(journal=journal, name=section_name)
 
     article.section = section
-    article.save()
 
     # Set the license if it hasn't been set yet
     if not article.license:
-        license_url = article_dict.get("license", "").replace("http:", "https:")
-        article.license, _ = submission_models.Licence.objects.get_or_create(
-            journal=article.journal,
-            url=license_url,
-            defaults={
-                "name": "Imported License",
-                "short_name": "imported",
-            }
-        )
-        article.save()
+        license_url = article_dict.get("license", "")
+        if license_url:
+            license_url = license_url.replace("http:", "https:")
+            article.license, _ = submission_models.Licence.objects.get_or_create(
+                journal=article.journal,
+                url=license_url,
+                defaults={
+                    "name": "Imported License",
+                    "short_name": "imported",
+                }
+            )
+    article.save()
 
     return article, created
 
