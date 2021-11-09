@@ -1135,6 +1135,7 @@ def get_or_create_account(data, update=False):
 def get_or_create_issue(issue_data, journal):
     issue_num = int(issue_data.get("number", 1))
     vol_num = int(issue_data.get("volume", 1))
+    year = issue_data.get("year")
     date_published = attempt_to_make_timezone_aware(
         issue_data.get("date_published"),
     )
@@ -1157,6 +1158,14 @@ def get_or_create_issue(issue_data, journal):
             issue.issue_description = issue_data["description"]
         issue.save()
         logger.info("Created new issue {}".format(issue))
+
+    # Handle missmatch betwen issue date_published and issue year
+    if year and (
+        not date_published
+        or issue.date.year != int(year)
+    ):
+        issue.date = issue.date.replace(year=int(year))
+        issue.save()
 
     return issue
 
