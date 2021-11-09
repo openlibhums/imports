@@ -1071,6 +1071,11 @@ def import_article_metrics(ojs_id, journal, views=0, downloads=0):
 
 
 def import_user_metadata(user_data, journal):
+    created = False
+    if len(user_data["roles"]) == 0:
+        return None, created
+    elif len(user_data["roles"]) == 1 and user_data["roles"][0] == "user.role.reader":
+        return None, created
     account, created = get_or_create_account(user_data)
     for ojs_role in user_data.get("roles"):
         janeway_role = ROLES.get(ojs_role)
