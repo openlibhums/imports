@@ -235,7 +235,7 @@ def import_issue(client, journal, issue_dict):
                 article=article,
                 defaults={"order": order}
             )
-    if issue_dict["coverImageUrl"].values():
+    if not issue.large_image and issue_dict["coverImageUrl"].values():
         url = delocalise(issue_dict["coverImageUrl"])
         if url:
             django_file = client.fetch_file(url)

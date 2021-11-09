@@ -188,7 +188,7 @@ def import_ojs3_articles(
         try:
             ojs3_importers.import_article(
                 client, journal, d,
-                editorial=editorial, galleys=True,
+                editorial=editorial, galleys=galleys,
             )
         except Exception as e:
             if raise_on_exc:
