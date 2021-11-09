@@ -791,6 +791,7 @@ def create_frozen_record(author, article):
     :param author: an author object from OJS
     :param article: an instance of submission.models.Article
     """
+    account = None
     frozen_dict = {
         'article': article,
         'first_name': delocalise(author["givenName"]),
