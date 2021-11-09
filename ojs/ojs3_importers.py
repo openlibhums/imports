@@ -18,7 +18,7 @@ from core import models as core_models
 from identifiers import models as identifiers_models
 from journal import models as journal_models
 from review import models as review_models
-from submission import models as submission_models
+from submission import models as sm_models
 from utils.logger import get_logger
 from utils import setting_handler
 
@@ -39,20 +39,20 @@ WORKFLOW_STAGE_ID_PRODUCTION = 5
 
 WORKFLOW_STAGE_MAP = {
     WORKFLOW_STAGE_ID_SUBMISSION: {
-        "stage": submission_models.STAGE_UNASSIGNED,
+        "stage": sm_models.STAGE_UNASSIGNED,
         "workflow": None,
     },
     WORKFLOW_STAGE_ID_INTERNAL_REVIEW: {
-        "stage": submission_models.STAGE_UNDER_REVIEW,
-        "workflow": submission_models.STAGE_UNASSIGNED,
+        "stage": sm_models.STAGE_UNDER_REVIEW,
+        "workflow": sm_models.STAGE_UNASSIGNED,
     },
     WORKFLOW_STAGE_ID_EDITING: {
-        "stage": submission_models.STAGE_EDITOR_COPYEDITING,
-        "workflow": submission_models.STAGE_EDITOR_COPYEDITING,
+        "stage": sm_models.STAGE_EDITOR_COPYEDITING,
+        "workflow": sm_models.STAGE_EDITOR_COPYEDITING,
     },
     WORKFLOW_STAGE_ID_PRODUCTION: {
-        "stage": submission_models.STAGE_TYPESETTING,
-        "workflow": submission_models.STAGE_TYPESETTING,
+        "stage": sm_models.STAGE_TYPESETTING,
+        "workflow": sm_models.STAGE_TYPESETTING,
 
     },
 }
@@ -136,14 +136,15 @@ GALLEY_TYPES = {
 }
 
 
-def import_article(client, journal, article_dict, editorial=False):
+def import_article(client, journal, article_dict, editorial=False, galleys=True):
     pub_article_dict = get_pub_article_dict(article_dict, client)
     article_dict["publication"] = pub_article_dict
     article = import_article_metadata(article_dict, journal, client)
     if not article:
         return
     import_author_assignments(article, article_dict)
-    import_article_galleys(article, pub_article_dict, journal, client)
+    if galleys:
+        import_article_galleys(article, pub_article_dict, journal, client)
     if editorial:
         import_manuscripts(client, article, article_dict)
         import_editor_assignments(article, article_dict)
@@ -220,6 +221,13 @@ def import_issue(client, journal, issue_dict):
             if not article.date_published:
                 article.date_published = issue.date
             article.save()
+            if not article.section:
+                logger.warning("No section for article %s" % article)
+                article.section, _ = sm_models.Section.objects.get_or_create(
+                    name="Article",
+                    journal=article.journal
+                )
+                article.save()
             issue.articles.add(article)
             journal_models.ArticleOrdering.objects.update_or_create(
                 section=article.section,
@@ -314,11 +322,11 @@ def import_article_metadata(article_dict, journal, client):
             )
         )
         article.date_published = date_published
-        article.stage = submission_models.STAGE_PUBLISHED
+        article.stage = sm_models.STAGE_PUBLISHED
     license_url = article_dict["publication"]["licenseUrl"] or ''
     license_url = license_url.replace("http:", "https:")
     if license_url:
-        article.license, _ = submission_models.Licence.objects.get_or_create(
+        article.license, _ = sm_models.Licence.objects.get_or_create(
             journal=article.journal,
             url=license_url,
             defaults={
@@ -342,9 +350,9 @@ def import_article_metadata(article_dict, journal, client):
         for i, keyword in enumerate(keywords):
             if keyword:
                 keyword = strip_tags(keyword)
-                word, _ = submission_models.Keyword.objects.get_or_create(
+                word, _ = sm_models.Keyword.objects.get_or_create(
                     word=keyword)
-                submission_models.KeywordArticle.objects.update_or_create(
+                sm_models.KeywordArticle.objects.update_or_create(
                     keyword=word,
                     article=article,
                     defaults={"order": i},
@@ -382,7 +390,7 @@ def import_article_galleys(article, publication, journal, client):
 
 
 def import_reviews(client, article, article_dict):
-    create_workflow_log(article, submission_models.STAGE_UNASSIGNED)
+    create_workflow_log(article, sm_models.STAGE_UNASSIGNED)
     logger.info("Importing peer reviews")
     default_form = review_models.ReviewForm.objects.get(
         slug="default-form", journal=article.journal)
@@ -477,7 +485,7 @@ def import_copyedits(client, article, article_dict):
             copyedits.append(copyedit)
 
     if drafts or copyedits:
-        create_workflow_log(article, submission_models.STAGE_EDITOR_COPYEDITING)
+        create_workflow_log(article, sm_models.STAGE_EDITOR_COPYEDITING)
 
 
 def import_production(client, article, article_dict):
@@ -498,7 +506,7 @@ def import_production(client, article, article_dict):
             stage = typesetting_settings.STAGE
             create_workflow_log( article, typesetting_settings.STAGE)
         else:
-            create_workflow_log(article, submission_models.STAGE_TYPESETTING)
+            create_workflow_log(article, sm_models.STAGE_TYPESETTING)
 
 def import_revision(client, submission_id, article, round_dict):
     logger.info("Importing revision for round %s" % round_dict["round"])
@@ -713,14 +721,14 @@ def get_or_create_article(article_dict, journal):
         ).article
     else:
         created = True
-        article = submission_models.Article(
+        article = sm_models.Article(
             journal=journal,
             title=delocalise(
                 article_dict["publication"]['fullTitle']
                 or "NO TITLE"
             ),
             language=article_dict.get('locale'),
-            stage=submission_models.STAGE_UNASSIGNED,
+            stage=sm_models.STAGE_UNASSIGNED,
             is_import=True,
             date_submitted=date_started,
         )
@@ -758,7 +766,7 @@ def update_or_create_section(journal, ojs_section_id, section_dict=None):
         ojs_id=ojs_section_id,
     )
     if not imported.section:
-        section = submission_models.Section.objects.create(
+        section = sm_models.Section.objects.create(
             name=ojs_section_id,
             journal=journal,
         )
@@ -790,7 +798,7 @@ def create_frozen_record(author, article):
         'institution': delocalise(author["affiliation"]) or '',
         'order': author["seq"],
     }
-    frozen, created = submission_models.FrozenAuthor.objects.get_or_create(
+    frozen, created = sm_models.FrozenAuthor.objects.get_or_create(
         **frozen_dict)
     if created:
         logger.debug("Added Frozen Author %s", frozen_dict)
@@ -1075,9 +1083,9 @@ def set_stage(article, article_dict):
     stage = None
 
     if article_dict["status"] in {STATUS_PUBLISHED, STATUS_SCHEDULED}:
-        stage = submission_models.STAGE_PUBLISHED
+        stage = sm_models.STAGE_PUBLISHED
         create_workflow_log(
-            article, submission_models.STAGE_READY_FOR_PUBLICATION
+            article, sm_models.STAGE_READY_FOR_PUBLICATION
         )
 
     for id, stage_dict in WORKFLOW_STAGE_MAP.items():
@@ -1088,7 +1096,7 @@ def set_stage(article, article_dict):
             stage = stage_dict["stage"]
 
     if not stage:
-        stage = submission_models.STAGE_UNASSIGNED
+        stage = sm_models.STAGE_UNASSIGNED
 
     article.stage = stage
     article.save()
