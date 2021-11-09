@@ -29,6 +29,9 @@ class Command(BaseCommand):
                             help="Imports only the article matching by ojs id")
         parser.add_argument('--metrics', action="store_true", default=False,
                             help="Imports only article metrics")
+        parser.add_argument('--ignore-galleys', action="store_true",
+                            default=False,
+                            help="Imports only article metrics")
 
     def handle(self, *args, **options):
         journal = models.Journal.objects.get(code=options["journal_code"])
@@ -57,5 +60,6 @@ class Command(BaseCommand):
         elif options["metrics"]:
             ojs.import_metrics(client, journal)
         else:
-            ojs.import_published_articles(client, journal)
+            ojs.import_published_articles(
+                client, journal, not options["ignore_galleys"])
             ojs.import_issues(client, journal)

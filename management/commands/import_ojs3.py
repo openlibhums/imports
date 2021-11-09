@@ -26,6 +26,9 @@ class Command(BaseCommand):
                             help="Imports only the article matching by ojs id")
         parser.add_argument('--editorial', action="store_true", default=False,
                             help="Include editorial data such as peer reviews")
+        parser.add_argument('--ignore-galleys', action="store_true",
+                            default=False,
+                            help="Do not import article galleys")
 
 
     def handle(self, *args, **options):
@@ -47,4 +50,5 @@ class Command(BaseCommand):
                 client, journal,
                 ojs_id=options["ojs_id"],
                 editorial=options["editorial"],
+                galleys=not options["ignore_galleys"],
             )

@@ -624,7 +624,7 @@ def import_copyediting(article_dict, article, client):
                 client, copyediting["final_file"], article, "Final copyedit")
 
 
-def import_typesetting(article_dict, article, client):
+def import_typesetting(article_dict, article, client, with_galleys=None):
     if article.journal.element_in_workflow("Typesetting Plugin"):
         return import_typesetting_plugin(article_dict, article, client)
     layout = article_dict.get('layout')
@@ -674,14 +674,16 @@ def import_typesetting(article_dict, article, client):
             completed=complete,
         )
 
-    galleys = import_galleys(article, layout, client)
+    galleys = None
+    if with_galleys:
+        galleys = import_galleys(article, layout, client)
 
     if task and galleys:
         for galley in galleys:
             task.galleys_loaded.add(galley.file)
 
 
-def import_typesetting_plugin(article_dict, article, client):
+def import_typesetting_plugin(article_dict, article, client, with_galleys=True):
     from plugins.typesetting import models as typesetting_models
     layout = article_dict.get('layout')
     task = None
@@ -725,8 +727,8 @@ def import_typesetting_plugin(article_dict, article, client):
                 "completed": complete,
             }
         )
-
-    galleys = import_galleys(article, layout, client, owner=typesetter)
+    if with_galleys:
+        galleys = import_galleys(article, layout, client, owner=typesetter)
 
 
 def import_publication(article_dict, article, client):

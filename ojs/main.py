@@ -23,25 +23,25 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def import_article(ojs_client, journal, ojs_id):
+def import_article(ojs_client, journal, ojs_id, galleys=True):
     article_dict = ojs_client.get_article(ojs_id)
     if article_dict:
         article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
-        import_typesetting(article_dict, article, ojs_client)
+        import_typesetting(article_dict, article, ojs_client, galleys)
         import_publication(article_dict, article, ojs_client)
 
 
-def import_published_articles(ojs_client, journal):
+def import_published_articles(ojs_client, journal, galleys=True):
     articles = ojs_client.get_articles("published")
     for article_dict in articles:
         article, created = import_article_metadata(article_dict, journal, ojs_client)
 
         import_review_data(article_dict, article, ojs_client)
         import_copyediting(article_dict, article, ojs_client)
-        import_typesetting(article_dict, article, ojs_client)
+        import_typesetting(article_dict, article, ojs_client, galleys)
         import_publication(article_dict, article, ojs_client)
 
         stage = calculate_article_stage(article_dict, article)
@@ -178,6 +178,7 @@ def import_journal_settings(ojs_client, journal):
 def import_ojs3_articles(
         client, journal, ojs_id=None,
         editorial=False, raise_on_exc=False,
+        galleys=True,
 ):
     if ojs_id:
         articles = [client.get_article(ojs_id)]
@@ -185,7 +186,10 @@ def import_ojs3_articles(
         articles = client.get_articles()
     for d in articles:
         try:
-            ojs3_importers.import_article(client, journal, d, editorial=editorial)
+            ojs3_importers.import_article(
+                client, journal, d,
+                editorial=editorial, galleys=True,
+            )
         except Exception as e:
             if raise_on_exc:
                 raise
@@ -198,8 +202,10 @@ def import_ojs3_issues(client, journal):
     for issue_dict in issues:
         ojs3_importers.import_issue(client, journal, issue_dict)
 
+
 def import_ojs3_journals(
-    client, journal_acronym=None, include_content=True, update_journals=True
+    client, journal_acronym=None, include_content=True, update_journals=True,
+    galleys=True,
 ):
     journals = client.get_journals(journal_acronym)
     for journal_dict in journals:
@@ -214,7 +220,7 @@ def import_ojs3_journals(
             )
             try:
                 import_ojs3_users(journal_client, journal)
-                import_ojs3_articles(journal_client, journal)
+                import_ojs3_articles(journal_client, journal, galleys)
                 import_ojs3_issues(journal_client, journal)
             except Exception as e:
                 logger.exception("Error importing articles: %s", journal)
