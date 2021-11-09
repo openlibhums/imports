@@ -1103,8 +1103,12 @@ def get_or_create_account(data, update=False):
             created = True
         except Exception as e:
             #Most likely due to a problem with case
-            account = core_models.Account.objects.get(
-            email__iexact=email)
+            try:
+                account = core_models.Account.objects.get(
+                    email__iexact=email)
+            except Exception as e:
+                logger.warning("Failed to create user %s" % data)
+                return None, created
 
     if created or update:
         account.salutation = data.get("salutation")

@@ -165,6 +165,8 @@ def import_users(ojs_client, journal):
         account, created = import_user_metadata(user, journal)
         if created:
             logger.info("New Imported user: %s", account.username)
+        elif account is None:
+            logger.debug("Ignored user %s" % user.get("email"))
         else:
             logger.info("re-imported user: %s", account.username)
 
