@@ -181,7 +181,6 @@ def prep_update(row):
             issue.issue_title = row.get('Issue name')
             issue.save()
 
-
     except journal_models.Journal.DoesNotExist:
         journal, issue_type, issue = None, None, None
 
@@ -249,7 +248,17 @@ def update_article_metadata(request, reader, zip_folder_path):
                     title=prepared_row.get('primary_row').get('Article title'),
                 )
                 update_article(article, issue, prepared_row, zip_folder_path)
-                article.stage = prepared_row.get('primary_row').get('Stage', submission_models.STAGE_UNASSIGNED)
+
+                current_workflow_stages = set(journal.workflow_set.all().values_list(
+                    "elements__stage", flat=True))
+                current_workflow_stages.add('Published')
+
+                proposed_stage = prepared_row.get('primary_row').get('Stage')
+                if proposed_stage in current_workflow_stages:
+                    article.stage = proposed_stage
+                else:
+                    article.stage = submission_models.STAGE_UNASSIGNED
+
                 article.owner = request.user
                 article.save()
                 actions.append(
@@ -285,9 +294,10 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     article.license = license_obj
     article.language = row.get('Language')
 
-    if row.get('Keywords') and row.get('Keywords') != '':
-        keywords = row.get('Keywords').split(",")
-        update_keywords(keywords, article)
+    keywords = []
+    if row.get('Keywords'):
+        keywords += row.get('Keywords').split(",")
+    update_keywords(keywords, article)
 
     article.date_accepted = (
         parse_datetime(row.get('Date accepted'))
@@ -312,9 +322,17 @@ def update_article(article, issue, prepared_row, zip_folder_path):
         )
 
     # import author from the primary row and then secondary rows
-    handle_author_import(row, article)
+    updated_authors = []
+    updated_authors.append(handle_author_import(row, article))
     for author_row in prepared_row.get('author_rows'):
-        handle_author_import(author_row, article)
+        updated_authors.append(handle_author_import(author_row, article))
+
+    for previous_author in article.authors.all():
+        if previous_author not in updated_authors:
+            article.authors.remove(previous_author)
+            previous_frozen_author = previous_author.frozen_author(article)
+            if previous_frozen_author:
+                previous_frozen_author.delete()
 
     handle_file_import(row, article, zip_folder_path)
 
@@ -363,10 +381,10 @@ def handle_author_import(row, article):
         row.get(''),
         row.get('Author email'),
     ]
+
     author = import_author(author_fields, article)
-    if row.get("Author ORCID"):
-        author.orcid = orcid_from_url(row["Author ORCID"])
-        author.save()
+    author.orcid = orcid_from_url(row["Author ORCID"])
+    author.save()
     if row.get('Author is primary (Y/N)') in 'Yy':
         article.correspondence_author = author
     article.save()
@@ -503,6 +521,9 @@ def import_author(author_fields, article):
     salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
+        author_fields.pop(-1)
+        author_fields.append(email)
+
     author, created = core_models.Account.objects.get_or_create(email=email)
     if created:
         author.salutation = salutation
@@ -662,10 +683,11 @@ def load_article_images(request, reader):
 
 
 def orcid_from_url(orcid_url):
-    try:
-        return orcid_url.split("orcid.org/")[-1]
-    except (AttributeError, ValueError, TypeError, IndexError):
-        raise ValueError("%s is not a valid orcid URL" % orcid_url)
+    if orcid_url:
+        try:
+            return orcid_url.split("orcid.org/")[-1]
+        except (AttributeError, ValueError, TypeError, IndexError):
+            raise ValueError("%s is not a valid orcid URL" % orcid_url)
 
 
 def unzip_update_file(path):
