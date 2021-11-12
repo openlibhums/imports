@@ -21,12 +21,12 @@ from utils.shared import clear_cache
 from django.http import HttpRequest
 import csv
 import io
+import re
 
-
-CSV_DATA_1 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Article sequence,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000
-,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,,
-,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,,
+CSV_DATA_1 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000
+,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,
+,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,
 """
 
 
@@ -76,7 +76,6 @@ def read_saved_article_data(article):
         'Article section': article.section.name,
         'Stage': article.stage,
         'Article filename': None,
-        'Article sequence': None,
         'Journal Code': article.journal.code,
         'Journal title': article.journal.name,
         'ISSN': article.journal.issn,
@@ -163,6 +162,17 @@ class TestUpdateArticleMetadata(TestCase):
         csv_data_2 = CSV_DATA_1
         run_import(csv_data_2)
 
+    def tearDown(self):
+        reset_csv_data = CSV_DATA_1.replace(
+            'University of Michigan Medical School,Y,,,,,',
+            'University of Michigan Medical School,Y,,1,,,'
+        )
+        run_import(reset_csv_data)
+
+        article_2 = submission_models.Article.objects.filter(id=2).first()
+        if article_2:
+            article_2.delete()
+
     def test_update_article_metadata_fresh_import(self):
         """
         Whether the attributes of the article were
@@ -182,10 +192,12 @@ class TestUpdateArticleMetadata(TestCase):
 
     def test_update_article_metadata_update(self):
 
+        clear_cache()
+
         # change article data
         csv_data_3 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,',
-            'Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1'
+            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25',
+            'Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25,2021-10-26'
         )
 
         run_import(csv_data_3)
@@ -193,6 +205,85 @@ class TestUpdateArticleMetadata(TestCase):
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
         self.assertEqual(csv_data_3, saved_article_data)
+
+    def test_empty_fields(self):
+        """
+        Tests whether Janeway accepts null values for nonrequired fields
+        """
+
+        clear_cache()
+
+        # blank out non-required rows
+        csv_data_12 = CSV_DATA_1.replace(
+            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
+            'Variopleistocene Inquilibriums,,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000'
+        )
+
+        # add article id to expected data
+        csv_data_12 = csv_data_12.replace(
+            ',,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000',
+            ',,,,,,,,,Y,,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000'
+        )
+
+        run_import(csv_data_12)
+        article_2 = submission_models.Article.objects.get(id=2)
+        saved_article_data = read_saved_article_data(article_2)
+
+        # account for uuid4-generated email address
+        saved_article_data = re.sub(
+            '[a-z0-9\-]{36}@journal\.com',
+            '',
+            saved_article_data
+        )
+
+        self.assertEqual(csv_data_12, saved_article_data)
+
+    def test_update_with_empty(self):
+        """
+        Tests whether Janeway properly interprets blank fields on update
+        """
+
+        clear_cache()
+
+        original_row = 'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
+
+        # put something in every cell so you can test importing blanks
+        fully_populated_row = 'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,https://orcid.org/0000-1234-5578-901X,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
+
+        csv_data_13 = CSV_DATA_1.replace(
+            original_row,
+            fully_populated_row
+        )
+        run_import(csv_data_13)
+
+        # blank out non-required rows to test import
+        updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,unrealperson3@example.com,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15 13:58:59+0000'
+
+        csv_data_13 = csv_data_13.replace(
+            fully_populated_row,
+            updated_row_with_blanks_to_test
+        )
+        run_import(csv_data_13)
+
+        # account for blanks in import data that aren't saved to db
+        expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,Prof,,,unrealperson3@example.com,,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000'
+
+        csv_data_13 = csv_data_13.replace(
+            updated_row_with_blanks_to_test,
+            expected_row_from_saved_data
+        )
+
+        article_1 = submission_models.Article.objects.get(id=1)
+        saved_article_data = read_saved_article_data(article_1)
+
+        # account for uuid4-generated email address
+        saved_article_data = re.sub(
+            '[a-z0-9\-]{36}@journal\.com',
+            '',
+            saved_article_data
+        )
+
+        self.assertEqual(csv_data_13, saved_article_data)
 
     def test_prepare_reader_rows(self):
 
@@ -247,6 +338,9 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(expected_data, returned_data)
 
     def test_update_keywords(self):
+
+        clear_cache()
+
         article_1 = submission_models.Article.objects.get(id=1)
 
         keywords = ['better dinosaurs', 'worse teaching']
@@ -255,34 +349,41 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(keywords, saved_keywords)
 
     def test_user_becomes_owner(self):
+
+        clear_cache()
+
         article_1 = submission_models.Article.objects.get(id=1)
         self.assertEqual(MOCK_REQUEST.user.email, article_1.owner.email)
 
     def test_changes_to_issue(self):
+
         clear_cache()
 
         # change article id
         csv_data_11 = CSV_DATA_1.replace(
             'Y,,,,,2021-10-24',
-            'Y,,1,,,2021-10-24'
+            'Y,,2,,,2021-10-24'
         )
 
         # change issue name and date
         csv_data_11 = csv_data_11.replace(
             'Fall 2021,2021-09-15 13:58:59+0000',
-            'Winter 2022,2022-01-15 00:00:00+0000'
+            'Winter 2022,2022-01-15 13:58:59+0000'
         )
 
         run_import(csv_data_11)
 
-        article_1 = submission_models.Article.objects.get(id=1)
-        saved_article_data = read_saved_article_data(article_1)
+        article_2 = submission_models.Article.objects.get(id=2)
+        saved_article_data = read_saved_article_data(article_2)
 
         self.assertEqual(csv_data_11, saved_article_data)
 
     def test_changes_to_author_fields(self):
 
+        clear_cache()
+
         # change data for unrealperson3@example.com
+        # add article id
         csv_data_4 = CSV_DATA_1.replace(
             'Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,',
             'Prof,Personne3,Surreal,unrealperson3@example.com,University of Toronto,N,https://orcid.org/0000-1234-5678-901X,1'
@@ -290,17 +391,26 @@ class TestUpdateArticleMetadata(TestCase):
 
         # make unrealperson6@example.com primary
         csv_data_4 = csv_data_4.replace(
-            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,,',
-            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,,'
+            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,',
+            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,'
         )
 
+        # remove unrealperson5@example.com
+        csv_data_4 = csv_data_4.replace(
+            '''
+,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,''',
+            ''
+        )
         run_import(csv_data_4)
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
+
         self.assertEqual(csv_data_4, saved_article_data)
 
     def test_update_frozen_author(self):
+
+        clear_cache()
 
         article_1 = submission_models.Article.objects.get(id=1)
 
@@ -333,6 +443,8 @@ class TestUpdateArticleMetadata(TestCase):
 
     def test_changes_to_section(self):
 
+        clear_cache()
+
         # add article id
         # change section
         csv_data_5 = CSV_DATA_1.replace(
@@ -347,6 +459,8 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(csv_data_5, saved_article_data)
 
     def test_different_stages(self):
+
+        clear_cache()
 
         # import "new" article with different section
         csv_data_6 = CSV_DATA_1.replace(
@@ -367,8 +481,11 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(csv_data_6, saved_article_data)
 
     def test_bad_data(self):
-        csv_data_7 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Article sequence,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-£$^^£&&££&££££$,;;;;;;,£%^^£&,%^*%^&*%^&*,$*^%*^%*&,%^*%&*,%^&*%^&*,%^&*%^UY,$^&*^%&(^%()),%^&(&^%()),https://orcid.org/n0ns3ns3,,,,,,$%^&$%^&$%*,$%*^$%^*$,,,TST,Journal One,0000-0000,0,0,20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
+
+        clear_cache()
+
+        csv_data_7 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+£$^^£&&££&££££$,;;;;;;,£%^^£&,%^*%^&*%^&*,$*^%*^%*&,%^*%&*,%^&*%^&*,%^&*%^UY,$^&*^%&(^%()),%^&(&^%()),https://orcid.org/n0ns3ns3,,,,,,$%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,0,0,20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
 """
 
         # Note: Not all of the above should not be importable,
@@ -388,9 +505,12 @@ class TestUpdateArticleMetadata(TestCase):
         self.assertEqual(csv_data_7, saved_article_data)
 
     def test_data_with_whitespace(self):
+
+        clear_cache()
+
         csv_data_9 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,,Y,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
-            ' Variopleistocene Inquilibriums ," dinosaurs,Socratic teaching",  CC BY-NC-SA 4.0 ,     English  ,   Prof    ,Person3    ,   Unreal  , unrealperson3@example.com  ,  University of Michigan Medical School,  , Y , , , , 2021-10-24                , 2021-10-25,  Article , Editor Copyediting   , , ,TST ,  Journal One ,   0000-0000 , 1 , 1 , Fall 2021  ,      2021-09-15 13:58:59+0000 '
+            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,,Y,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
+            ' Variopleistocene Inquilibriums ," dinosaurs,Socratic teaching",  CC BY-NC-SA 4.0 ,     English  ,   Prof    ,Person3    ,   Unreal  , unrealperson3@example.com  ,  University of Michigan Medical School,  , Y , , , , 2021-10-24                , 2021-10-25,  Article , Editor Copyediting   , , TST ,  Journal One ,   0000-0000 , 1 , 1 , Fall 2021  ,      2021-09-15 13:58:59+0000 '
         )
 
         run_import(csv_data_9)
