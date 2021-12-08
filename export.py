@@ -11,7 +11,7 @@ from django.template.loader import render_to_string
 from core import files
 
 UPDATE_HEADER_ROW = "Article title,Article filename,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
-                    "Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID," \
+                    "Author given name,Author middle name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID," \
                     "DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN,Delivery formats,Typesetting template," \
                     "Volume number,Issue number,Issue name,Issue pub date,Stage"
 
@@ -137,6 +137,7 @@ def add_first_author(article_initial_details, author_list, frozen, article):
             author.author.salutation if frozen and author.author else author.salutation,
             author.last_name,
             author.first_name,
+            author.middle_name,
             author.author.email if frozen and author.author else author.email,
             author.institution,
             correspondence_author,
@@ -168,6 +169,7 @@ def add_author_information(article_first_row, author_list, frozen, article):
                 author.author.salutation if frozen and author.author else author.salutation,
                 author.last_name,
                 author.first_name,
+                author.middle_name,
                 author.author.email if frozen and author.author else author.email,
                 author.institution,
                 correspondence_author,

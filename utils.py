@@ -377,7 +377,7 @@ def handle_author_import(row, article):
     author_fields = [
         row.get('Author Salutation'),
         row.get('Author given name'),
-        row.get(''),
+        row.get('Author middle name'),
         row.get('Author surname'),
         row.get('Author institution'),
         row.get(''),
