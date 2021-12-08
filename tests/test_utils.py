@@ -23,10 +23,10 @@ import csv
 import io
 import re
 
-CSV_DATA_1 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000
-,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,
-,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,
+CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000
+,,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,
+,,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,
 """
 
 
@@ -40,7 +40,6 @@ def run_import(csv_string):
     Simulates the import
     """
 
-    # print('SETUP')
     reader = csv.DictReader(csv_string.splitlines())
     zip_folder_path = "test_zip_1.zip"
 
@@ -49,8 +48,6 @@ def run_import(csv_string):
         reader,
         zip_folder_path,
     )
-
-    # print(errors, actions)
 
 
 def read_saved_article_data(article):
@@ -61,6 +58,7 @@ def read_saved_article_data(article):
 
     main_row = {
         'Article title': article.title,
+        'Article abstract': article.abstract,
         'Keywords': ",".join([str(kw) for kw in article.keywords.all()]),
         'License': str(article.license),
         'Language': article.language,
@@ -196,8 +194,8 @@ class TestUpdateArticleMetadata(TestCase):
 
         # change article data
         csv_data_3 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25',
-            'Multipleistocene Exquilibriums,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25,2021-10-26'
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25',
+            'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25,2021-10-26'
         )
 
         run_import(csv_data_3)
@@ -215,14 +213,14 @@ class TestUpdateArticleMetadata(TestCase):
 
         # blank out non-required rows
         csv_data_12 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
-            'Variopleistocene Inquilibriums,,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000'
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
+            'Variopleistocene Inquilibriums,,,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000'
         )
 
         # add article id to expected data
         csv_data_12 = csv_data_12.replace(
-            ',,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000',
-            ',,,,,,,,,Y,,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000'
+            ',,,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000',
+            ',,,,,,,,,,Y,,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000'
         )
 
         run_import(csv_data_12)
@@ -245,10 +243,10 @@ class TestUpdateArticleMetadata(TestCase):
 
         clear_cache()
 
-        original_row = 'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
+        original_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
 
         # put something in every cell so you can test importing blanks
-        fully_populated_row = 'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,https://orcid.org/0000-1234-5578-901X,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
+        fully_populated_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,Y,https://orcid.org/0000-1234-5578-901X,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000'
 
         csv_data_13 = CSV_DATA_1.replace(
             original_row,
@@ -257,7 +255,7 @@ class TestUpdateArticleMetadata(TestCase):
         run_import(csv_data_13)
 
         # blank out non-required rows to test import
-        updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,unrealperson3@example.com,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15 13:58:59+0000'
+        updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,,unrealperson3@example.com,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15 13:58:59+0000'
 
         csv_data_13 = csv_data_13.replace(
             fully_populated_row,
@@ -266,7 +264,7 @@ class TestUpdateArticleMetadata(TestCase):
         run_import(csv_data_13)
 
         # account for blanks in import data that aren't saved to db
-        expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,Prof,,,unrealperson3@example.com,,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000'
+        expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,,Prof,,,unrealperson3@example.com,,Y,,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000'
 
         csv_data_13 = csv_data_13.replace(
             updated_row_with_blanks_to_test,
@@ -391,14 +389,14 @@ class TestUpdateArticleMetadata(TestCase):
 
         # make unrealperson6@example.com primary
         csv_data_4 = csv_data_4.replace(
-            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,',
-            ',,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,'
+            ',,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,N,,,,,,,,,,,,,,,,',
+            ',,,,,,Person6,Unreal,unrealperson6@example.com,University of Mars,Y,,,,,,,,,,,,,,,,'
         )
 
         # remove unrealperson5@example.com
         csv_data_4 = csv_data_4.replace(
             '''
-,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,''',
+,,,,,,Person5,Unreal,unrealperson5@example.com,University of Calgary,N,,,,,,,,,,,,,,,,''',
             ''
         )
         run_import(csv_data_4)
@@ -484,8 +482,8 @@ class TestUpdateArticleMetadata(TestCase):
 
         clear_cache()
 
-        csv_data_7 = """Article title,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-£$^^£&&££&££££$,;;;;;;,£%^^£&,%^*%^&*%^&*,$*^%*^%*&,%^*%&*,%^&*%^&*,%^&*%^UY,$^&*^%&(^%()),%^&(&^%()),https://orcid.org/n0ns3ns3,,,,,,$%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,0,0,20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
+        csv_data_7 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author surname,Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+£$^^£&&££&££££$,;;;;;;,2fa09srh14!$,£%^^£&,%^*%^&*%^&*,$*^%*^%*&,%^*%&*,%^&*%^&*,%^&*%^UY,$^&*^%&(^%()),%^&(&^%()),https://orcid.org/n0ns3ns3,,,,,,$%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,0,0,20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
 """
 
         # Note: Not all of the above should not be importable,
@@ -509,8 +507,8 @@ class TestUpdateArticleMetadata(TestCase):
         clear_cache()
 
         csv_data_9 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,,Y,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
-            ' Variopleistocene Inquilibriums ," dinosaurs,Socratic teaching",  CC BY-NC-SA 4.0 ,     English  ,   Prof    ,Person3    ,   Unreal  , unrealperson3@example.com  ,  University of Michigan Medical School,  , Y , , , , 2021-10-24                , 2021-10-25,  Article , Editor Copyediting   , , TST ,  Journal One ,   0000-0000 , 1 , 1 , Fall 2021  ,      2021-09-15 13:58:59+0000 '
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,unrealperson3@example.com,University of Michigan Medical School,,Y,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000',
+            ' Variopleistocene Inquilibriums ,  How it all went down.  ," dinosaurs,Socratic teaching",  CC BY-NC-SA 4.0 ,     English  ,   Prof    ,Person3    ,   Unreal  , unrealperson3@example.com  ,  University of Michigan Medical School,  , Y , , , , 2021-10-24                , 2021-10-25,  Article , Editor Copyediting   , , TST ,  Journal One ,   0000-0000 , 1 , 1 , Fall 2021  ,      2021-09-15 13:58:59+0000 '
         )
 
         run_import(csv_data_9)

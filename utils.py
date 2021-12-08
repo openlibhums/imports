@@ -279,6 +279,7 @@ def update_article(article, issue, prepared_row, zip_folder_path):
     row = prepared_row.get('primary_row')
 
     article.title = row.get('Article title')
+    article.abstract = row.get('Article abstract')
     section_obj, created = submission_models.Section.objects.get_or_create(
         journal=article.journal,
         name=row.get('Article section'),
