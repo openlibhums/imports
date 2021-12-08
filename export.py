@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 
 from core import files
 
-UPDATE_HEADER_ROW = "Article title,Article filename,Article section,Keywords,License,Language,Author Salutation,Author surname," \
+UPDATE_HEADER_ROW = "Article title,Article filename,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
                     "Author given name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID," \
                     "DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN,Delivery formats,Typesetting template," \
                     "Volume number,Issue number,Issue name,Issue pub date,Stage"
@@ -174,7 +174,7 @@ def add_author_information(article_first_row, author_list, frozen, article):
                 "https://orcid.org/{}".format(orcid) if orcid else '',
             ]
             blank_article_row = [
-                '', '', '', '', '', '',
+                '', '', '', '', '', '', '',
             ]
             blank_article_row.extend(author_list)
             article_rows.append(blank_article_row)
@@ -209,6 +209,7 @@ def export_using_import_format(articles):
         article_initial_details = [
             article.title,
             ','.join(['{}/{}'.format(article.pk, ex_file.file.original_filename) for ex_file in article.export_files]),
+            article.abstract,
             article.section.name,
             keyword_string,
             article.license.short_name,
