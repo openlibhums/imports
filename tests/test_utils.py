@@ -127,6 +127,10 @@ def read_saved_frozen_author_data(frozen_author, article):
     with the expected account data
     """
 
+    frozen_author_orcid = None
+    if frozen_author.frozen_orcid:
+        frozen_author_orcid = 'https://orcid.org/' + frozen_author.frozen_orcid
+
     author_data = {
         'Author Salutation': frozen_author.author.salutation,
         'Author surname': frozen_author.last_name,
@@ -137,9 +141,9 @@ def read_saved_frozen_author_data(frozen_author, article):
         'Author is primary (Y/N)': 'Y' if (
             frozen_author.author == article.correspondence_author
         ) else 'N',
-        'Author ORCID': 'https://orcid.org/' + str(
-            frozen_author.author.orcid
-        ) if frozen_author.author.orcid else None,
+        'Author ORCID': 'https://orcid.org/' + frozen_author.frozen_orcid if (
+            frozen_author.frozen_orcid
+        ) else None,
     }
 
     return author_data
@@ -223,7 +227,6 @@ class TestUpdateArticleMetadata(TestCase):
             ',,,,,,,,,,,Y,,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000',
             ',,,,,,,,,,,Y,,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000'
         )
-
         run_import(csv_data_12)
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2)
@@ -421,11 +424,12 @@ class TestUpdateArticleMetadata(TestCase):
             'Personne',
             'University of Toronto',
             '',      # bio not in import template
-            'unrealperson6@example.com'
+            'unrealperson6@example.com',
+            '3675-1824-2638-1859',
         ]
 
-        utils.update_frozen_author(author_fields, article_1)
         author = core_models.Account.objects.get(email=author_fields[6])
+        utils.update_frozen_author(author, author_fields, article_1)
         frozen_author = author.frozen_author(article_1)
 
         saved_fields = [
@@ -435,7 +439,8 @@ class TestUpdateArticleMetadata(TestCase):
             frozen_author.last_name,
             frozen_author.institution,
             '',
-            frozen_author.author.email
+            frozen_author.author.email,
+            frozen_author.frozen_orcid,
         ]
 
         self.assertEqual(author_fields, saved_fields)
