@@ -381,10 +381,10 @@ def handle_author_import(row, article):
         row.get('Author institution'),
         row.get(''),
         row.get('Author email'),
+        row.get('Author ORCID'),
     ]
 
     author = import_author(author_fields, article)
-    author.orcid = orcid_from_url(row["Author ORCID"])
     author.save()
     if row.get('Author is primary (Y/N)') in 'Yy':
         article.correspondence_author = author
@@ -519,11 +519,10 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-    salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
+    salutation, first_name, middle_name, last_name, institution, bio, email, orcid = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
-        author_fields.pop(-1)
-        author_fields.append(email)
+        author_fields[-2] = email
 
     author, created = core_models.Account.objects.get_or_create(email=email)
     if created:
@@ -533,34 +532,35 @@ def import_author(author_fields, article):
         author.last_name = last_name
         author.institution = institution
         author.biography = bio or None
+        author.orcid = orcid_from_url(orcid)
         author.save()
 
     article.authors.add(author)
     article.save()
     author.snapshot_self(article)
 
-    update_frozen_author(author_fields, article)
+    update_frozen_author(author, author_fields, article)
 
     return author
 
-def update_frozen_author(author_fields, article):
+def update_frozen_author(author, author_fields, article):
 
     """
     Updates frozen author records from import data, not author object fields.
     """
-
-    salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
-    author = core_models.Account.objects.get(email=email)
+    print(author_fields)
+    salutation, first_name, middle_name, last_name, institution, bio, email, orcid = author_fields
     frozen_author = author.frozen_author(article)
     frozen_author.first_name = first_name
     frozen_author.middle_name = middle_name
     frozen_author.last_name = last_name
     frozen_author.institution = institution
+    frozen_author.frozen_orcid = orcid_from_url(orcid)
     frozen_author.save()
 
 
 def import_corporate_author(author_fields, article):
-    *_, institution,_bio, _email = author_fields
+    *_, institution, _bio, _email, _orcid = author_fields
     submission_models.FrozenAuthor.objects.get_or_create(
         article=article,
         is_corporate=True,
@@ -684,11 +684,10 @@ def load_article_images(request, reader):
 
 
 def orcid_from_url(orcid_url):
-    if orcid_url:
-        try:
-            return orcid_url.split("orcid.org/")[-1]
-        except (AttributeError, ValueError, TypeError, IndexError):
-            raise ValueError("%s is not a valid orcid URL" % orcid_url)
+    try:
+        return orcid_url.split("orcid.org/")[-1]
+    except (AttributeError, ValueError, TypeError, IndexError):
+        raise ValueError("%s is not a valid orcid URL" % orcid_url)
 
 
 def unzip_update_file(path):
