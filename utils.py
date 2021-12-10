@@ -324,10 +324,14 @@ def update_article(article, issue, prepared_row, zip_folder_path):
 
     # import author from the primary row and then secondary rows
     updated_authors = []
-    updated_authors.append(handle_author_import(row, article))
-    for author_row in prepared_row.get('author_rows'):
-        updated_authors.append(handle_author_import(author_row, article))
+    author_order = 0
+    updated_authors.append(handle_author_import(row, article, author_order))
 
+    for author_row in prepared_row.get('author_rows'):
+        author_order += 1
+        updated_authors.append(handle_author_import(author_row, article, author_order))
+
+    # remove authors as needed in case of update
     for previous_author in article.authors.all():
         if previous_author not in updated_authors:
             article.authors.remove(previous_author)
@@ -372,7 +376,7 @@ def update_keywords(keywords, article):
     article.save()
 
 
-def handle_author_import(row, article):
+def handle_author_import(row, article, author_order):
     author_fields = [
         row.get('Author Salutation'),
         row.get('Author given name'),
@@ -382,15 +386,20 @@ def handle_author_import(row, article):
         row.get(''),
         row.get('Author email'),
         row.get('Author ORCID'),
+        row.get('Author is corporate'),
+        author_order,
     ]
 
-    author = import_author(author_fields, article)
-    author.save()
-    if row.get('Author is primary (Y/N)') in 'Yy':
-        article.correspondence_author = author
-    article.save()
+    if row.get('Author is corporate') == 'Y':
+        import_corporate_author(author_fields, article)
+    else:
+        author = import_author(author_fields, article)
+        author.save()
+        if row.get('Author is primary (Y/N)') == 'Y':
+            article.correspondence_author = author
+            article.save()
 
-    return author
+        return author
 
 
 def handle_file_import(row, article, zip_folder_path):
@@ -519,10 +528,12 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-    salutation, first_name, middle_name, last_name, institution, bio, email, orcid = author_fields
+    salutation, first_name, middle_name, last_name, \
+        institution, bio, email, orcid, is_corporate, \
+        author_order = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
-        author_fields[-2] = email
+        author_fields[-4] = email
 
     author, created = core_models.Account.objects.get_or_create(email=email)
     if created:
@@ -548,23 +559,27 @@ def update_frozen_author(author, author_fields, article):
     """
     Updates frozen author records from import data, not author object fields.
     """
-    print(author_fields)
-    salutation, first_name, middle_name, last_name, institution, bio, email, orcid = author_fields
+    salutation, first_name, middle_name, last_name, \
+        institution, bio, email, orcid, is_corporate, \
+        author_order = author_fields
     frozen_author = author.frozen_author(article)
     frozen_author.first_name = first_name
     frozen_author.middle_name = middle_name
     frozen_author.last_name = last_name
     frozen_author.institution = institution
     frozen_author.frozen_orcid = orcid_from_url(orcid)
+    frozen_author.order = author_order
     frozen_author.save()
 
 
 def import_corporate_author(author_fields, article):
-    *_, institution, _bio, _email, _orcid = author_fields
+    *_, institution, _bio, _email, _orcid, \
+        _is_corporate, author_order = author_fields
     submission_models.FrozenAuthor.objects.get_or_create(
         article=article,
         is_corporate=True,
         institution=institution,
+        order=author_order,
     )
 
 
