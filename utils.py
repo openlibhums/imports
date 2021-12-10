@@ -384,14 +384,15 @@ def handle_author_import(row, article, author_order):
         row.get('Author middle name'),
         row.get('Author surname'),
         row.get('Author institution'),
-        row.get(''),
+        row.get('Author department'),
+        row.get('Author biography'),
         row.get('Author email'),
         row.get('Author ORCID'),
-        row.get('Author is corporate'),
+        row.get('Author is corporate (Y/N)'),
         author_order,
     ]
 
-    if row.get('Author is corporate') == 'Y':
+    if row.get('Author is corporate (Y/N)') == 'Y':
         import_corporate_author(author_fields, article)
     else:
         author = import_author(author_fields, article)
@@ -567,8 +568,8 @@ def import_article_row(row, journal, issue_type, article=None):
 
 def import_author(author_fields, article):
     salutation, first_name, middle_name, last_name, \
-        institution, bio, email, orcid, is_corporate, \
-        author_order = author_fields
+        institution, department, bio, email, orcid, \
+        is_corporate, author_order = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
         author_fields[-4] = email
@@ -581,6 +582,7 @@ def import_author(author_fields, article):
         author.middle_name = middle_name
         author.last_name = last_name
         author.institution = institution
+        author.department = department
         author.biography = bio or None
         author.orcid = orcid_from_url(orcid)
         author.save()
@@ -599,20 +601,22 @@ def update_frozen_author(author, author_fields, article):
     Updates frozen author records from import data, not author object fields.
     """
     salutation, first_name, middle_name, last_name, \
-        institution, bio, email, orcid, is_corporate, \
-        author_order = author_fields
+        institution, department, biography, email, orcid, \
+        is_corporate, author_order = author_fields
     frozen_author = author.frozen_author(article)
     frozen_author.first_name = first_name
     frozen_author.middle_name = middle_name
     frozen_author.last_name = last_name
     frozen_author.institution = institution
+    frozen_author.department = department
+    frozen_author.frozen_biography = biography
     frozen_author.frozen_orcid = orcid_from_url(orcid)
     frozen_author.order = author_order
     frozen_author.save()
 
 
 def import_corporate_author(author_fields, article):
-    *_, institution, _bio, _email, _orcid, \
+    *_, institution, _department, _bio, _email, _orcid, \
         _is_corporate, author_order = author_fields
     submission_models.FrozenAuthor.objects.get_or_create(
         article=article,
