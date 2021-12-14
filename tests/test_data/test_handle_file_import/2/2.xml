@@ -1,0 +1,145 @@
+  <front>
+    <journal-meta>
+      <journal-id journal-id-type="publisher">TST</journal-id>
+      <journal-title-group>
+        <journal-title>Journal One</journal-title>
+      </journal-title-group>
+      <issn pub-type="epub">0000-0000</issn>
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="publisher-id">2</article-id>
+      <article-id pub-id-type="manuscript"></article-id>
+      <article-id pub-id-type="doi">10.1234/tst.2</article-id>
+      <title-group>
+        <article-title>Variopleistocene Inquilibriums</article-title>
+        <subtitle></subtitle>
+        <alt-title alt-title-type="running-head"></alt-title>
+      </title-group>
+      <contrib-group>
+        <contrib contrib-type="author" corresp="yes" equal-contrib="yes">
+          <name>
+            <surname>Person3</surname>
+            <given-names>Unreal J.</given-names>
+          </name>
+          <email>unrealperson3@example.com</email>
+          <bio><p>Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.</p></bio>
+          <xref ref-type="aff" rid="aff1"/>
+        </contrib>
+      </contrib-group>
+      <aff id="aff1">
+        <institution>University of Michigan Medical School</institution>
+        <institution content-type="position">Professor</institution>
+        <institution content-type="dept">Cancer Center</institution>
+        <addr-line content-type="addrline1"></addr-line>
+        <country></country>
+        <addr-line content-type="city"></addr-line>
+        <addr-line content-type="zipcode"></addr-line>
+        <phone content-type="primary"></phone>
+      </aff>
+      <pub-date>
+        <year>2021</year>
+      </pub-date>
+      <volume>24</volume>
+      <issue>1</issue>
+      <history>
+        <date date-type="received">
+          <day></day>
+          <month></month>
+          <year></year>
+        </date>
+        <date date-type="rev-recd">
+          <day></day>
+          <month></month>
+          <year></year>
+        </date>
+        <date date-type="accepted">
+          <day>5</day>
+          <month>June</month>
+          <year>2021</year>
+        </date>
+      </history>
+      <permissions>
+        <license>
+          <license-p>CC BY-NC-SA 4.0</license-p>
+        </license>
+      </permissions>
+      <abstract>
+        <p>This is an abstract.</p>
+      </abstract>
+      <kwd-group>
+        <kwd>keyword1</kwd>
+        <kwd>keyword2</kwd>
+      </kwd-group>
+      <funding-group/>
+      <counts>
+        <fig-count count="0"/>
+      </counts>
+    </article-meta>
+  </front>
+  <body>
+    <sec id="S1">
+      <title>Introduction</title>
+      <p>This is an introductory paragraph (in section 1) with a reference to (<xref ref-type="bibr" rid="R1">Solomon and Bj&#x00F6;rk 2012</xref>).</p>
+    </sec>
+    <sec id="S2">
+      <title>Literature Review</title>
+      <sec>
+        <title>Subheading under literature review</title>
+        <p>This is a paragraph inside a subheading with a reference to (<xref ref-type="bibr" rid="R2">Crow 2006</xref>) and a footnote.<sup>
+            <xref rid="FN1_1" ref-type="fn">1</xref>
+          </sup>
+        </p>
+        <fig id="F1_1" position="float">
+            <label>Figure 1.1:</label>
+            <caption>This is a caption.</caption>
+            <alt-text>The Birkbeck, University of London logo</alt-text>
+            <graphic xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="Birkbeck_logo.jpg"/>
+        </fig>
+     </sec>
+    </sec>
+  </body>
+  <back>
+    <ack id="A1">
+      <title>Acknowledgments</title>
+      <p>This is paragraph text for the acknowledgments.</p>
+    </ack>
+    <ref-list>
+      <title>Bibliography</title>
+      <ref id="R1">
+        <mixed-citation publication-type="journal">
+          <string-name>
+            <surname>Solomon</surname>,
+            <given-names>David J.</given-names>
+          </string-name>, and
+          <string-name>
+            <surname>Bo-Christer</surname>
+            <given-names>Bj&#x00F6;rk</given-names>
+          </string-name>.
+          <year>2012</year>. &#x201C;<article-title>A Study of Open Access Journals Using Article Processing Charges.</article-title>&#x201D;
+          <source>Journal of the American Society for Information Science &amp; Technology</source>
+          <volume>63</volume>
+          (<issue>8</issue>):
+          <fpage>1485</fpage>&#x2013;<lpage>1495</lpage>.
+          <uri>https://doi.org/10.1002/asi.22673</uri>.</mixed-citation>
+      </ref>
+      <ref id="R2">
+        <mixed-citation publication-type="journal">
+          <string-name>
+            <surname>Crow</surname>,
+            <given-names>Raym</given-names>
+          </string-name>.
+          <year>2006</year>. &#x201C;<article-title>Publishing Cooperatives: An Alternative for Non-Profit Publishers.</article-title>&#x201D;
+          <source>First Monday</source>
+          <volume>11</volume>
+          (<issue>9</issue>).
+          <uri>https://doi.org/10.5210/fm.v11i9.1396</uri>.</mixed-citation>
+      </ref>
+    </ref-list>
+    <fn-group>
+      <fn id="FN1_1">
+        <label>1</label>
+        <p>This is a footnote</p>
+      </fn>
+    </fn-group>
+  </back>
+</article>
