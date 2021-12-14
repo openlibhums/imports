@@ -22,6 +22,8 @@ from django.http import HttpRequest
 import csv
 import io
 import re
+import zipfile
+import os
 
 CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
 Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24,2021-10-25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 13:58:59+0000
@@ -35,13 +37,16 @@ MOCK_REQUEST = HttpRequest()
 # Utils
 
 
-def run_import(csv_string):
+def run_import(csv_string, path_to_zip=None):
     """
     Simulates the import
     """
 
     reader = csv.DictReader(csv_string.splitlines())
-    zip_folder_path = "test_zip_1.zip"
+    if path_to_zip:
+        _path, zip_folder_path, _errors = utils.unzip_update_file(path_to_zip)
+    else:
+        zip_folder_path = ''
 
     errors, actions = utils.update_article_metadata(
         MOCK_REQUEST,
@@ -73,7 +78,7 @@ def read_saved_article_data(article):
             '%Y-%m-%d') if article.date_published else None,
         'Article section': article.section.name,
         'Stage': article.stage,
-        'Article filename': None,
+        'Article filename': read_saved_files(article),
         'Journal Code': article.journal.code,
         'Journal title': article.journal.name,
         'ISSN': article.journal.issn,
@@ -120,6 +125,10 @@ def read_saved_article_data(article):
 
     return csv_string
 
+def read_saved_files(article):
+    filenames = [f.original_filename for f in article.manuscript_files.all()]
+    filenames.extend([f.original_filename for f in article.data_figure_files.all()])
+    return ','.join([f'{article.pk}/{filename}' for filename in sorted(filenames)])
 
 def read_saved_frozen_author_data(frozen_author, article):
     """
@@ -147,6 +156,33 @@ def read_saved_frozen_author_data(frozen_author, article):
 
     return author_data
 
+def make_import_zip(test_data_path, article_data_csv):
+    if not os.path.exists(test_data_path):
+        os.mkdir(test_data_path)
+
+    managepy_dir = os.getcwd()
+    os.chdir(test_data_path)
+    with zipfile.ZipFile('import.zip', 'w') as import_zip:
+        for subdir, dirs, files in os.walk('.'):
+            for filename in files:
+                filepath = os.path.join(subdir, filename)
+                if not filepath.endswith('.zip'):
+                    import_zip.write(filepath)
+        import_zip.writestr(
+            zipfile.ZipInfo(filename='article_data.csv'),
+            article_data_csv
+        )
+    os.chdir(managepy_dir)
+    path_to_zip = os.path.join(test_data_path, 'import.zip')
+    return path_to_zip
+
+def clear_import_zips():
+    test_data_path = os.path.join('plugins','imports','tests','test_data')
+    for subdir, dirs, files in os.walk(test_data_path):
+        for filename in files:
+            filepath = subdir + os.sep + filename
+            if filepath.endswith('.zip'):
+                os.remove(filepath)
 
 class TestUpdateArticleMetadata(TestCase):
     @classmethod
@@ -174,6 +210,11 @@ class TestUpdateArticleMetadata(TestCase):
         article_2 = submission_models.Article.objects.filter(id=2).first()
         if article_2:
             article_2.delete()
+
+        for issue in journal_models.Issue.objects.all():
+            issue.delete()
+
+        clear_import_zips()
 
     def test_update_article_metadata_fresh_import(self):
         """
@@ -493,7 +534,7 @@ class TestUpdateArticleMetadata(TestCase):
         clear_cache()
 
         csv_data_7 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,Article filename,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,Salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,0,0,Issue name 20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
+Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,Salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Issue name 20432%^&RIY$%*RI,2021-09-15 13:58:59+0000
 """
 
         # Note: Not all of the above should not be importable,
@@ -533,6 +574,8 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         self.assertEqual(csv_data_10, saved_article_data)
 
     def test_corporate_author_import(self):
+        clear_cache()
+
         csv_data_14 = CSV_DATA_1.replace(
             'Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N',
             ',,,,,,University of Michigan Medical School,,,N,Y'
@@ -546,3 +589,32 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2)
         self.assertEqual(csv_data_14, saved_article_data)
+
+    def test_handle_file_import(self):
+        clear_cache()
+
+        test_data_path = os.path.join(
+            'plugins',
+            'imports',
+            'tests',
+            'test_data',
+            'test_handle_file_import',
+        )
+
+        csv_data_15 = CSV_DATA_1.replace(
+            'Copyediting,,TST',
+            'Copyediting,"2/2.docx,2/2.pdf,2/2.xml,2/figure1.jpg",TST'
+        )
+        path_to_zip = make_import_zip(
+            test_data_path,
+            csv_data_15,
+        )
+        run_import(csv_data_15, path_to_zip=path_to_zip)
+        csv_data_15 = csv_data_15.replace(
+            'Y,N,',
+            'Y,N,2'  # article id
+        )
+        article_2 = submission_models.Article.objects.get(id=2)
+        saved_article_data = read_saved_article_data(article_2)
+        self.assertEqual(csv_data_15, saved_article_data)
+
