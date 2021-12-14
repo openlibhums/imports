@@ -356,7 +356,7 @@ def update_article(article, issue, prepared_row, zip_folder_path):
 
 
 def update_keywords(keywords, article):
-    new_keywords = [w.strip(whitespace) for w in keywords]
+    new_keywords = [w.strip(whitespace) for w in keywords if w]
 
     current_keywords = [str(kw) for kw in article.keywords.all()]
     if (len(current_keywords) > 0) and (current_keywords != new_keywords):
