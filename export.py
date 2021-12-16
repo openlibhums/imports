@@ -11,8 +11,9 @@ from django.template.loader import render_to_string
 from core import files
 
 UPDATE_HEADER_ROW = "Article title,Article filename,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
-                    "Author given name,Author middle name,Author email,Author institution,Author is primary (Y/N),Author ORCID,Article ID," \
-                    "DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN,Delivery formats,Typesetting template," \
+                    "Author given name,Author middle name,Author email," \
+                    "Author institution,Author is primary (Y/N),Author ORCID,Author department,Author biography,Author is corporate (Y/N)," \
+                    "Article ID,DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN," \
                     "Volume number,Issue number,Issue name,Issue pub date,Stage"
 
 CSV_HEADER_ROW = "Article identifier, Article title, Section Name, Volume number, Issue number, Subtitle, Abstract," \
@@ -124,8 +125,10 @@ def add_first_author(article_initial_details, author_list, frozen, article):
 
         if frozen:
             correspondence_author = 'Y' if author.author and author.author == article.correspondence_author else 'N'
+            is_corporate = 'Y' if author.is_corporate else 'N'
         else:
             correspondence_author = 'Y' if author == article.correspondence_author else 'N'
+            is_corporate = 'N'
 
         orcid = ''
         if frozen and author.author:
@@ -142,6 +145,9 @@ def add_first_author(article_initial_details, author_list, frozen, article):
             author.institution,
             correspondence_author,
             "https://orcid.org/{}".format(orcid) if orcid else '',
+            author.department,
+            author.biography,
+            is_corporate,
         ]
         article_initial_details.extend(author_details)
         author_list = author_list.exclude(pk=author.pk)
@@ -156,8 +162,10 @@ def add_author_information(article_first_row, author_list, frozen, article):
         for i, author in enumerate(author_list):
             if frozen:
                 correspondence_author = 'Y' if author.author and author.author == article.correspondence_author else 'N'
+                is_corporate = 'Y' if author.is_corporate else 'N'
             else:
                 correspondence_author = 'Y' if author == article.correspondence_author else 'N'
+                is_corporate = 'N'
 
             orcid = ''
             if frozen and author.author:
@@ -174,6 +182,9 @@ def add_author_information(article_first_row, author_list, frozen, article):
                 author.institution,
                 correspondence_author,
                 "https://orcid.org/{}".format(orcid) if orcid else '',
+                author.department,
+                author.biography,
+                is_corporate,
             ]
             blank_article_row = [
                 '', '', '', '', '', '', '',
@@ -231,12 +242,10 @@ def export_using_import_format(articles):
             article.journal.code,
             article.journal.name,
             article.journal.issn,
-            'Field not exportable',
-            'Field not exportable',
             issue.volume if issue and issue.volume else '',
             issue.issue if issue and issue.issue else '',
             issue.issue_title if issue and issue.issue_title else '',
-            issue.date if issue else '',
+            issue.date.strftime('%Y-%m-%d %H:%M:%S%z') if issue else '',
             article.stage,
         ]
         article_initial_details.extend(additional_details)

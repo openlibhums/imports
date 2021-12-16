@@ -11,13 +11,14 @@ from nose.tools import set_trace; set_trace()
 
 from django.test import TestCase
 
-from plugins.imports import utils
+from plugins.imports import utils, export, views
 from core import models as core_models
 from submission import models as submission_models
 from journal import models as journal_models
 from utils.testing import helpers
 from utils.shared import clear_cache
 
+from rest_framework import routers
 from django.http import HttpRequest
 import csv
 import io
@@ -32,12 +33,11 @@ Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teachin
 """
 
 
-MOCK_REQUEST = HttpRequest()
 
 # Utils
 
 
-def run_import(csv_string, path_to_zip=None):
+def run_import(csv_string, mock_request, path_to_zip=None):
     """
     Simulates the import
     """
@@ -49,7 +49,7 @@ def run_import(csv_string, path_to_zip=None):
         zip_folder_path = ''
 
     errors, actions = utils.update_article_metadata(
-        MOCK_REQUEST,
+        mock_request,
         reader,
         zip_folder_path,
     )
@@ -85,7 +85,7 @@ def read_saved_article_data(article):
         'Volume number': article.issue.volume,
         'Issue number': article.issue.issue,
         'Issue name': article.issue.issue_title,
-        'Issue pub date': article.issue.date.strftime('%Y-%m-%d %H:%M:%S%z')
+        'Issue pub date': article.issue.date.strftime('%Y-%m-%d %H:%M:%S%z'),
     }
 
     author_rows = {}
@@ -184,7 +184,7 @@ def clear_import_zips():
             if filepath.endswith('.zip'):
                 os.remove(filepath)
 
-class TestUpdateArticleMetadata(TestCase):
+class TestImportAndUpdate(TestCase):
     @classmethod
     def setUpTestData(cls):
 
@@ -194,18 +194,19 @@ class TestUpdateArticleMetadata(TestCase):
             code='issue'
         )
 
-        test_user = helpers.create_user(username='unrealperson12@example.com')
-        MOCK_REQUEST.user = test_user
+        cls.mock_request = HttpRequest()
+        cls.test_user = helpers.create_user(username='unrealperson12@example.com')
+        cls.mock_request.user = cls.test_user
 
         csv_data_2 = CSV_DATA_1
-        run_import(csv_data_2)
+        run_import(csv_data_2, cls.mock_request)
 
     def tearDown(self):
         reset_csv_data = CSV_DATA_1.replace(
             'Y,N,,,,',
             'Y,N,1,,,'
         )
-        run_import(reset_csv_data)
+        run_import(reset_csv_data, self.mock_request)
 
         article_2 = submission_models.Article.objects.filter(id=2).first()
         if article_2:
@@ -243,7 +244,7 @@ class TestUpdateArticleMetadata(TestCase):
             'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25,2021-10-26'
         )
 
-        run_import(csv_data_3)
+        run_import(csv_data_3, self.mock_request)
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
@@ -266,7 +267,7 @@ class TestUpdateArticleMetadata(TestCase):
             'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 13:58:59+0000',
             'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 13:58:59+0000'
         )
-        run_import(csv_data_12)
+        run_import(csv_data_12, self.mock_request)
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2)
 
@@ -295,7 +296,7 @@ class TestUpdateArticleMetadata(TestCase):
             original_row,
             fully_populated_row
         )
-        run_import(csv_data_13)
+        run_import(csv_data_13, self.mock_request)
 
         # blank out non-required rows to test import
         updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,,,unrealperson3@example.com,,,,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15 13:58:59+0000'
@@ -304,7 +305,7 @@ class TestUpdateArticleMetadata(TestCase):
             fully_populated_row,
             updated_row_with_blanks_to_test
         )
-        run_import(csv_data_13)
+        run_import(csv_data_13, self.mock_request)
 
         # account for blanks in import data that aren't saved to db
         expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,,Prof,,,,unrealperson3@example.com,,,,,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15 13:58:59+0000'
@@ -394,7 +395,7 @@ class TestUpdateArticleMetadata(TestCase):
         clear_cache()
 
         article_1 = submission_models.Article.objects.get(id=1)
-        self.assertEqual(MOCK_REQUEST.user.email, article_1.owner.email)
+        self.assertEqual(self.mock_request.user.email, article_1.owner.email)
 
     def test_changes_to_issue(self):
 
@@ -412,7 +413,7 @@ class TestUpdateArticleMetadata(TestCase):
             'Winter 2022,2022-01-15 13:58:59+0000'
         )
 
-        run_import(csv_data_11)
+        run_import(csv_data_11, self.mock_request)
 
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2)
@@ -442,7 +443,7 @@ class TestUpdateArticleMetadata(TestCase):
 ,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,''',
             ''
         )
-        run_import(csv_data_4)
+        run_import(csv_data_4, self.mock_request)
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
@@ -501,7 +502,7 @@ class TestUpdateArticleMetadata(TestCase):
             'N,1,,,2021-10-24,2021-10-25,Interview,'
         )
 
-        run_import(csv_data_5)
+        run_import(csv_data_5, self.mock_request)
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1)
@@ -517,7 +518,7 @@ class TestUpdateArticleMetadata(TestCase):
             'Y,N,,,,,,Article,Typesetting Plugin'
         )
 
-        run_import(csv_data_6)
+        run_import(csv_data_6, self.mock_request)
 
         # add article id
         csv_data_6 = csv_data_6.replace(
@@ -539,7 +540,7 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
 
         # Note: Not all of the above should not be importable,
         # esp. the email and orcid
-        run_import(csv_data_7)
+        run_import(csv_data_7, self.mock_request)
 
         # add article id
         # account for human-legible N for non corresondence author
@@ -561,7 +562,7 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
             '   Variopleistocene Inquilibriums   ,   How it all went down.    ,"     dinosaurs,Socratic teaching",    CC BY-NC-SA 4.0,   English,   Prof   ,  Unreal  ,  J.  ,   Person3  ,  unrealperson3@example.com  ,  ,  University of Michigan Medical School ,  Cancer Center  ,   Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,  Y  ,  N ,   ,  ,  ,  2021-10-24,  2021-10-25,   Article,    Editor Copyediting  ,,TST  ,  Journal One  ,0000-0000  ,1  ,  1,  Fall 2021,   2021-09-15 13:58:59+0000'
         )
 
-        run_import(csv_data_9)
+        run_import(csv_data_9, self.mock_request)
 
         # add article id
         csv_data_10 = CSV_DATA_1.replace(
@@ -580,7 +581,7 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
             'Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N',
             ',,,,,,University of Michigan Medical School,,,N,Y'
         )
-        run_import(csv_data_14)
+        run_import(csv_data_14, self.mock_request)
 
         csv_data_14 = csv_data_14.replace(
             'N,Y,',
@@ -609,7 +610,7 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
             test_data_path,
             csv_data_15,
         )
-        run_import(csv_data_15, path_to_zip=path_to_zip)
+        run_import(csv_data_15, self.mock_request, path_to_zip=path_to_zip)
         csv_data_15 = csv_data_15.replace(
             'Y,N,',
             'Y,N,2'  # article id
@@ -617,4 +618,5 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2)
         self.assertEqual(csv_data_15, saved_article_data)
+
 
