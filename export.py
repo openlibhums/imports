@@ -245,7 +245,7 @@ def export_using_import_format(articles):
             issue.volume if issue and issue.volume else '',
             issue.issue if issue and issue.issue else '',
             issue.issue_title if issue and issue.issue_title else '',
-            issue.date.strftime('%Y-%m-%d %H:%M:%S%z') if issue else '',
+            issue.date.strftime('%Y-%m-%d %H:%M') if issue else '',
             article.stage,
         ]
         article_initial_details.extend(additional_details)

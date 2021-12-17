@@ -7,12 +7,14 @@ from urllib.parse import urlparse, unquote
 import uuid
 from zipfile import ZipFile
 from string import whitespace
+from dateutil import parser as dateparser
 
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.timezone import is_aware, make_aware
 
 from core import models as core_models, files, logic as core_logic, workflow
 from identifiers import models as id_models
@@ -164,7 +166,7 @@ def prep_update(row):
             code="issue",
             journal=journal,
         )
-        parsed_issue_date = parse_datetime(row.get('Issue pub date'))
+        parsed_issue_date = get_aware_datetime(row.get('Issue pub date'))
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=row.get('Volume number') or 0,
@@ -304,15 +306,19 @@ def update_article(article, issue, prepared_row, zip_folder_path):
         keywords += row.get('Keywords').split(",")
     update_keywords(keywords, article)
 
-    article.date_accepted = (
-        parse_datetime(row.get('Date accepted'))
-        or parse_date(row.get('Date accepted'))
-    )
+    if row.get('Date accepted'):
+        article.date_accepted = get_aware_datetime(
+            row.get('Date accepted')
+        )
+    else:
+        article.date_accepted = None
 
-    article.date_published = (
-        parse_datetime(row.get('Date published'))
-        or parse_date(row.get('Date published'))
-    )
+    if row.get('Date published'):
+        article.date_published = get_aware_datetime(
+            row.get('Date published')
+        )
+    else:
+        article.date_published = None
 
     article.primary_issue = issue
     article.save()
@@ -787,3 +793,10 @@ def get_filename_from_headers(response):
             "No filename available in headers: %s" % response.headers
         )
     return None
+
+
+def get_aware_datetime(unparsed_string):
+    try:
+        return make_aware(dateparser.parse(unparsed_string, ignoretz=True))
+    except ValueError:
+        raise
