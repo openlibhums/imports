@@ -60,7 +60,7 @@ class TestExport(TestCase):
             "CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,J.,unrealperson3@example.com," \
             "University of Michigan Medical School,Y,,Cancer Center,Prof Unreal J. Person3 " \
             "teaches dinosaurs but they are employed in a hospital.,N,1,,,,TST,Journal One,0000-0000," \
-            "1,1,Fall 2021,2021-09-15 13:58:59+0000,Editor Copyediting\n" \
+            "1,1,Fall 2021,2021-09-15 09:15,Editor Copyediting\n" \
             ",,,,,,,,Person5,Unreal,J.,unrealperson5@example.com,University of Calgary," \
             "N,,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N\n" \
             ",,,,,,,,Person6,Unreal,J.,unrealperson6@example.com,University of Mars," \
