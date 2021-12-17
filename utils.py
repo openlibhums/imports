@@ -247,8 +247,11 @@ def update_article_metadata(request, reader, zip_folder_path):
                 article = submission_models.Article.objects.create(
                     journal=journal,
                     title=prepared_row.get('primary_row').get('Article title'),
+                    article_agreement='Imported article'
                 )
                 update_article(article, issue, prepared_row, zip_folder_path)
+                article.owner = request.user
+                article.save()
 
                 current_workflow_stages = set(journal.workflow_set.all().values_list(
                     "elements__stage", flat=True))
@@ -260,11 +263,12 @@ def update_article_metadata(request, reader, zip_folder_path):
                 else:
                     article.stage = submission_models.STAGE_UNASSIGNED
 
-                article.owner = request.user
                 article.save()
                 actions.append(
                     'Article {} created.'.format(article.title)
                 )
+
+
             except Exception as e:
                 errors.append(
                     {

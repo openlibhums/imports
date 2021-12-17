@@ -619,4 +619,6 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         saved_article_data = read_saved_article_data(article_2)
         self.assertEqual(csv_data_15, saved_article_data)
 
-
+    def test_article_agreement_set(self):
+        article_1 = submission_models.Article.objects.get(id=1)
+        self.assertEqual(article_1.article_agreement, 'Imported article')
