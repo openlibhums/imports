@@ -93,7 +93,7 @@ def import_action(request, filename):
         raise Http404()
 
     if type == 'update':
-        path, zip_folder_path, errors = utils.unzip_update_file(path)
+        path, folder_path, errors = utils.prep_update_file(path)
 
         if errors:
             # If we have any errors delete the temp folder and redirect back.
@@ -102,7 +102,7 @@ def import_action(request, filename):
                 messages.ERROR,
                 ', '.join(errors)
             )
-            shutil.rmtree(zip_folder_path)
+            shutil.rmtree(folder_path)
             return redirect(
                 reverse(
                     'import_export_articles_all'
@@ -133,7 +133,7 @@ def import_action(request, filename):
             errors, actions = utils.update_article_metadata(
                 request,
                 reader,
-                zip_folder_path,
+                folder_path,
             )
             print(actions, errors)
         else:

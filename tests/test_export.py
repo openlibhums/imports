@@ -1,14 +1,3 @@
-"""
-Test cases for export in imports plugin
-
-Run with
-python manage.py test imports.tests.test_export
-
-Debug with
-from nose.tools import set_trace; set_trace()
-
-"""
-
 from django.test import TestCase
 
 from plugins.imports import utils, export, views

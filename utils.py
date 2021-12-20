@@ -8,6 +8,8 @@ import uuid
 from zipfile import ZipFile
 from string import whitespace
 from dateutil import parser as dateparser
+import shutil
+import glob
 
 from dateutil import parser as dateutil_parser
 from django.conf import settings
@@ -198,7 +200,7 @@ def prep_update(row):
     return journal, article, issue_type, issue
 
 
-def update_article_metadata(request, reader, zip_folder_path):
+def update_article_metadata(request, reader, folder_path):
     """
     Takes a dictreader and creates or updates article records.
     """
@@ -233,7 +235,7 @@ def update_article_metadata(request, reader, zip_folder_path):
 
         if article:
             try:
-                article = update_article(article, issue, prepared_row, zip_folder_path)
+                article = update_article(article, issue, prepared_row, folder_path)
                 actions.append(
                     'Article {} updated.'.format(article.title)
                 )
@@ -251,7 +253,7 @@ def update_article_metadata(request, reader, zip_folder_path):
                     title=prepared_row.get('primary_row').get('Article title'),
                     article_agreement='Imported article'
                 )
-                update_article(article, issue, prepared_row, zip_folder_path)
+                update_article(article, issue, prepared_row, folder_path)
                 article.owner = request.user
                 article.save()
 
@@ -282,7 +284,7 @@ def update_article_metadata(request, reader, zip_folder_path):
     return errors, actions
 
 
-def update_article(article, issue, prepared_row, zip_folder_path):
+def update_article(article, issue, prepared_row, folder_path):
     row = prepared_row.get('primary_row')
 
     article.title = row.get('Article title')
@@ -350,7 +352,7 @@ def update_article(article, issue, prepared_row, zip_folder_path):
             if previous_frozen_author:
                 previous_frozen_author.delete()
 
-    handle_file_import(row, article, zip_folder_path)
+    handle_file_import(row, article, folder_path)
 
     if row.get('Stage') == 'typesetting_plugin':
         workflow_element = core_models.WorkflowElement.objects.get(
@@ -414,10 +416,10 @@ def handle_author_import(row, article, author_order):
         return author
 
 
-def handle_file_import(row, article, zip_folder_path):
+def handle_file_import(row, article, folder_path):
     partial_file_paths = row.get('Article filename').split(',')
     for partial_file_path in partial_file_paths:
-        full_path = os.path.join(zip_folder_path, partial_file_path)
+        full_path = os.path.join(folder_path, partial_file_path)
 
         try:
             file_name = partial_file_path.split('/')[1]
@@ -758,20 +760,35 @@ def orcid_from_url(orcid_url):
         raise ValueError("%s is not a valid orcid URL" % orcid_url)
 
 
-def unzip_update_file(path):
+def prep_update_file(path):
     errors = []
 
     folder_name = str(uuid.uuid4())
     temp_folder_path = os.path.join(settings.BASE_DIR, 'files', 'temp', folder_name)
     os.mkdir(temp_folder_path)
 
-    with ZipFile(path, 'r') as zipObj:
-        # Extract all the contents of zip file in different directory
-        zipObj.extractall(temp_folder_path)
+    if path.endswith('.csv'):
+        csv_filename = path.split('/')[-1]
+        destination_csv_path = os.path.join(temp_folder_path, csv_filename)
+        csv_path = shutil.copyfile(path, destination_csv_path)
 
-    csv_path = os.path.join(temp_folder_path, 'article_data.csv')
+    elif path.endswith('.zip'):
+
+        with ZipFile(path, 'r') as zipObj:
+            # Extract all the contents of zip file in different directory
+            zipObj.extractall(temp_folder_path)
+
+        destination_csv_wildcard = os.path.join(temp_folder_path, '*.csv')
+
+        csv_path = sorted(
+            glob.glob(destination_csv_wildcard)
+        )[0] if glob.glob(destination_csv_wildcard) else None
+
+    else:
+        csv_path = None
+
     if not os.path.isfile(csv_path):
-        errors.append('No article_data.csv file found in zip.')
+        errors.append('No metadata csv found.')
 
     return csv_path, temp_folder_path, errors
 

@@ -9,17 +9,15 @@ With this tool, you can create new articles in Janeway and load them directly in
 
 1. Download a copy of the :download:`metadata template <_static/metadata_template.csv>` and open it up to edit it. You can use most spreadsheet applications, but make sure you will be able to save it as a CSV with UTF-8 character encoding. [#]_
 
-2. Enter the metadata, one article per row. See the `Metadata Field Reference`_ and the :download:`sample import <_static/sample_import.zip>` for pointers. For multi-author articles, insert a new row for each author, and only fill in the author fields on extra rows.
+2. Enter the metadata, one article per row. See the `Metadata Field Reference`_ and the :download:`sample import <_static/sample_import.csv>` for pointers. For multi-author articles, insert a new row for each author, and only fill in the author fields on extra rows.
 
-3. Save it as a CSV named ``article_data.csv`` with UTF-8 character encoding.
+3. Save the file with a name of your choosing.
 
-4. Compress the CSV (alongside any associated files--advanced users only) as a zip file. Here's how to do that `on Windows`_ and `on a Mac`_. The zip file name can be whatever you want.
+4. From the journal's dashboard, navigate to **All Articles** under **Staff** in the lower left. You need to have 'staff' access to view this page.
 
-5. From the journal's dashboard, navigate to **All Articles** under **Staff** in the lower left. You need to have 'staff' access to view this page.
+5. Select **Upload Update** and upload your file. (It says 'update', but this is how you import new things too.)
 
-6. Select **Upload Update** and upload your zip file. (It says 'update', but this is how you import new things too.)
-
-7. A table should load in your browser showing you the data you uploaded, before you import it. If everything looks good, select **Import**.
+6. A table should load in your browser showing you the data you uploaded, before you import it. If everything looks good, select **Import**.
 
 Exporting
 ---------
@@ -44,11 +42,11 @@ You can update metadata for batches of articles in Janeway, so you don't have to
 
 2. Extract the zip file you exported and open the CSV in your spreadsheet software of choice (but be careful with character encoding).
 
-3. Edit the metadata as desired. You an rearrange the columns but the column names have to stay exactly the same. See the :download:`sample update <_static/sample_update.zip>`, which shows how changes can be made to the data in :download:`sample import <_static/sample_import.zip>`. See also the `Metadata Field Reference`_ for details on each field.
+3. Edit the metadata as desired. You an rearrange the columns but the column names have to stay exactly the same. See the :download:`sample update <_static/sample_update.csv>`, which shows changes made to the data in :download:`sample import <_static/sample_import.csv>`. See also the `Metadata Field Reference`_ for details on each field.
 
-4. Compress the CSV (alongside any associated files--advanced users only) as a zip file. Here's how to do that `on Windows`_ and `on a Mac`_. The zip file name can be whatever you want.
+4. Save the CSV file with a name of your choosing.
 
-5. On the **All Articles** page, select **Upload Update** and upload your zip file.
+5. On the **All Articles** page, select **Upload Update** and upload your CSV file.
 
 6. A table should load in your browser showing you the data you uploaded, before you import it. If everything looks good, select **Import**.
 
