@@ -13,7 +13,8 @@ from core import files
 UPDATE_HEADER_ROW = "Article title,Article filename,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
                     "Author given name,Author middle name,Author email," \
                     "Author institution,Author is primary (Y/N),Author ORCID,Author department,Author biography,Author is corporate (Y/N)," \
-                    "Article ID,DOI,DOI (URL form),Article sequence,Journal Code,Journal title,ISSN," \
+                    "Article ID,DOI,DOI (URL form),Date accepted,Date published," \
+                    "Article sequence,Journal Code,Journal title,ISSN," \
                     "Volume number,Issue number,Issue name,Issue pub date,Stage"
 
 CSV_HEADER_ROW = "Article identifier, Article title, Section Name, Volume number, Issue number, Subtitle, Abstract," \
@@ -238,6 +239,10 @@ def export_using_import_format(articles):
             article.pk,
             article.get_doi() if article.get_doi() else '',
             "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else '',
+            article.date_accepted.strftime(
+                '%Y-%m-%d %H:%M') if article.date_accepted else '',
+            article.date_published.strftime(
+                '%Y-%m-%d %H:%M') if article.date_published else '',
             article.page_numbers,
             article.journal.code,
             article.journal.name,
