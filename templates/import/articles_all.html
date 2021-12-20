@@ -7,7 +7,7 @@
 <div class="large-12 columns">
     <div class="box">
         <div class="title-area">
-            <h2>Article Export</h2>
+            <h2>Article Import, Export, Update</h2>
         </div>
         <div class="content">
             <div class="row expanded">
@@ -145,8 +145,8 @@
             <div class="card-divider">
                 <h4>Upload Update</h4>
             </div>
-            <div class="card-section">
-                <button class="close-button" data-close aria-label="Close reveal" type="button">
+						<div class="card-section">
+               <button class="close-button" data-close aria-label="Close reveal" type="button">
                     <span aria-hidden="true">&times;</span>
                 </button>
                 <form method="POST" action="{% url 'imports_load' %}?type=update" enctype="multipart/form-data">
@@ -156,7 +156,7 @@
                         <span class="fa fa-upload">&nbsp;</span>Upload
                     </button>
                 </form>
-            </div>
+           </div>
         </div>
     </div>
 {% endblock body %}
