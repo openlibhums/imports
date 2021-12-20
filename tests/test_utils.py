@@ -1,14 +1,3 @@
-"""
-Test cases for utils in imports plugin
-
-Run with
-python manage.py test --keepdb imports.tests.test_utils
-
-Debug with
-from nose.tools import set_trace; set_trace()
-
-"""
-
 from django.test import TestCase
 
 from plugins.imports import utils, export, views
@@ -46,7 +35,7 @@ def run_import(csv_string, mock_request, path_to_zip=None):
 
     reader = csv.DictReader(csv_string.splitlines())
     if path_to_zip:
-        _path, zip_folder_path, _errors = utils.unzip_update_file(path_to_zip)
+        _path, zip_folder_path, _errors = utils.prep_update_file(path_to_zip)
     else:
         zip_folder_path = ''
 
@@ -158,7 +147,11 @@ def read_saved_frozen_author_data(frozen_author, article):
 
     return author_data
 
-def make_import_zip(test_data_path, article_data_csv):
+def make_import_zip(
+        test_data_path,
+        article_data_csv,
+        csv_filename = 'article_data.csv',
+    ):
     if not os.path.exists(test_data_path):
         os.mkdir(test_data_path)
 
@@ -171,8 +164,8 @@ def make_import_zip(test_data_path, article_data_csv):
                 if not filepath.endswith('.zip'):
                     import_zip.write(filepath)
         import_zip.writestr(
-            zipfile.ZipInfo(filename='article_data.csv'),
-            article_data_csv
+            zipfile.ZipInfo(filename=csv_filename),
+            article_data_csv,
         )
     os.chdir(managepy_dir)
     path_to_zip = os.path.join(test_data_path, 'import.zip')
@@ -184,6 +177,8 @@ def clear_import_zips():
         for filename in files:
             filepath = subdir + os.sep + filename
             if filepath.endswith('.zip'):
+                os.remove(filepath)
+            elif filepath.endswith('.csv'):
                 os.remove(filepath)
 
 class TestImportAndUpdate(TestCase):
@@ -643,3 +638,48 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
             parsed_objects.append(utils.get_aware_datetime(timestamp))
 
         self.assertEqual(expected_objects, parsed_objects)
+
+    def test_prep_update_file_can_find_zip(self):
+        test_data_path = os.path.join(
+            'plugins',
+            'imports',
+            'tests',
+            'test_data',
+            'test_prep_update_file_with_zip',
+        )
+
+        csv_filename = 'can_find_zip.csv'
+
+        path_to_zip = make_import_zip(
+            test_data_path,
+            CSV_DATA_1,
+            csv_filename=csv_filename,
+        )
+
+        csv_path, temp_folder_path, errors = utils.prep_update_file(
+            path_to_zip
+        )
+
+        self.assertEqual(csv_filename, csv_path.split('/')[-1])
+
+    def test_prep_update_file_can_find_csv(self):
+        test_data_path = os.path.join(
+            'plugins',
+            'imports',
+            'tests',
+            'test_data',
+            'test_prep_update_file_with_csv',
+        )
+        if not os.path.exists(test_data_path):
+            os.mkdir(test_data_path)
+
+        csv_filename = 'can_find_csv.csv'
+        path_to_csv = os.path.join(test_data_path, csv_filename)
+        with open(path_to_csv, 'w') as fileobj:
+            fileobj.write(CSV_DATA_1)
+
+        csv_path, temp_folder_path, errors = utils.prep_update_file(
+            path_to_csv
+        )
+
+        self.assertEqual(csv_filename, csv_path.split('/')[-1])
