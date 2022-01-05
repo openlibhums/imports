@@ -352,7 +352,8 @@ def update_article(article, issue, prepared_row, folder_path):
             if previous_frozen_author:
                 previous_frozen_author.delete()
 
-    handle_file_import(row, article, folder_path)
+    # Turning off file imports to prep for overhaul
+    # handle_file_import(row, article, folder_path)
 
     if row.get('Stage') == 'typesetting_plugin':
         workflow_element = core_models.WorkflowElement.objects.get(
@@ -417,6 +418,7 @@ def handle_author_import(row, article, author_order):
 
 
 def handle_file_import(row, article, folder_path):
+    # Will no longer work as written--needs updating
     partial_file_paths = row.get('Article filename').split(',')
     for partial_file_path in partial_file_paths:
         full_path = os.path.join(folder_path, partial_file_path)

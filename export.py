@@ -10,7 +10,7 @@ from django.template.loader import render_to_string
 
 from core import files
 
-UPDATE_HEADER_ROW = "Article title,Article filename,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
+UPDATE_HEADER_ROW = "Article title,File import identifier,Article abstract,Article section,Keywords,License,Language,Author Salutation,Author surname," \
                     "Author given name,Author middle name,Author email," \
                     "Author institution,Author is primary (Y/N),Author ORCID,Author department,Author biography,Author is corporate (Y/N)," \
                     "Article ID,DOI,DOI (URL form),Date accepted,Date published," \
@@ -222,7 +222,9 @@ def export_using_import_format(articles):
 
         article_initial_details = [
             article.title,
-            ','.join(['{}/{}'.format(article.pk, ex_file.file.original_filename) for ex_file in article.export_files]),
+            '',
+            # Needs updating
+            # ','.join(['{}/{}'.format(article.pk, ex_file.file.original_filename) for ex_file in article.export_files]),
             article.abstract,
             article.section.name,
             keyword_string,
