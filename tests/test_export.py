@@ -38,7 +38,7 @@ class TestExport(TestCase):
         with open(filepath,'r') as export_csv:
             csv_string = export_csv.read()
 
-        expected_csv_string = "Article title,Article filename,Article abstract," \
+        expected_csv_string = "Article title,File import identifier,Article abstract," \
             "Article section,Keywords,License,Language,Author Salutation,Author surname," \
             "Author given name,Author middle name,Author email," \
             "Author institution,Author is primary (Y/N),Author ORCID," \
