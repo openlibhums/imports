@@ -18,7 +18,7 @@ import zipfile
 import os
 
 CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
 ,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,
 ,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,
 """
@@ -123,11 +123,11 @@ def read_saved_files(article):
 
 def read_saved_frozen_author_data(frozen_author, article):
     """
-    Gets saved account data from the database for comparison
-    with the expected account data
+    Gets saved frozen author data from the database for comparison
+    with the expected frozen author data
     """
 
-    author_data = {
+    frozen_author_data = {
         'Author Salutation': frozen_author.author.salutation if frozen_author.author else None,
         'Author given name': frozen_author.first_name,
         'Author middle name': frozen_author.middle_name,
@@ -145,7 +145,28 @@ def read_saved_frozen_author_data(frozen_author, article):
         'Author is corporate (Y/N)': 'Y' if frozen_author.is_corporate else 'N',
     }
 
+    return frozen_author_data
+
+def read_saved_author_data(author):
+    """
+    Gets author data from the database for comparison
+    with the exptected author data
+    """
+
+    author_data = {
+        author.salutation,
+        author.first_name,
+        author.middle_name,
+        author.last_name,
+        author.email,
+        author.orcid,
+        author.institution,
+        author.department,
+        author.biography,
+    }
+
     return author_data
+
 
 def make_import_zip(
         test_data_path,
@@ -237,8 +258,8 @@ class TestImportAndUpdate(TestCase):
 
         # change article data
         csv_data_3 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00',
-            'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25T10:25:25+00:00,2021-10-26T10:26:00+00:00'
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00',
+            'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25T10:25:25+00:00,2021-10-26T10:26:00+00:00'
         )
 
         run_import(csv_data_3, self.mock_request)
@@ -255,7 +276,7 @@ class TestImportAndUpdate(TestCase):
 
         # blank out non-required rows
         csv_data_12 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00',
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00',
             'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15T09:15:15+00:00'
         )
 
@@ -284,7 +305,7 @@ class TestImportAndUpdate(TestCase):
 
         clear_cache()
 
-        original_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00'
+        original_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00'
 
         # put something in every cell so you can test importing blanks
         fully_populated_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00'
@@ -424,8 +445,8 @@ class TestImportAndUpdate(TestCase):
         # change data for unrealperson3@example.com
         # add article id
         csv_data_4 = CSV_DATA_1.replace(
-            'Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,',
-            'Prof,Surreal,J.,Personne3,unrealperson3@example.com,https://orcid.org/0000-1234-5678-901X,University of Toronto,Children\'s Center,Many are the accomplishments of Surreal Personne3,N,N,1'
+            'Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,',
+            'Prof,Surreal,J.,Personne3,unrealperson3@example.com,https://orcid.org/0000-1234-5678-909X,University of Toronto,Children\'s Center,Many are the accomplishments of Surreal Personne3,N,N,1'
         )
 
         # make unrealperson6@example.com primary
@@ -487,6 +508,39 @@ class TestImportAndUpdate(TestCase):
         ]
 
         self.assertEqual(author_fields, saved_fields)
+
+    def test_author_accounts_are_linked(self):
+        clear_cache()
+        article_1 = submission_models.Article.objects.get(id=1)
+        saved_author_emails = sorted([a.email for a in article_1.authors.all()])
+        expected_author_emails = [
+            'unrealperson3@example.com',
+            'unrealperson5@example.com',
+            'unrealperson6@example.com',
+        ]
+
+        self.assertEqual(expected_author_emails, saved_author_emails)
+
+    def test_author_account_data(self):
+
+        clear_cache()
+
+        expected_author_data = {
+            'Prof',
+            'Unreal',
+            'J.',
+            'Person3',
+            'unrealperson3@example.com',
+            '0000-1234-5578-901X',
+            'University of Michigan Medical School',
+            'Cancer Center',
+            'Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.',
+        }
+
+        article_1 = submission_models.Article.objects.get(id=1)
+        first_author = article_1.authors.all().first()
+        saved_author_data = read_saved_author_data(first_author)
+        self.assertEqual(expected_author_data, saved_author_data)
 
     def test_changes_to_section(self):
 
@@ -575,7 +629,7 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         clear_cache()
 
         csv_data_14 = CSV_DATA_1.replace(
-            'Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N',
+            'Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N',
             ',,,,,,University of Michigan Medical School,,,N,Y'
         )
         run_import(csv_data_14, self.mock_request)
