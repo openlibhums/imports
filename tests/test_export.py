@@ -39,25 +39,26 @@ class TestExport(TestCase):
             csv_string = export_csv.read()
 
         expected_csv_string = "Article title,File import identifier,Article abstract," \
-            "Article section,Keywords,License,Language,Author Salutation,Author surname," \
+            "Article section,Keywords,License,Language,Author salutation,Author surname," \
             "Author given name,Author middle name,Author email," \
             "Author institution,Author is primary (Y/N),Author ORCID," \
             "Author department,Author biography,Author is corporate (Y/N)," \
             "Article ID,DOI,DOI (URL form),Date accepted,Date published," \
-            "Article sequence,Journal Code,Journal title,ISSN," \
+            "Article sequence,Journal code,Journal title,ISSN," \
             "Volume number,Issue number,Issue name,Issue pub date,Stage\n" \
             'Variopleistocene Inquilibriums,,How it all went down.,Article,"dinosaurs,Socratic teaching",' \
-            "CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,J.,unrealperson3@example.com," \
-            "University of Michigan Medical School,Y,,Cancer Center,Prof Unreal J. Person3 " \
+            "CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,J.," \
+            "unrealperson3@example.com,University of Michigan Medical School," \
+            "Y,https://orcid.org/0000-1234-5578-901X,Cancer Center,Prof Unreal J. Person3 " \
             "teaches dinosaurs but they are employed in a hospital.,N,1,,," \
-            "2021-10-24T10:24:00+00:00,2021-10-25T10:25:00+00:00,,TST,Journal One,0000-0000," \
-            "1,1,Fall 2021,2021-09-15T09:15:00+00:00,Editor Copyediting\n" \
+            "2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,,TST,Journal One,0000-0000," \
+            "1,1,Fall 2021,2021-09-15T09:15:15+00:00,Editor Copyediting\n" \
             ",,,,,,,,Person5,Unreal,J.,unrealperson5@example.com,University of Calgary," \
             "N,,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N\n" \
             ",,,,,,,,Person6,Unreal,J.,unrealperson6@example.com,University of Mars," \
             "N,,Crater Nine,Does Unreal J. Person6 exist?,N\n" \
 
-        self.assertEqual(csv_string, expected_csv_string)
+        self.assertEqual(expected_csv_string, csv_string)
 
     def test_sorted_export_headers_match_import_headers(self):
         router = routers.DefaultRouter()
