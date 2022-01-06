@@ -47,22 +47,22 @@ def import_load(request):
     :param request: HttpRequest
     :return: HttpResponse or, on post, HttpRedirect
     """
-    type = request.GET.get('type')
+    request_type = request.GET.get('type')
 
     if request.POST and request.FILES:
         file = request.FILES.get('file')
         filename, path = files.save_file_to_temp(file)
-        reverse_url = '{url}?type={type}'.format(
+        reverse_url = '{url}?type={request_type}'.format(
             url=reverse(
                 'imports_action',
                 kwargs={'filename': filename}),
-            type=type,
+            request_type=request_type,
         )
         return redirect(reverse_url)
 
     template = 'import/editorial_load.html'
     context = {
-        'type': type,
+        'type': request_type,
     }
 
     return render(request, template, context)
@@ -76,14 +76,14 @@ def import_action(request, filename):
     :param filename: the name of a temp file
     :return: HttpResponse
     """
-    type = request.GET.get('type')
+    request_type = request.GET.get('type')
     path = files.get_temp_file_path_from_name(filename)
     errors = error_file = None
 
     if not os.path.exists(path):
         raise Http404()
 
-    if type == 'update':
+    if request_type == 'update':
         path, folder_path, errors = utils.prep_update_file(path)
 
         if errors:
@@ -101,37 +101,45 @@ def import_action(request, filename):
             )
 
     file = open(path, 'r', encoding="utf-8-sig")
-    if type == 'update':
+    if request_type == 'update':
         reader = csv.DictReader(file)
     else:
         reader = csv.reader(file)
 
     if request.POST:
-        if type == 'editorial':
+        if request_type == 'editorial':
             utils.import_editorial_team(request, reader)
-        if type == 'reviewers':
+        if request_type == 'reviewers':
             utils.import_reviewers(request, reader)
-        elif type == 'contacts':
+        elif request_type == 'contacts':
             utils.import_contacts_team(request, reader)
-        elif type == 'submission':
+        elif request_type == 'submission':
             utils.import_submission_settings(request, reader)
-        elif type == 'article_metadata':
+        elif request_type == 'article_metadata':
             with translation.override(settings.LANGUAGE_CODE):
                 _, errors, error_file = utils.import_article_metadata(
                     request, reader)
-        elif type == 'update':
-            headers_verified = utils.verify_headers(reader)
-            errors, actions = utils.update_article_metadata(
-                request,
-                reader,
-                folder_path,
-            )
+        elif request_type == 'update':
+            headers_verified, missing_headers = utils.verify_headers(reader)
+            if headers_verified:
+                errors, actions = utils.update_article_metadata(
+                    request,
+                    reader,
+                    folder_path,
+                )
+
+            else:
+                errors = [{
+                    'error': 'Expected headers not found: '+', '.join([h for h in missing_headers])
+                }]
+                actions = []
+
             print(actions, errors)
         else:
             raise Http404
-        files.unlink_temp_file(path)
-        messages.add_message(request, messages.SUCCESS, 'Import complete')
         if not errors:
+            files.unlink_temp_file(path)
+            messages.add_message(request, messages.SUCCESS, 'Import complete')
             return redirect(reverse('imports_index'))
 
     template = 'import/editorial_import.html'
@@ -140,7 +148,7 @@ def import_action(request, filename):
         'reader': reader,
         'errors': errors,
         'error_file': error_file,
-        'type': type,
+        'type': request_type,
     }
 
     return render(request, template, context)

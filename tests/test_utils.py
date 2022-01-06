@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from plugins.imports import utils, export, views
+from plugins.imports import utils, export, views, plugin_settings
 from core import models as core_models
 from submission import models as submission_models
 from journal import models as journal_models
@@ -17,7 +17,7 @@ import re
 import zipfile
 import os
 
-CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
 Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
 ,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,
 ,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,
@@ -70,7 +70,7 @@ def read_saved_article_data(article):
         'File import identifier': None,
         # read_saved_files needs updating
         # 'File import identifier': read_saved_files(article),
-        'Journal Code': article.journal.code,
+        'Journal code': article.journal.code,
         'Journal title': article.journal.name,
         'ISSN': article.journal.issn,
         'Volume number': article.issue.volume if article.issue else None,
@@ -128,7 +128,7 @@ def read_saved_frozen_author_data(frozen_author, article):
     """
 
     frozen_author_data = {
-        'Author Salutation': frozen_author.author.salutation if frozen_author.author else None,
+        'Author salutation': frozen_author.author.salutation if frozen_author.author else None,
         'Author given name': frozen_author.first_name,
         'Author middle name': frozen_author.middle_name,
         'Author surname': frozen_author.last_name,
@@ -234,6 +234,11 @@ class TestImportAndUpdate(TestCase):
             issue.delete()
 
         clear_import_zips()
+
+    def test_headings_match_plugin_settings(self):
+        expected_headers = set(CSV_DATA_1.splitlines()[0].split(','))
+        settings_headers = set(plugin_settings.UPDATE_CSV_HEADERS)
+        self.assertEqual(expected_headers, settings_headers)
 
     def test_update_article_metadata_fresh_import(self):
         """
@@ -585,8 +590,8 @@ class TestImportAndUpdate(TestCase):
 
         clear_cache()
 
-        csv_data_7 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,Salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Issue name 20432%^&RIY$%*RI,2021-09-15T09:15:15+00:00
+        csv_data_7 = """Article title,Article abstract,Keywords,License,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
+Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Issue name 20432%^&RIY$%*RI,2021-09-15T09:15:15+00:00
 """
 
         # Note: Not all of the above should not be importable,

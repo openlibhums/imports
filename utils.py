@@ -163,7 +163,7 @@ def prepare_reader_rows(reader):
 def prep_update(row):
 
     try:
-        journal = journal_models.Journal.objects.get(code=row.get('Journal Code'))
+        journal = journal_models.Journal.objects.get(code=row.get('Journal code'))
         issue_type = journal_models.IssueType.objects.get(
             code="issue",
             journal=journal,
@@ -391,7 +391,7 @@ def update_keywords(keywords, article):
 
 def handle_author_import(row, article, author_order):
     author_fields = [
-        row.get('Author Salutation'),
+        row.get('Author salutation'),
         row.get('Author given name'),
         row.get('Author middle name'),
         row.get('Author surname'),
@@ -447,9 +447,9 @@ def handle_file_import(row, article, folder_path):
 def verify_headers(reader):
     header_set = set(reader.fieldnames)
     expected_headers = set(UPDATE_CSV_HEADERS)
-
-    return header_set == expected_headers
-
+    verified = header_set == expected_headers
+    missing_headers = [h for h in expected_headers if h not in header_set]
+    return verified, missing_headers
 
 def import_article_metadata(request, reader):
     headers = next(reader)  # skip headers
