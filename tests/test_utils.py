@@ -18,7 +18,7 @@ import zipfile
 import os
 
 CSV_DATA_1 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24 10:24,2021-10-25 10:25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 09:15
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
 ,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,
 ,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,
 """
@@ -63,10 +63,8 @@ def read_saved_article_data(article):
         'DOI': article.get_doi(),
         'DOI (URL form)': 'https://doi.org/' + article.get_doi(
             ) if article.get_doi() else None,
-        'Date accepted': article.date_accepted.strftime(
-            '%Y-%m-%d %H:%M') if article.date_accepted else None,
-        'Date published': article.date_published.strftime(
-            '%Y-%m-%d %H:%M') if article.date_published else None,
+        'Date accepted': article.date_accepted.isoformat() if article.date_accepted else None,
+        'Date published': article.date_published.isoformat() if article.date_published else None,
         'Article section': article.section.name,
         'Stage': article.stage,
         'File import identifier': None,
@@ -75,10 +73,10 @@ def read_saved_article_data(article):
         'Journal Code': article.journal.code,
         'Journal title': article.journal.name,
         'ISSN': article.journal.issn,
-        'Volume number': article.issue.volume,
-        'Issue number': article.issue.issue,
-        'Issue name': article.issue.issue_title,
-        'Issue pub date': article.issue.date.strftime('%Y-%m-%d %H:%M'),
+        'Volume number': article.issue.volume if article.issue else None,
+        'Issue number': article.issue.issue if article.issue else None,
+        'Issue name': article.issue.issue_title if article.issue else None,
+        'Issue pub date': article.issue.date.isoformat() if article.issue else None,
     }
 
     author_rows = {}
@@ -239,8 +237,8 @@ class TestImportAndUpdate(TestCase):
 
         # change article data
         csv_data_3 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24 10:24,2021-10-25 10:25',
-            'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25 10:25,2021-10-26 10:26'
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00',
+            'Multipleistocene Exquilibriums,How it is still going down.,"better dinosaurs,worse teaching",CC BY 4.0,French,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-25T10:25:25+00:00,2021-10-26T10:26:00+00:00'
         )
 
         run_import(csv_data_3, self.mock_request)
@@ -257,14 +255,14 @@ class TestImportAndUpdate(TestCase):
 
         # blank out non-required rows
         csv_data_12 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24 10:24,2021-10-25 10:25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 09:15',
-            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 09:15'
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00',
+            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15T09:15:15+00:00'
         )
 
         # add article id and a few other sticky things back to expected data
         csv_data_12 = csv_data_12.replace(
-            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15 09:15',
-            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15 09:15'
+            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,,,,,,Article,,,TST,Journal One,,,,,2021-09-15T09:15:15+00:00',
+            'Variopleistocene Inquilibriums,,,,,,,,,,,,,,Y,N,2,,,,,Article,Unassigned,,TST,Journal One,0000-0000,0,0,,2021-09-15T09:15:15+00:00'
         )
         run_import(csv_data_12, self.mock_request)
         article_2 = submission_models.Article.objects.get(id=2)
@@ -286,10 +284,10 @@ class TestImportAndUpdate(TestCase):
 
         clear_cache()
 
-        original_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24 10:24,2021-10-25 10:25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 09:15'
+        original_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00'
 
         # put something in every cell so you can test importing blanks
-        fully_populated_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24 10:24,2021-10-25 10:25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 09:15'
+        fully_populated_row = 'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00'
 
         csv_data_13 = CSV_DATA_1.replace(
             original_row,
@@ -298,7 +296,7 @@ class TestImportAndUpdate(TestCase):
         run_import(csv_data_13, self.mock_request)
 
         # blank out non-required rows to test import
-        updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,,,unrealperson3@example.com,,,,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15 09:15'
+        updated_row_with_blanks_to_test = 'Variopleistocene Inquilibriums,,,,,,,,,unrealperson3@example.com,,,,,Y,,1,,,,,Article,Editor Copyediting,,TST,Journal One,,1,1,,2021-09-15T09:15:15+00:00'
 
         csv_data_13 = csv_data_13.replace(
             fully_populated_row,
@@ -307,7 +305,7 @@ class TestImportAndUpdate(TestCase):
         run_import(csv_data_13, self.mock_request)
 
         # account for blanks in import data that aren't saved to db
-        expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,,Prof,,,,unrealperson3@example.com,,,,,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15 09:15'
+        expected_row_from_saved_data = 'Variopleistocene Inquilibriums,,,,,Prof,,,,unrealperson3@example.com,,,,,Y,N,1,10.1234/tst.1,https://doi.org/10.1234/tst.1,,,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,,2021-09-15T09:15:15+00:00'
 
         csv_data_13 = csv_data_13.replace(
             updated_row_with_blanks_to_test,
@@ -402,14 +400,14 @@ class TestImportAndUpdate(TestCase):
 
         # change article id
         csv_data_11 = CSV_DATA_1.replace(
-            'Y,N,,,,2021-10-24 10:24',
-            'Y,N,2,,,2021-10-24 10:24'
+            'Y,N,,,,2021-10-24T10:24:00+00:00',
+            'Y,N,2,,,2021-10-24T10:24:00+00:00'
         )
 
         # change issue name and date
         csv_data_11 = csv_data_11.replace(
-            'Fall 2021,2021-09-15 09:15',
-            'Winter 2022,2022-01-15 01:15'
+            'Fall 2021,2021-09-15T09:15:15+00:00',
+            'Winter 2022,2022-01-15T01:15:15+00:00'
         )
 
         run_import(csv_data_11, self.mock_request)
@@ -497,8 +495,8 @@ class TestImportAndUpdate(TestCase):
         # add article id
         # change section
         csv_data_5 = CSV_DATA_1.replace(
-            'N,,,,2021-10-24 10:24,2021-10-25 10:25,Article,',
-            'N,1,,,2021-10-24 10:24,2021-10-25 10:25,Interview,'
+            'N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,',
+            'N,1,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Interview,'
         )
 
         run_import(csv_data_5, self.mock_request)
@@ -534,7 +532,7 @@ class TestImportAndUpdate(TestCase):
         clear_cache()
 
         csv_data_7 = """Article title,Article abstract,Keywords,License,Language,Author Salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Article section,Stage,File import identifier,Journal Code,Journal title,ISSN,Volume number,Issue number,Issue name,Issue pub date
-Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,Salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Issue name 20432%^&RIY$%*RI,2021-09-15 09:15
+Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&,Language%^*%^&*%^&*,Salutation$*^%*^%*&,Author given name 2f0SD)F*,Author middle name %^&*%^&*,Author surname %^*%&*,Author email %^&*%^UY,https://orcid.org/n0ns3ns3,Author institution$^&*^%&(^%()),Author department 2043230,Author biography %^&(&^%()),N,gobbledy,,,,,,Section $%^&$%^&$%*,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Issue name 20432%^&RIY$%*RI,2021-09-15T09:15:15+00:00
 """
 
         # Note: Not all of the above should not be importable,
@@ -557,8 +555,8 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
         clear_cache()
 
         csv_data_9 = CSV_DATA_1.replace(
-            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24 10:24,2021-10-25 10:25,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15 09:15',
-            '   Variopleistocene Inquilibriums   ,   How it all went down.    ,"     dinosaurs,Socratic teaching",    CC BY-NC-SA 4.0,   English,   Prof   ,  Unreal  ,  J.  ,   Person3  ,  unrealperson3@example.com  ,  ,  University of Michigan Medical School ,  Cancer Center  ,   Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,  Y  ,  N ,   ,  ,  ,  2021-10-24 10:24,  2021-10-25 10:25,   Article,    Editor Copyediting  ,,TST  ,  Journal One  ,0000-0000  ,1  ,  1,  Fall 2021,   2021-09-15 09:15  '
+            'Variopleistocene Inquilibriums,How it all went down.,"dinosaurs,Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00',
+            '   Variopleistocene Inquilibriums   ,   How it all went down.    ,"     dinosaurs,Socratic teaching",    CC BY-NC-SA 4.0,   English,   Prof   ,  Unreal  ,  J.  ,   Person3  ,  unrealperson3@example.com  ,  ,  University of Michigan Medical School ,  Cancer Center  ,   Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,  Y  ,  N ,   ,  ,  ,  2021-10-24T10:24:00+00:00,  2021-10-25T10:25:25+00:00,   Article,    Editor Copyediting  ,,TST  ,  Journal One  ,0000-0000  ,1  ,  1,  Fall 2021,   2021-09-15T09:15:15+00:00  '
         )
 
         run_import(csv_data_9, self.mock_request)
@@ -625,21 +623,21 @@ Title£$^^£&&££&££££$,Abstract;;;;;;,Keywords2fa09srh14!$,License£%^^£&
     def test_get_aware_datetime(self):
         test_timestamps = [
             '2021-12-15',
-            '2021-12-15 08:30',
-            '2021-12-15 08:30:00+0500',
+            '2021-12-15T08:30',
+            '2021-12-15T08:30:40+05:00',
         ]
 
-        expected_objects = [
-            make_aware(datetime(2021,12,15,0,0,0)),
-            make_aware(datetime(2021,12,15,8,30,0)),
-            datetime(2021,12,15,8,30,0,tzinfo=utc),
+        expected_timestamps = [
+            '2021-12-15T12:00:00+00:00',
+            '2021-12-15T08:30:00+00:00',
+            '2021-12-15T08:30:40+05:00',
         ]
 
-        parsed_objects = []
+        parsed_timestamps = []
         for timestamp in test_timestamps:
-            parsed_objects.append(utils.get_aware_datetime(timestamp))
+            parsed_timestamps.append(utils.get_aware_datetime(timestamp).isoformat())
 
-        self.assertEqual(expected_objects, parsed_objects)
+        self.assertEqual(expected_timestamps, parsed_timestamps)
 
     def test_prep_update_file_can_find_zip(self):
         test_data_path = os.path.join(

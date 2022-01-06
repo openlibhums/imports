@@ -869,8 +869,20 @@ def datetime_parser(date_time_str):
     return datetime_obj
 
 
-def get_aware_datetime(unparsed_string):
+def get_aware_datetime(unparsed_string, use_noon_if_no_time = True):
+
+    if use_noon_if_no_time and re.fullmatch(
+        '[0-9]{4}-[0-9]{2}-[0-9]{2}',
+        unparsed_string
+    ):
+        unparsed_string += ' 12:00'
+
     try:
-        return make_aware(dateparser.parse(unparsed_string, ignoretz=True))
+        parsed_datetime = dateparser.parse(unparsed_string)
     except ValueError:
         raise
+
+    if is_aware(parsed_datetime):
+        return parsed_datetime
+    else:
+        return make_aware(parsed_datetime)

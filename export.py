@@ -241,10 +241,8 @@ def export_using_import_format(articles):
             article.pk,
             article.get_doi() if article.get_doi() else '',
             "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else '',
-            article.date_accepted.strftime(
-                '%Y-%m-%d %H:%M') if article.date_accepted else '',
-            article.date_published.strftime(
-                '%Y-%m-%d %H:%M') if article.date_published else '',
+            article.date_accepted.isoformat() if article.date_accepted else '',
+            article.date_published.isoformat() if article.date_published else '',
             article.page_numbers,
             article.journal.code,
             article.journal.name,
@@ -252,7 +250,7 @@ def export_using_import_format(articles):
             issue.volume if issue and issue.volume else '',
             issue.issue if issue and issue.issue else '',
             issue.issue_title if issue and issue.issue_title else '',
-            issue.date.strftime('%Y-%m-%d %H:%M') if issue else '',
+            issue.date.isoformat() if issue else '',
             article.stage,
         ]
         article_initial_details.extend(additional_details)
