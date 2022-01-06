@@ -50,8 +50,8 @@ class TestExport(TestCase):
             "CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,J.,unrealperson3@example.com," \
             "University of Michigan Medical School,Y,,Cancer Center,Prof Unreal J. Person3 " \
             "teaches dinosaurs but they are employed in a hospital.,N,1,,," \
-            "2021-10-24 10:24,2021-10-25 10:25,,TST,Journal One,0000-0000," \
-            "1,1,Fall 2021,2021-09-15 09:15,Editor Copyediting\n" \
+            "2021-10-24T10:24:00+00:00,2021-10-25T10:25:00+00:00,,TST,Journal One,0000-0000," \
+            "1,1,Fall 2021,2021-09-15T09:15:00+00:00,Editor Copyediting\n" \
             ",,,,,,,,Person5,Unreal,J.,unrealperson5@example.com,University of Calgary," \
             "N,,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N\n" \
             ",,,,,,,,Person6,Unreal,J.,unrealperson6@example.com,University of Mars," \
