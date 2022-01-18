@@ -31,7 +31,7 @@ UPDATE_CSV_HEADERS = [
     'Article title',
     'Article abstract',
     'Keywords',
-    'License',
+    'Licence',
     'Language',
     'Author salutation',
     'Author given name',
@@ -57,7 +57,7 @@ UPDATE_CSV_HEADERS = [
     'ISSN',
     'Volume number',
     'Issue number',
-    'Issue name',
+    'Issue title',
     'Issue pub date',
 ]
 

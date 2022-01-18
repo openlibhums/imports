@@ -9,7 +9,7 @@ from rest_framework import routers
 from django.http import HttpRequest
 import csv
 
-from plugins.imports.tests.test_utils import CSV_DATA_1, run_import
+from plugins.imports.tests.test_utils import CSV_DATA_1, run_import, dict_from_csv_string
 
 
 class TestExport(TestCase):
@@ -34,31 +34,17 @@ class TestExport(TestCase):
         router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
         article_1 = submission_models.Article.objects.get(id=1)
         article_1.export_files = article_1.exportfile_set.all()
-        filepath, csv_name = export.export_using_import_format([article_1])
+        filepath, _csv_name = export.export_using_import_format([article_1])
         with open(filepath,'r') as export_csv:
-            csv_string = export_csv.read()
+            csv_dict = dict_from_csv_string(export_csv.read())
 
-        expected_csv_string = "Article title,File import identifier,Article abstract," \
-            "Article section,Keywords,License,Language,Author salutation,Author surname," \
-            "Author given name,Author middle name,Author email," \
-            "Author institution,Author is primary (Y/N),Author ORCID," \
-            "Author department,Author biography,Author is corporate (Y/N)," \
-            "Article ID,DOI,DOI (URL form),Date accepted,Date published," \
-            "Article sequence,Journal code,Journal title,ISSN," \
-            "Volume number,Issue number,Issue name,Issue pub date,Stage\n" \
-            'Variopleistocene Inquilibriums,,How it all went down.,Article,"dinosaurs,Socratic teaching",' \
-            "CC BY-NC-SA 4.0,English,Prof,Person3,Unreal,J.," \
-            "unrealperson3@example.com,University of Michigan Medical School," \
-            "Y,https://orcid.org/0000-1234-5578-901X,Cancer Center,Prof Unreal J. Person3 " \
-            "teaches dinosaurs but they are employed in a hospital.,N,1,,," \
-            "2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,,TST,Journal One,0000-0000," \
-            "1,1,Fall 2021,2021-09-15T09:15:15+00:00,Editor Copyediting\n" \
-            ",,,,,,,,Person5,Unreal,J.,unrealperson5@example.com,University of Calgary," \
-            "N,,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N\n" \
-            ",,,,,,,,Person6,Unreal,J.,unrealperson6@example.com,University of Mars," \
-            "N,,Crater Nine,Does Unreal J. Person6 exist?,N\n" \
+        expected_csv_data = dict_from_csv_string(CSV_DATA_1)
 
-        self.assertEqual(expected_csv_string, csv_string)
+        # account for Janeway-assigned article ID (also placed as File import identifier)
+        expected_csv_data[1]['Article ID'] = '1'
+        expected_csv_data[1]['File import identifier'] = '1'
+
+        self.assertEqual(expected_csv_data, csv_dict)
 
     def test_sorted_export_headers_match_import_headers(self):
         router = routers.DefaultRouter()
@@ -68,20 +54,6 @@ class TestExport(TestCase):
         filepath, csv_name = export.export_using_import_format([article_1])
         with open(filepath,'r') as export_csv:
             sorted_exported_headers = ','.join(sorted(export_csv.readlines()[0][:-1].split(',')))
-
-        # remove this header that's in the export but not in the import
-        # see https://github.com/BirkbeckCTP/imports/issues/38
-        sorted_exported_headers = sorted_exported_headers.replace(
-            'Article sequence,',
-            ''
-        )
-
-        # add in headers that need to be added to export
-        # see https://github.com/BirkbeckCTP/imports/issues/39
-        sorted_exported_headers = sorted_exported_headers.replace(
-            'DOI (URL form),ISSN',
-            'DOI (URL form),Date accepted,Date published,ISSN'
-        )
 
         sorted_expected_headers = ','.join(sorted(CSV_DATA_1.splitlines()[0].split(',')))
         self.assertEqual(sorted_exported_headers, sorted_expected_headers)

@@ -129,19 +129,18 @@ def import_action(request, filename):
                 _, errors, error_file = utils.import_article_metadata(
                     request, reader)
         elif request_type == 'update':
-            headers_verified, missing_headers = utils.verify_headers(reader)
-            if headers_verified:
+            errors, actions = utils.verify_headers(reader)
+            errors, actions = utils.verify_stages(
+                reader,
+                request.journal
+            )
+
+            if not errors:
                 errors, actions = utils.update_article_metadata(
                     request,
                     reader,
                     folder_path,
                 )
-
-            else:
-                errors = [{
-                    'error': 'Expected headers not found: '+', '.join([h for h in missing_headers])
-                }]
-                actions = []
 
             print(actions, errors)
         else:
