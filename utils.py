@@ -174,7 +174,7 @@ def prep_update(row):
             volume=row.get('Volume number') or 0,
             issue=row.get('Issue number') or 0,
             defaults={
-                'issue_title': row.get('Issue name'),
+                'issue_title': row.get('Issue title'),
                 'issue_type': issue_type,
                 'date': parsed_issue_date,
             }
@@ -182,7 +182,7 @@ def prep_update(row):
 
         if not created:
             issue.date = parsed_issue_date
-            issue.issue_title = row.get('Issue name')
+            issue.issue_title = row.get('Issue title')
             issue.save()
 
     except journal_models.Journal.DoesNotExist:
@@ -259,7 +259,6 @@ def update_article_metadata(request, reader, folder_path):
                 current_workflow_stages = set(journal.workflow_set.all().values_list(
                     "elements__stage", flat=True))
                 current_workflow_stages.add('Published')
-
                 proposed_stage = prepared_row.get('primary_row').get('Stage')
                 if proposed_stage in current_workflow_stages:
                     article.stage = proposed_stage
@@ -293,14 +292,14 @@ def update_article(article, issue, prepared_row, folder_path):
         name=row.get('Article section'),
     )
     article.section = section_obj
-    license_obj, created = submission_models.Licence.objects.get_or_create(
-        short_name=row.get('License'),
+    licence_obj, created = submission_models.Licence.objects.get_or_create(
+        short_name=row.get('Licence'),
         journal=article.journal,
         defaults={
-            'name': row.get('License'),
+            'name': row.get('Licence'),
         }
     )
-    article.license = license_obj
+    article.license = licence_obj
     article.language = row.get('Language')
 
     keywords = []
@@ -445,11 +444,43 @@ def handle_file_import(row, article, folder_path):
 
 
 def verify_headers(reader):
-    header_set = set(reader.fieldnames)
+    full_header_set = set(reader.fieldnames)
     expected_headers = set(UPDATE_CSV_HEADERS)
-    verified = header_set == expected_headers
-    missing_headers = [h for h in expected_headers if h not in header_set]
-    return verified, missing_headers
+    relevant_header_set = set([h for h in full_header_set if h in expected_headers])
+    errors = []
+    actions = []
+    if relevant_header_set != expected_headers:
+        missing_headers = [h for h in expected_headers if h not in relevant_header_set]
+        errors.append({
+            'error': 'Expected headers not found: '+', '.join(
+                [h for h in missing_headers]
+            )
+        })
+    return errors, actions
+
+
+def verify_stages(reader, journal):
+    current_workflow_stages = set(journal.workflow_set.all().values_list(
+        "elements__stage", flat=True))
+    current_workflow_stages.add('Published')
+    proposed_stages = set([row['Stage'] for row in reader if row['Stage']])
+
+    verified = True
+    unrecognized_stages = []
+    for stage in proposed_stages:
+        if stage not in current_workflow_stages:
+            verified = False
+            unrecognized_stages.append(stage)
+    errors = []
+    actions = []
+    if not verified:
+        errors.append({
+            'error' : 'Unrecognized data in field Stage: '+', '.join(
+                [s for s in unrecognized_stages]
+            )
+        })
+
+    return errors, actions
 
 def import_article_metadata(request, reader):
     headers = next(reader)  # skip headers
