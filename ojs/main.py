@@ -229,3 +229,9 @@ def import_ojs3_journals(
 def import_ojs3_users(client, journal):
     for user_dict in client.get_users():
         ojs3_importers.import_user(user_dict, journal)
+
+
+def import_ojs3_metrics(client, journal, ojs_ids=None):
+    metrics = client.get_metrics(ojs_ids=None)
+    for record in metrics:
+        ojs3_importers.import_article_metrics(client, journal, record)

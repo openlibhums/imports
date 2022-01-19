@@ -17,11 +17,13 @@ from core import logic as core_logic
 from core import models as core_models
 from identifiers import models as identifiers_models
 from journal import models as journal_models
+from metrics import models as metrics_models
 from review import models as review_models
 from submission import models as sm_models
 from utils.logger import get_logger
 from utils import setting_handler
 
+from plugins.typesetting import plugin_settings as typesetting_settings
 from plugins.imports import models
 
 # Submission stages
@@ -153,6 +155,29 @@ def import_article(client, journal, article_dict, editorial=False, galleys=True)
         import_copyedits(client, article, article_dict)
         import_production(client, article, article_dict)
     set_stage(article, article_dict)
+
+
+def import_article_metrics(client, journal, data):
+    ojs_id = data["publication"]["id"]
+    try:
+        article = identifiers_models.Identifier.objects.get(
+            id_type="ojs_id",
+            identifier=ojs_id,
+            article__journal=journal,
+        ).article
+    except identifiers_models.Identifier.DoesNotExist:
+        logger.error("No article found for OJS ID: %s", ojs_id)
+    else:
+        obj, c = metrics_models.HistoricArticleAccess.objects.update_or_create(
+            article=article,
+            downloads=data["galleyViews"],
+            views=data["abstractViews"],
+        )
+        if c:
+            logger.info("Imported metrics for: %s", ojs_id)
+        else:
+            logger.info("Updated metrics for: %s", ojs_id)
+
 
 
 def import_author_assignments(article, article_dict):
@@ -325,6 +350,8 @@ def import_article_metadata(article_dict, journal, client):
         article.stage = sm_models.STAGE_PUBLISHED
     license_url = article_dict["publication"]["licenseUrl"] or ''
     license_url = license_url.replace("http:", "https:")
+    if license_url.endswith("/"):
+        license_url = license_url[:-1]
     if license_url:
         article.license, _ = sm_models.Licence.objects.get_or_create(
             journal=article.journal,
