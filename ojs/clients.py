@@ -386,6 +386,7 @@ class OJS3APIClient(OJSBaseClient):
     CONTEXTS_PATH = '/contexts/%s'
     AUTH_PATH = '/login/signIn'
     USERS_PATH = "/users/%s"
+    METRICS_PATH = "/stats/publications/"
     SUBMISSIONS_PATH = '/submissions/%s'
     SUBMISSION_FILES_PATH = '/submissions/%s/files/%s'
     ISSUES_PATH = '/issues/%s'
@@ -644,3 +645,17 @@ class OJS3APIClient(OJSBaseClient):
         )
         response = self.fetch(request_url)
         return response.json()
+
+    def get_metrics(self, ojs_ids=None):
+        """ Retrieves the metrics for submissions"""
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.METRICS_PATH
+        )
+        if ojs_ids:
+            query_params = {"submissionIds" :','.join(ojs_ids)}
+            request_url += "?%s" % urlparse.urlencode(query_params)
+        paginator = OJS3PaginatedResults(request_url, self.fetch)
+        for result in paginator:
+            yield result
