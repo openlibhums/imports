@@ -222,6 +222,7 @@ def import_ojs3_journals(
                 import_ojs3_users(journal_client, journal)
                 import_ojs3_articles(journal_client, journal, galleys)
                 import_ojs3_issues(journal_client, journal)
+                import_ojs3_metrics(journal_client, journal)
             except Exception as e:
                 logger.exception("Error importing articles: %s", journal)
 
