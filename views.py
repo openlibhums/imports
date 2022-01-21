@@ -133,7 +133,6 @@ def import_action(request, filename):
                     folder_path,
                 )
 
-            print(actions, errors)
         else:
             raise Http404
         if not errors:
