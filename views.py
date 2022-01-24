@@ -99,7 +99,6 @@ def import_action(request, filename):
                     'import_export_articles_all'
                 )
             )
-
     file = open(path, 'r', encoding="utf-8-sig")
     if request_type == 'update':
         reader = csv.DictReader(file)
@@ -120,11 +119,25 @@ def import_action(request, filename):
                 _, errors, error_file = utils.import_article_metadata(
                     request, reader)
         elif request_type == 'update':
-            errors, actions = utils.verify_headers(reader)
-            errors, actions = utils.verify_stages(
-                reader,
-                request.journal
-            )
+
+            # Verify a few things to help user spot problems
+            errors = []
+            actions = []
+
+            with open(path, 'r', encoding='utf-8-sig') as verify_headers_file:
+                errors, actions = utils.verify_headers(
+                    csv.DictReader(verify_headers_file),
+                    errors,
+                    actions,
+                )
+
+            with open(path, 'r', encoding='utf-8-sig') as verify_stages_file:
+                errors, actions = utils.verify_stages(
+                    csv.DictReader(verify_stages_file),
+                    request.journal,
+                    errors,
+                    actions,
+                )
 
             if not errors:
                 errors, actions = utils.update_article_metadata(
