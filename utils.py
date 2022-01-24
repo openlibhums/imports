@@ -256,7 +256,6 @@ def update_article_metadata(request, reader, folder_path):
                 update_article(article, issue, prepared_row, folder_path)
                 article.owner = request.user
                 article.save()
-
                 current_workflow_stages = set(journal.workflow_set.all().values_list(
                     "elements__stage", flat=True))
                 current_workflow_stages.add('Published')
@@ -444,12 +443,10 @@ def handle_file_import(row, article, folder_path):
                 article.data_figure_files.add(file)
 
 
-def verify_headers(reader):
+def verify_headers(reader, errors, actions):
     full_header_set = set(reader.fieldnames)
     expected_headers = set(UPDATE_CSV_HEADERS)
     relevant_header_set = set([h for h in full_header_set if h in expected_headers])
-    errors = []
-    actions = []
     if relevant_header_set != expected_headers:
         missing_headers = [h for h in expected_headers if h not in relevant_header_set]
         errors.append({
@@ -460,11 +457,13 @@ def verify_headers(reader):
     return errors, actions
 
 
-def verify_stages(reader, journal):
+def verify_stages(reader, journal, errors, actions):
     current_workflow_stages = set(journal.workflow_set.all().values_list(
         "elements__stage", flat=True))
     current_workflow_stages.add('Published')
-    proposed_stages = set([row['Stage'] for row in reader if row['Stage']])
+    proposed_stages = set(
+        [row['Stage'] for row in reader if row['Stage']]
+    )
 
     verified = True
     unrecognized_stages = []
@@ -472,8 +471,6 @@ def verify_stages(reader, journal):
         if stage not in current_workflow_stages:
             verified = False
             unrecognized_stages.append(stage)
-    errors = []
-    actions = []
     if not verified:
         errors.append({
             'error' : 'Unrecognized data in field Stage: '+', '.join(
