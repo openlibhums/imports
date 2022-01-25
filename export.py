@@ -184,6 +184,7 @@ def export_using_import_format(articles):
         row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
         row['Date published'] = article.date_published.isoformat() if article.date_published else ''
         row['Page numbers'] = article.page_numbers if article.page_numbers else ''
+        row['Competing interests'] = article.competing_interests if article.competing_interests else ''
         row['Article section'] = article.section.name
         row['Stage'] = article.stage
         row['File import identifier'] = article.pk

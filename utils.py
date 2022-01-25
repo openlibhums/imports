@@ -321,6 +321,7 @@ def update_article(article, issue, prepared_row, folder_path):
         article.date_published = None
 
     article.page_numbers = row.get('Page numbers')
+    article.competing_interests = row.get('Competing interests')
 
     article.primary_issue = issue
     article.save()

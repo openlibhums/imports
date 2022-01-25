@@ -17,10 +17,10 @@ import re
 import zipfile
 import os
 
-CSV_DATA_1 = """Article title,Article abstract,Keywords,Licence,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Page numbers,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date
-Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9–43,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
-,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,
-,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,
+CSV_DATA_1 = """Article title,Article abstract,Keywords,Licence,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Page numbers,Competing interests,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9–43,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
+,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,,
+,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,,
 """
 
 
@@ -71,6 +71,7 @@ def read_saved_article_data(article, structure='string'):
         'Date accepted': article.date_accepted.isoformat() if article.date_accepted else '',
         'Date published': article.date_published.isoformat() if article.date_published else '',
         'Page numbers': article.page_numbers if article.page_numbers else '',
+        'Competing interests': article.competing_interests if article.competing_interests else '',
         'Article section': article.section.name if article.section else '',
         'Stage': article.stage if article.stage else '',
         'File import identifier': str(article.pk),
@@ -277,8 +278,8 @@ class TestImportAndUpdate(TestCase):
 
     def test_headings_match_plugin_settings_headers(self):
         # Uncomment to get new metadata_template.csv
-        # print('\n\nCopy and paste to docs/source/_static/metadata_template.csv:')
-        # print('\n\n'+CSV_DATA_1.splitlines()[0]+'\n\n')
+        print('\n\nCopy and paste to docs/source/_static/metadata_template.csv:')
+        print('\n\n'+CSV_DATA_1.splitlines()[0]+'\n\n')
 
         expected_headers = set(CSV_DATA_1.splitlines()[0].split(','))
         settings_headers = set(plugin_settings.UPDATE_CSV_HEADERS)
@@ -294,8 +295,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_2 = dict_from_csv_string(CSV_DATA_1)
 
         # Uncomment to get new sample_import.csv
-        # print('\n\nCopy and paste to docs/source/_static/sample_import.csv:')
-        # print('\n\n'+string_from_csv_dict(csv_data_2)+'\n\n')
+        print('\n\nCopy and paste to docs/source/_static/sample_import.csv:')
+        print('\n\n'+string_from_csv_dict(csv_data_2)+'\n\n')
 
         # add article id to expected data
         csv_data_2[1]['Article ID'] = '1'
@@ -336,6 +337,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_3[1]['Date accepted'] = '2021-10-25T10:25:25+00:00'
         csv_data_3[1]['Date published'] = '2021-10-26T10:26:00+00:00'
         csv_data_3[1]['Page numbers'] = 'iii-ix'
+        csv_data_3[1]['Competing interests'] = 'The author is unfortunately on the payroll ' \
+                                               'of Rex from Toy Story.'
         # csv_data_3[1]['Article section'] = 
         # csv_data_3[1]['Stage'] = 
         csv_data_3[1]['File import identifier'] = '1'
@@ -350,8 +353,8 @@ class TestImportAndUpdate(TestCase):
         run_import(csv_data_3, self.mock_request)
 
         # Uncomment to get new sample_update.csv
-        # print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
-        # print('\n\n'+string_from_csv_dict(csv_data_3)+'\n\n')
+        print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
+        print('\n\n'+string_from_csv_dict(csv_data_3)+'\n\n')
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1, structure='dict')
@@ -389,6 +392,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_12[1]['Date accepted'] = ''
         csv_data_12[1]['Date published'] = ''
         csv_data_12[1]['Page numbers'] = ''
+        csv_data_12[1]['Competing interests'] = ''
         # csv_data_12[1]['Article section'] = 'Article'
         csv_data_12[1]['Stage'] = ''
         csv_data_12[1]['File import identifier'] = ''
@@ -459,6 +463,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['Date accepted'] = ''
         csv_data_13[1]['Date published'] = ''
         csv_data_13[1]['Page numbers'] = ''
+        csv_data_13[1]['Competing interests'] = ''
         # csv_data_13[1]['Article section'] = 'Article'
         # csv_data_13[1]['Stage'] = 'Editor Copyediting'
         csv_data_13[1]['File import identifier'] = '1' # update article ID in expected data
