@@ -66,7 +66,7 @@ Field                     Notes                               Import            
 Article title             include subtitle [#]_               yes, required     yes               yes, required
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
-License                   name of license [#]_                yes, optional     yes               yes, optional, saves empty values
+Licence                   name of licence [#]_                yes, optional     yes               yes, optional, saves empty values
 Language                  plain name of language [#]_         yes, optional     yes               yes, optional, saves empty values
 Author Salutation         useful in templated emails          yes, optional     yes               no, ignored
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
@@ -86,7 +86,7 @@ Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     
 Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     no                yes, optional, saves empty values
 Article section           e.g. 'Article', 'Review'            yes, optional     yes               yes, optional, ignores empty values
 Stage                     the production workflow stage [#]_  yes, optional     yes               no, ignored [#]_
-Article filename          for advanced users [#]_             yes, optional     yes               yes, optional
+File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
 Journal Code              must match Janeway                  yes, required     yes               yes, required
 Journal title             must match Janeway                  yes, required     yes               yes, required
 ISSN                      '0000-0000' for new journals        no, ignored       yes               no, ignored
@@ -97,15 +97,15 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 ========================= =================================== ================= ================= =====================================
 
 .. [#] Using a character encoding other than UTF-8 can cause bugs during imports or updates. (`What is character encoding?`_). These apps save CSVs with UTF-8 by default: OpenRefine, LibreOffice, Google Sheets, and Apple Numbers. However! If you use Microsoft Excel, keep in mind some versions don't automatically create CSV files with UTF-8 character encoding. This may cause punctuation and special characters to be garbled on import. So, when saving, look for the 'CSV (UTF-8)' option in the drop-down box.
-.. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, use quotation marks (even though that violates some editorial styles, such as Chicago!).
-.. [#] Support for license URLs will be added in future.
+.. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, please use quotation marks.
+.. [#] Support for licence URLs will be added in future.
 .. [#] We will add support for ISO language codes in the future.
 .. [#] For author names, emails, institutions, and ORCIDs, updating the values will only update what is called the 'frozen author' record for this article--that is, the author's information at the time of article submission. This information is separate from information tied to that person's Janeway account.
 .. [#] Email addresses are highly recommended for correspondence authors, since many parts of the workflow involve sending emails to authors, and these won't work without email addresses.
 .. [#] You should include existing email addresses in your CSV when you're trying to update other fields. You can also add or remove author records from an article with this tool. However, you shouldn't use this tool to change an author's email address, because Janeway will think you're trying to add a new author and will create a duplicate account with the new address. We will improve this behaviour in the future.
 .. [#] 'Author is primary' tells Janeway which author is the correspondence author. One author must be marked 'Y' and the rest 'N'.
 .. [#] See `ISO 8601 on Wikipedia`_. Examples of accepted date or date-and-time combinations: ``2022-01-04``, ``2022-01-04T10:12``, ``2022-01-04T10:12:38-05:00``.
-.. [#] The workflow stage has to match one of these values exactly: ``Peer Review``, ``Editor Copyediting``, ``Typesetting Plugin``, ``Pre Publication``. Otherwise the article will be put in the ``Unassigned`` stage
+.. [#] The workflow stage has to match one of these values exactly: ``Review``, ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``. Otherwise the article will be put in the ``Unassigned`` stage
 .. [#] Currently the workflow stage cannot be changed en masse once the articles are imported, since that might break tasks in progress. In the future we want to make it possible to change the stage of multiple articles.
 .. [#] You can import some files along with the metadata, but this part of the tool is not well tested or documented. Contact Janeway support for help.
 

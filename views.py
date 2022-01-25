@@ -130,22 +130,17 @@ def import_action(request, filename):
         elif request_type == 'update':
 
             # Verify a few things to help user spot problems
-            errors = []
-            actions = []
-
             with open(path, 'r', encoding='utf-8-sig') as verify_headers_file:
-                errors, actions = utils.verify_headers(
+                errors= utils.verify_headers(
                     csv.DictReader(verify_headers_file),
                     errors,
-                    actions,
                 )
 
             with open(path, 'r', encoding='utf-8-sig') as verify_stages_file:
-                errors, actions = utils.verify_stages(
+                errors= utils.verify_stages(
                     csv.DictReader(verify_stages_file),
                     request.journal,
                     errors,
-                    actions,
                 )
 
             if not errors:
