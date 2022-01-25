@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from plugins.imports import utils, export, views, plugin_settings
-from core import models as core_models
+from core import models as core_models, logic as core_logic
 from submission import models as submission_models
 from journal import models as journal_models
 from utils.testing import helpers
@@ -237,15 +237,24 @@ class TestImportAndUpdate(TestCase):
     def setUpTestData(cls):
 
         cls.journal_one, cls.journal_two = helpers.create_journals()
+        cls.journal_one.workflow()
         issue_type = journal_models.IssueType.objects.get_or_create(
             journal=cls.journal_one,
             code='issue'
         )
 
         cls.mock_request = HttpRequest()
+
+
         cls.test_user = helpers.create_user(username='unrealperson12@example.com')
         cls.mock_request.user = cls.test_user
-
+        cls.mock_request.journal = cls.journal_one
+        for plugin_element_name in ['Typesetting Plugin']:
+            _element = core_logic.handle_element_post(
+                cls.journal_one.workflow(),
+                plugin_element_name,
+                cls.mock_request,
+            )
         csv_data_2 = CSV_DATA_1
         run_import(csv_data_2, cls.mock_request)
 
@@ -695,25 +704,36 @@ class TestImportAndUpdate(TestCase):
     def test_different_stages(self):
         self.maxDiff = None
 
-        clear_cache()
+        stages = [
+            'Review',
+            'Editor Copyediting',
+            'typesetting_plugin',
+            'pre_publication',
+            'Published',
+        ]
 
-        csv_data_6 = dict_from_csv_string(CSV_DATA_1)
+        saved_stages = []
 
-        # import "new" article with different stage
-        csv_data_6[1]['Stage'] = 'Typesetting Plugin'
+        for stage_name in stages:
 
-        run_import(csv_data_6, self.mock_request)
+            clear_cache()
 
-        # add article id
-        csv_data_6[1]['Article ID'] = '2'
-        csv_data_6[1]['File import identifier'] = '2'
+            csv_data_6 = dict_from_csv_string(CSV_DATA_1)
 
-        # TEST FAILS. Accounting for bug in plugin stage import
-        csv_data_6[1]['Stage'] = 'Unassigned'
+            # import "new" article with different stage
+            csv_data_6[1]['Stage'] = stage_name
 
-        article_2 = submission_models.Article.objects.get(id=2)
-        saved_article_data = read_saved_article_data(article_2, structure='dict')
-        self.assertEqual(csv_data_6, saved_article_data)
+            run_import(csv_data_6, self.mock_request)
+            article = submission_models.Article.objects.all().order_by('-id')[0]
+
+            # add article id
+            csv_data_6[1]['Article ID'] = str(article.pk)
+            csv_data_6[1]['File import identifier'] = str(article.pk)
+
+            saved_article_data = read_saved_article_data(article, structure='dict')
+            saved_stages.append(saved_article_data[1]['Stage'])
+
+        self.assertEqual(stages, saved_stages)
 
     def test_bad_data(self):
         self.maxDiff = None
@@ -919,7 +939,7 @@ class TestImportAndUpdate(TestCase):
         csv_string = 'Inadequate,Headers\n' \
                      'data, other data'
         reader = csv.DictReader(csv_string.splitlines())
-        errors, actions = utils.verify_headers(reader)
+        errors = utils.verify_headers(reader, [])
         self.assertTrue(
             'Expected headers not found' in errors[0]['error']
         )
@@ -927,7 +947,7 @@ class TestImportAndUpdate(TestCase):
     def test_verify_stages(self):
         csv_string = 'Article title,Stage\ntitle,Bad stage 1\ntitle,Bad stage 2'
         reader = csv.DictReader(csv_string.splitlines())
-        errors, actions = utils.verify_stages(reader, self.journal_one)
+        errors = utils.verify_stages(reader, self.journal_one, [])
         self.assertTrue(
             'Unrecognized data in field Stage' in errors[0]['error']
         )
