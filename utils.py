@@ -321,6 +321,8 @@ def update_article(article, issue, prepared_row, folder_path):
     else:
         article.date_published = None
 
+    article.page_numbers = row.get('Page numbers')
+
     article.primary_issue = issue
     article.save()
     issue.articles.add(article)

@@ -49,6 +49,7 @@ UPDATE_CSV_HEADERS = [
     'DOI (URL form)',
     'Date accepted',
     'Date published',
+    'Page numbers',
     'Article section',
     'Stage',
     'File import identifier',
