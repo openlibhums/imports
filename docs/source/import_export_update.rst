@@ -82,8 +82,9 @@ Author is corporate (Y/N) i.e. an organization                yes, optional     
 Article ID                controlled by Janeway               no, will break    yes               yes, required
 DOI                       starting with '10'                  yes, optional     yes               yes, optional, ignores empty values
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
-Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     no                yes, optional, saves empty values
-Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     no                yes, optional, saves empty values
+Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
+Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     yes               yes, optional, saves empty values
+Page numbers              Custom page range such as `24–39`   yes, optional     yes               yes, optional, saves empty values
 Article section           e.g. 'Article', 'Review'            yes, optional     yes               yes, optional, ignores empty values
 Stage                     the production workflow stage [#]_  yes, optional     yes               no, ignored [#]_
 File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
