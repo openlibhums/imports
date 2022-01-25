@@ -50,6 +50,7 @@ UPDATE_CSV_HEADERS = [
     'Date accepted',
     'Date published',
     'Page numbers',
+    'Competing interests',
     'Article section',
     'Stage',
     'File import identifier',

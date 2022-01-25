@@ -30,6 +30,7 @@ class TestExport(TestCase):
         run_import(csv_data_2, cls.mock_request)
 
     def test_export_using_import_format(self):
+        self.maxDiff = None
         router = routers.DefaultRouter()
         router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
         article_1 = submission_models.Article.objects.get(id=1)
