@@ -245,19 +245,17 @@ class TestImportAndUpdate(TestCase):
             journal=cls.journal_one,
             code='issue'
         )
-
         cls.mock_request = HttpRequest()
-
-
         cls.test_user = helpers.create_user(username='unrealperson12@example.com')
         cls.mock_request.user = cls.test_user
         cls.mock_request.journal = cls.journal_one
         for plugin_element_name in ['Typesetting Plugin']:
-            _element = core_logic.handle_element_post(
+            element = core_logic.handle_element_post(
                 cls.journal_one.workflow(),
                 plugin_element_name,
                 cls.mock_request,
             )
+            cls.journal_one.workflow().elements.add(element)
         csv_data_2 = CSV_DATA_1
         run_import(csv_data_2, cls.mock_request)
 
@@ -727,7 +725,7 @@ class TestImportAndUpdate(TestCase):
         self.maxDiff = None
 
         stages = [
-            'Review',
+            'Unassigned',
             'Editor Copyediting',
             'typesetting_plugin',
             'pre_publication',

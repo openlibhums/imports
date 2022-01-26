@@ -107,7 +107,7 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 .. [#] You should include existing email addresses in your CSV when you're trying to update other fields. You can also add or remove author records from an article with this tool. However, you shouldn't use this tool to change an author's email address, because Janeway will think you're trying to add a new author and will create a duplicate account with the new address. We will improve this behaviour in the future.
 .. [#] 'Author is primary' tells Janeway which author is the correspondence author. One author must be marked 'Y' and the rest 'N'.
 .. [#] See `ISO 8601 on Wikipedia`_. Examples of accepted date or date-and-time combinations: ``2022-01-04``, ``2022-01-04T10:12``, ``2022-01-04T10:12:38-05:00``.
-.. [#] The workflow stage has to match one of these values exactly: ``Review``, ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``. Otherwise the article will be put in the ``Unassigned`` stage
+.. [#] The workflow stage has to match one of these values exactly: ``Unassigned`` (for peer review), ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``, ``Published``. If the field is left blank, the article will be put in the ``Unassigned`` stage
 .. [#] Currently the workflow stage cannot be changed en masse once the articles are imported, since that might break tasks in progress. In the future we want to make it possible to change the stage of multiple articles.
 .. [#] You can import some files along with the metadata, but this part of the tool is not well tested or documented. Contact Janeway support for help.
 
