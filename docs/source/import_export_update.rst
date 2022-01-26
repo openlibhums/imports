@@ -67,7 +67,7 @@ Article title             include subtitle [#]_               yes, required     
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
 Licence                   name of licence [#]_                yes, optional     yes               yes, optional, saves empty values
-Language                  plain name of language [#]_         yes, optional     yes               yes, optional, saves empty values
+Language                  name of language or ISO code [#]_   yes, optional     yes               yes, optional, saves empty values
 Author Salutation         useful in templated emails          yes, optional     yes               no, ignored
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
 Author middle name        or middle initial                   yes, optional     yes               yes, optional, saves empty values
@@ -84,7 +84,7 @@ DOI                       starting with '10'                  yes, optional     
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
 Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
 Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     yes               yes, optional, saves empty values
-Page numbers              Custom page range such as `24–39`   yes, optional     yes               yes, optional, saves empty values
+Page numbers              Custom page range such as '24–39'   yes, optional     yes               yes, optional, saves empty values
 Competing interests       _                                   yes, optional     yes               yes, optional, saves empty values
 Article section           e.g. 'Article', 'Review'            yes, optional     yes               yes, optional, ignores empty values
 Stage                     the production workflow stage [#]_  yes, optional     yes               no, ignored [#]_
@@ -101,7 +101,7 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 .. [#] Using a character encoding other than UTF-8 can cause bugs during imports or updates. (`What is character encoding?`_). These apps save CSVs with UTF-8 by default: OpenRefine, LibreOffice, Google Sheets, and Apple Numbers. However! If you use Microsoft Excel, keep in mind some versions don't automatically create CSV files with UTF-8 character encoding. This may cause punctuation and special characters to be garbled on import. So, when saving, look for the 'CSV (UTF-8)' option in the drop-down box.
 .. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, please use quotation marks.
 .. [#] Support for licence URLs will be added in future.
-.. [#] We will add support for ISO language codes in the future.
+.. [#] You can use conventional names like 'English' or 'Catalan' as well as three-letter language codes like 'eng' or 'cat'. Only one language per article. See `ISO 639 on Wikipedia`_.
 .. [#] For author names, emails, institutions, and ORCIDs, updating the values will only update what is called the 'frozen author' record for this article--that is, the author's information at the time of article submission. This information is separate from information tied to that person's Janeway account.
 .. [#] Email addresses are highly recommended for correspondence authors, since many parts of the workflow involve sending emails to authors, and these won't work without email addresses.
 .. [#] You should include existing email addresses in your CSV when you're trying to update other fields. You can also add or remove author records from an article with this tool. However, you shouldn't use this tool to change an author's email address, because Janeway will think you're trying to add a new author and will create a duplicate account with the new address. We will improve this behaviour in the future.
@@ -112,6 +112,7 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 .. [#] You can import some files along with the metadata, but this part of the tool is not well tested or documented. Contact Janeway support for help.
 
 .. _`ISO 8601 on Wikipedia`: https://en.wikipedia.org/wiki/ISO_8601
+.. _`ISO 639 on Wikipedia`: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 .. _`What is character encoding?`: https://www.w3.org/International/questions/qa-what-is-encoding
 .. _`on Windows`: https://support.microsoft.com/en-us/windows/zip-and-unzip-files-8d28fa72-f2f9-712f-67df-f80cf89fd4e5
 .. _`on a Mac`: https://support.apple.com/en-gb/guide/mac-help/mchlp2528/mac

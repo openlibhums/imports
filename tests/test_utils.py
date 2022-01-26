@@ -6,6 +6,7 @@ from submission import models as submission_models
 from journal import models as journal_models
 from utils.testing import helpers
 from utils.shared import clear_cache
+from nose.tools import set_trace
 
 from datetime import datetime
 from django.utils.timezone import make_aware, utc
@@ -62,7 +63,7 @@ def read_saved_article_data(article, structure='string'):
         'Article abstract': article.abstract if article.abstract else '',
         'Keywords': ", ".join([str(kw) for kw in article.keywords.all()]),
         'Licence': str(article.license) if article.license else '',
-        'Language': article.language if article.language else '',
+        'Language': article.get_language_display() if article.language else '',
         #  author columns will go here
         'Article ID': str(article.id),
         'DOI': article.get_doi() if article.get_doi() else '',
@@ -278,8 +279,8 @@ class TestImportAndUpdate(TestCase):
 
     def test_headings_match_plugin_settings_headers(self):
         # Uncomment to get new metadata_template.csv
-        print('\n\nCopy and paste to docs/source/_static/metadata_template.csv:')
-        print('\n\n'+CSV_DATA_1.splitlines()[0]+'\n\n')
+        # print('\n\nCopy and paste to docs/source/_static/metadata_template.csv:')
+        # print('\n\n'+CSV_DATA_1.splitlines()[0]+'\n\n')
 
         expected_headers = set(CSV_DATA_1.splitlines()[0].split(','))
         settings_headers = set(plugin_settings.UPDATE_CSV_HEADERS)
@@ -295,8 +296,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_2 = dict_from_csv_string(CSV_DATA_1)
 
         # Uncomment to get new sample_import.csv
-        print('\n\nCopy and paste to docs/source/_static/sample_import.csv:')
-        print('\n\n'+string_from_csv_dict(csv_data_2)+'\n\n')
+        # print('\n\nCopy and paste to docs/source/_static/sample_import.csv:')
+        # print('\n\n'+string_from_csv_dict(csv_data_2)+'\n\n')
 
         # add article id to expected data
         csv_data_2[1]['Article ID'] = '1'
@@ -353,8 +354,8 @@ class TestImportAndUpdate(TestCase):
         run_import(csv_data_3, self.mock_request)
 
         # Uncomment to get new sample_update.csv
-        print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
-        print('\n\n'+string_from_csv_dict(csv_data_3)+'\n\n')
+        # print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
+        # print('\n\n'+string_from_csv_dict(csv_data_3)+'\n\n')
 
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1, structure='dict')
@@ -767,7 +768,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Article abstract'] = 'Abstract;;;;;;'
         csv_data_7[1]['Keywords'] = 'Keywords2f, a09srh14!$'
         csv_data_7[1]['Licence'] = 'License£%^^£&'
-        csv_data_7[1]['Language'] = 'Language%^*%^&*%^&*'
+        # csv_data_7[1]['Language'] = 'fra'
         csv_data_7[1]['Author salutation'] = 'salutation$*^%*^%*&'
         csv_data_7[1]['Author given name'] = 'Author given name 2f0SD)F*'
         csv_data_7[1]['Author middle name'] = 'Author middle name %^&*%^&*'
@@ -959,16 +960,50 @@ class TestImportAndUpdate(TestCase):
     def test_verify_headers(self):
         csv_string = 'Inadequate,Headers\n' \
                      'data, other data'
-        reader = csv.DictReader(csv_string.splitlines())
-        errors = utils.verify_headers(reader, [])
+        path_to_csv = os.path.join('plugins','imports','tests','test_data',
+                                   'test_verify_headers.csv')
+        with open(path_to_csv, 'w') as fileobj:
+            fileobj.write(csv_string)
+        errors = []
+        errors = utils.verify_headers(path_to_csv, errors)
         self.assertTrue(
             'Expected headers not found' in errors[0]['error']
         )
 
-    def test_verify_stages(self):
-        csv_string = 'Article title,Stage\ntitle,Bad stage 1\ntitle,Bad stage 2'
-        reader = csv.DictReader(csv_string.splitlines())
-        errors = utils.verify_stages(reader, self.journal_one, [])
+    def test_validate_selected_char_fields(self):
+        csv_string = 'Article title,Stage,Language\n' \
+                     'title,Bad stage 1,zzz\n' \
+                     'title,Bad stage 2,Dinosaur\n'
+        path_to_csv = os.path.join('plugins','imports','tests','test_data',
+                                   'test_validate_selected_char_fields.csv')
+        with open(path_to_csv, 'w') as fileobj:
+            fileobj.write(csv_string)
+        errors = []
+        journal = self.journal_one
+        errors = utils.validate_selected_char_fields(path_to_csv, errors, journal)
+        error_messages = ".".join([msg['error'] for msg in errors])
         self.assertTrue(
-            'Unrecognized data in field Stage' in errors[0]['error']
+            ('Unrecognized data in field Stage' in error_messages and
+             'Unrecognized data in field Language' in error_messages)
         )
+
+    def test_language_codes(self):
+
+        csv_data_17 = dict_from_csv_string(CSV_DATA_1)
+        saved_languages = []
+        expected_languages = [
+            ('hun','Hungarian'),
+            ('yor','Yoruba')
+        ]
+
+        csv_data_17[1]['Language'] = expected_languages[0][0]
+        run_import(csv_data_17, self.mock_request)
+        article = submission_models.Article.objects.all().order_by('-id')[0]
+        saved_languages.append((article.language, article.get_language_display()))
+
+        csv_data_17[1]['Language'] = expected_languages[1][1]
+        run_import(csv_data_17, self.mock_request)
+        article = submission_models.Article.objects.all().order_by('-id')[0]
+        saved_languages.append((article.language, article.get_language_display()))
+
+        self.assertEqual(expected_languages, saved_languages)

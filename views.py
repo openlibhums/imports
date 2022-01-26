@@ -130,18 +130,13 @@ def import_action(request, filename):
         elif request_type == 'update':
 
             # Verify a few things to help user spot problems
-            with open(path, 'r', encoding='utf-8-sig') as verify_headers_file:
-                errors= utils.verify_headers(
-                    csv.DictReader(verify_headers_file),
-                    errors,
-                )
+            errors = utils.verify_headers(path, errors)
 
-            with open(path, 'r', encoding='utf-8-sig') as verify_stages_file:
-                errors= utils.verify_stages(
-                    csv.DictReader(verify_stages_file),
-                    request.journal,
-                    errors,
-                )
+            errors = utils.validate_selected_char_fields(
+                path,
+                errors,
+                request.journal
+            )
 
             if not errors:
                 errors, actions = utils.update_article_metadata(
