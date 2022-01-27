@@ -160,6 +160,7 @@ def import_article(client, journal, article_dict, editorial=False, galleys=True)
             import_reviews(client, article, article_dict)
         import_copyedits(client, article, article_dict)
         import_production(client, article, article_dict)
+        add_to_projected_issue(article, article_dict)
     set_stage(article, article_dict)
 
     return article
@@ -554,6 +555,24 @@ def import_production(client, article, article_dict):
             create_workflow_log( article, typesetting_settings.STAGE)
         else:
             create_workflow_log(article, sm_models.STAGE_TYPESETTING)
+
+
+def add_to_projected_issue(article, article_dict):
+    issue = None
+    if article_dict["publication"].get("issue"):
+        issue_type = journal_models.IssueType.objects.get(
+            journal=article.journal, code='issue')
+        issue, c = journal_models.Issue.objects.get_or_create(
+            issue=article_dict["publication"]["issue"]["number"],
+            volume=article_dict["publication"]["issue"]["volume"],
+            journal=article.journal,
+            issue_type=issue_type,
+            defaults={
+                "date": article.date_published,
+            },
+        )
+        article.projected_issue = issue
+    return issue
 
 def import_revision(client, submission_id, article, round_dict):
     logger.info("Importing revision for round %s" % round_dict["round"])
@@ -1144,13 +1163,13 @@ def set_stage(article, article_dict):
     ojs_stage_id = article_dict["stageId"]
 
     # Handle articles that have been loaded through a plugin
-    if ojs_stage_id == WORKFLOW_STAGE_ID and article_dict["publications"]:
+    if ojs_stage_id == WORKFLOW_STAGE_ID_SUBMISSION and article_dict["publications"]:
         ojs_stage_id = WORKFLOW_STAGE_ID_PREPUB
     for id, stage_dict in WORKFLOW_STAGE_MAP.items():
         # Create all workflow logs for previoys stages
-        if id <= article_dict["stageId"] and stage_dict["workflow"]:
+        if id <= ojs_stage_id and stage_dict["workflow"]:
             create_workflow_log(article, stage_dict["workflow"])
-        if id == article_dict["stageId"] and not stage:
+        if id == ojs_stage_id and not stage:
             stage = stage_dict["stage"]
 
     if not stage:
