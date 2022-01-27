@@ -1,3 +1,5 @@
+from datetime import date
+from dateutil.relativedelta import relativedelta
 import os
 import re
 from urllib import parse as urlparse
@@ -653,9 +655,13 @@ class OJS3APIClient(OJSBaseClient):
             + self.API_PATH
             + self.METRICS_PATH
         )
+        query_params = {
+            # OJS3 API returns an error for metrics older than 10 years
+            "dateStart": str(date.today() - relativedelta(years=10))
+        }
         if ojs_ids:
-            query_params = {"submissionIds" :','.join(ojs_ids)}
-            request_url += "?%s" % urlparse.urlencode(query_params)
+            query_params["submissionIds"] = ','.join(ojs_ids)
+        request_url += "?%s" % urlparse.urlencode(query_params)
         paginator = OJS3PaginatedResults(request_url, self.fetch)
         for result in paginator:
             yield result
