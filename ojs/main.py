@@ -197,8 +197,11 @@ def import_ojs3_articles(
             logger.exception(e)
 
 
-def import_ojs3_issues(client, journal):
-    issues = client.get_issues()
+def import_ojs3_issues(client, journal, issue_id=None):
+    if issue_id:
+        issues = [client.get_issue(issue_id)]
+    else:
+        issues = client.get_issues()
     for issue_dict in issues:
         ojs3_importers.import_issue(client, journal, issue_dict)
 

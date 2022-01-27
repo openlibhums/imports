@@ -156,6 +156,8 @@ def import_article(client, journal, article_dict, editorial=False, galleys=True)
         import_production(client, article, article_dict)
     set_stage(article, article_dict)
 
+    return article
+
 
 def import_article_metrics(client, journal, data):
     ojs_id = data["publication"]["id"]
@@ -170,8 +172,10 @@ def import_article_metrics(client, journal, data):
     else:
         obj, c = metrics_models.HistoricArticleAccess.objects.update_or_create(
             article=article,
-            downloads=data["galleyViews"],
-            views=data["abstractViews"],
+            defaults=dict(
+                downloads=data["galleyViews"],
+                views=data["abstractViews"],
+            )
         )
         if c:
             logger.info("Imported metrics for: %s", ojs_id)
@@ -238,9 +242,12 @@ def import_issue(client, journal, issue_dict):
         section = import_section(section_dict, issue, client)
 
     for order, article_dict in enumerate(issue_dict["articles"]):
-        logger.warning(article_dict["stageId"])
         article_dict["publication"] = get_pub_article_dict(article_dict, client)
         article, c = get_or_create_article(article_dict, journal)
+        if c:
+            logger.warning("Issue has new article, will re-import: %s", article)
+            article = import_article(client, journal, article_dict)
+
         if article:
             article.primary_issue = issue
             if not article.date_published:
@@ -260,10 +267,13 @@ def import_issue(client, journal, issue_dict):
                 article=article,
                 defaults={"order": order}
             )
-    if not issue.large_image and issue_dict["coverImageUrl"].values():
+    if issue_dict["coverImageUrl"].values():
         url = delocalise(issue_dict["coverImageUrl"])
         if url:
             django_file = client.fetch_file(url)
+            if not django_file:
+                url = delocalise(issue_dict["coverImageUrl"], lang_code="nl")
+                django_file = client.fetch_file(url)
             if django_file:
                 issue.cover_image.save(
                     django_file.name or "cover.graphic", django_file)
@@ -295,6 +305,10 @@ def import_issue(client, journal, issue_dict):
                 issue_galley.save()
 
     issue.save()
+    if issue_dict.get("isCurrent"):
+        journal.current_issue = issue
+        journal.save()
+
     return issue
 
 
@@ -1009,11 +1023,13 @@ def import_editorial_team(journal_dict, journal):
         )
 
 
-def delocalise(localised):
+def delocalise(localised, lang_code=None):
     """ Given a localised object, return the best possible value"""
     with_value = {k.split("_")[0]: v for k, v in localised.items() if v}
     if with_value:
-        if settings.LANGUAGE_CODE in with_value:
+        if lang_code and lang_code in with_value:
+            return with_value[lang_code]
+        elif settings.LANGUAGE_CODE in with_value:
             return with_value[settings.LANGUAGE_CODE]
         return next(iter(with_value.values()))
 
@@ -1115,6 +1131,9 @@ def set_stage(article, article_dict):
         create_workflow_log(
             article, sm_models.STAGE_READY_FOR_PUBLICATION
         )
+    elif article_dict["status"] == STATUS_DECLINED:
+        stage = sm_models.STAGE_REJECTED
+
 
     for id, stage_dict in WORKFLOW_STAGE_MAP.items():
         # Create all workflow logs for previoys stages
