@@ -20,6 +20,8 @@ class Command(BaseCommand):
         parser.add_argument('--dry-run', action="store_true", default=False)
         parser.add_argument('--issues', action="store_true", default=False,
                             help="Imports only issues")
+        parser.add_argument('--issue_id', default=None,
+                            help="Imports only the issue matching by ojs id")
         parser.add_argument('--users', action="store_true", default=False,
                             help="Imports only users")
         parser.add_argument('--metrics', action="store_true", default=False,
@@ -47,6 +49,8 @@ class Command(BaseCommand):
             ojs.import_ojs3_issues(client, journal)
         elif options["metrics"]:
             ojs.import_ojs3_metrics(client, journal)
+        elif options["issue_id"]:
+            ojs.import_ojs3_issues(client, journal, issue_id=options["issue_id"])
         elif options["users"]:
             ojs.import_ojs3_users(client, journal)
         else:
