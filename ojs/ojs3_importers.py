@@ -39,6 +39,9 @@ WORKFLOW_STAGE_ID_EXTERNAL_REVIEW = 3
 WORKFLOW_STAGE_ID_EDITING = 4
 WORKFLOW_STAGE_ID_PRODUCTION = 5
 
+# Made up ID to handle articles that have been loaded to OJS via plugins
+WORKFLOW_STAGE_ID_PREPUB = 99
+
 WORKFLOW_STAGE_MAP = {
     WORKFLOW_STAGE_ID_SUBMISSION: {
         "stage": sm_models.STAGE_UNASSIGNED,
@@ -55,7 +58,10 @@ WORKFLOW_STAGE_MAP = {
     WORKFLOW_STAGE_ID_PRODUCTION: {
         "stage": sm_models.STAGE_TYPESETTING,
         "workflow": sm_models.STAGE_TYPESETTING,
-
+    },
+    WORKFLOW_STAGE_ID_PREPUB: {
+        "stage": sm_models.STAGE_READY_FOR_PUBLICATION,
+        "workflow": sm_models.STAGE_READY_FOR_PUBLICATION,
     },
 }
 # Alias internal and external review stages
@@ -1135,6 +1141,11 @@ def set_stage(article, article_dict):
         stage = sm_models.STAGE_REJECTED
 
 
+    ojs_stage_id = article_dict["stageId"]
+
+    # Handle articles that have been loaded through a plugin
+    if ojs_stage_id == WORKFLOW_STAGE_ID and article_dict["publications"]:
+        ojs_stage_id = WORKFLOW_STAGE_ID_PREPUB
     for id, stage_dict in WORKFLOW_STAGE_MAP.items():
         # Create all workflow logs for previoys stages
         if id <= article_dict["stageId"] and stage_dict["workflow"]:

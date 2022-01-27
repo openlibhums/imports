@@ -17,7 +17,6 @@ class Command(BaseCommand):
         parser.add_argument('username')
         parser.add_argument('journal_code')
         parser.add_argument('--password', default=None)
-        parser.add_argument('--dry-run', action="store_true", default=False)
         parser.add_argument('--issues', action="store_true", default=False,
                             help="Imports only issues")
         parser.add_argument('--issue_id', default=None,
