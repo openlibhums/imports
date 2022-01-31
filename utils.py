@@ -560,6 +560,10 @@ def import_article_row(row, journal, issue_type, article=None):
         stage, keywords, date_accepted, date_published, doi, \
         first_page, last_page, total_pages, is_reviewed, license_url, \
         *author_fields = a_row
+        author_fields.insert(5, '') # department
+        author_fields.insert(8, '') # orcid
+        author_fields.insert(9, '') # is_corporate
+        author_fields.insert(10, '') # author_order
     parsed_date_published = datetime_parser(date_published)
 
     # Only create issue for first row
@@ -608,6 +612,18 @@ def import_article_row(row, journal, issue_type, article=None):
             article.peer_reviewed = True
         else:
             article.peer_reviewed = False
+
+        article.save()
+        issue.articles.add(article)
+        issue.save()
+        if doi:
+            id_models.Identifier.objects.get_or_create(
+                id_type='doi', identifier=doi, article=article)
+
+        # author import
+        is_corporate = author_fields[9]
+        if is_corporate and is_corporate in "Yy":
+            import_corporate_author(author_fields, article)
         if license_url:
             license, _ = submission_models.Licence.objects.get_or_create(
                 url=license_url,
