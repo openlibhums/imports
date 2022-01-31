@@ -549,6 +549,10 @@ def import_article_row(row, journal, issue_type, article=None):
         *a_row, pdf, xml, html, figures = row
         article_id, title, section, vol_num, issue_num, subtitle, abstract, \
             stage, keywords, date_accepted, date_published, doi, *author_fields = a_row
+        author_fields.insert(5, '') # department
+        author_fields.insert(8, '') # orcid
+        author_fields.insert(9, '') # is_corporate
+        author_fields.insert(10, '') # author_order
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=vol_num or 0,
@@ -588,7 +592,7 @@ def import_article_row(row, journal, issue_type, article=None):
                 id_type='doi', identifier=doi, article=article)
 
         # author import
-        *author_fields, is_corporate = author_fields
+        is_corporate = author_fields[9]
         if is_corporate and is_corporate in "Yy":
             import_corporate_author(author_fields, article)
         else:
