@@ -590,12 +590,18 @@ class OJS3APIClient(OJSBaseClient):
             yield f
 
 
-    def get_issues(self):
+    def get_issues(self, unpublished=False):
         request_url = (
             self.journal_url
             + self.API_PATH
             + self.ISSUES_PATH % ''
         )
+        if unpublished:
+            query_params = {
+                "isPublished": False,
+            }
+            request_url += "?%s" % urlparse.urlencode(query_params)
+
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
         for i, issue in enumerate(paginator):

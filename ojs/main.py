@@ -206,6 +206,12 @@ def import_ojs3_issues(client, journal, issue_id=None):
         ojs3_importers.import_issue(client, journal, issue_dict)
 
 
+def import_ojs3_unpublished_issues(client, journal):
+    issues = client.get_issues(unpublished=True)
+    for issue_dict in issues:
+        ojs3_importers.import_issue(client, journal, issue_dict)
+
+
 def import_ojs3_journals(
     client, journal_acronym=None, include_content=True, update_journals=True,
     galleys=True,

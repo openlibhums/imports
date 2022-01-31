@@ -19,7 +19,9 @@ class Command(BaseCommand):
         parser.add_argument('--password', default=None)
         parser.add_argument('--issues', action="store_true", default=False,
                             help="Imports only issues")
-        parser.add_argument('--issue_id', default=None,
+        parser.add_argument('--unpublished-issues', action="store_true", default=False,
+                            help="Imports only future issues")
+        parser.add_argument('--issue-id', default=None,
                             help="Imports only the issue matching by ojs id")
         parser.add_argument('--users', action="store_true", default=False,
                             help="Imports only users")
@@ -50,6 +52,8 @@ class Command(BaseCommand):
             ojs.import_ojs3_metrics(client, journal)
         elif options["issue_id"]:
             ojs.import_ojs3_issues(client, journal, issue_id=options["issue_id"])
+        elif options["unpublished_issues"]:
+            ojs.import_ojs3_unpublished_issues(client, journal)
         elif options["users"]:
             ojs.import_ojs3_users(client, journal)
         else:

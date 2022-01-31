@@ -15,6 +15,7 @@ from plugins.imports.ojs.main import (
     #OJS3
     import_ojs3_articles,
     import_ojs3_issues,
+    import_ojs3_unpublished_issues,
     import_ojs3_journals,
     import_ojs3_users,
     import_ojs3_metrics,
