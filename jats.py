@@ -21,6 +21,9 @@ from journal import models as journal_models
 from production.logic import save_galley, save_galley_image
 from plugins.imports.utils import DummyRequest
 from submission import models as submission_models
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def import_jats_article(
@@ -67,7 +70,9 @@ def import_jats_article(
         # Persist Article
         article = save_article(journal, meta, owner=owner)
         # Save Galleys
-        xml_file = ContentFile(jats_contents.encode("utf-8"))
+        if not isinstance(jats_contents, bytes):
+            jats_contents = jats_contents.encode("utf-8")
+        xml_file = ContentFile(jats_contents)
         xml_file.name = filename or uuid.uuid4()
         request = request or DummyRequest(owner)
         galley = save_galley(article, request, xml_file, True, "XML")
@@ -83,6 +88,7 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True):
     :param journal: Journal in which to import the articles
     :param owner: An instance of core.models.Account
     """
+    errors = []
     articles = []
     jats_files_info = []
     image_map = {}
@@ -92,27 +98,34 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True):
             zf.extractall(path=temp_dir)
 
             for root, path, filenames in os.walk(temp_dir):
-                jats_path = None
-                jats_filename = None
-                supplements = []
+                try:
+                    jats_path = None
+                    jats_filename = None
+                    supplements = []
 
-                for filename in filenames:
-                    mimetype, _ = mimetypes.guess_type(filename)
-                    file_path = os.path.join(root, filename)
-                    if mimetype in files.XML_MIMETYPES:
-                        jats_path = file_path
-                        jats_filename = filename
-                    else:
-                        supplements.append(file_path)
+                    for filename in filenames:
+                        mimetype, _ = mimetypes.guess_type(filename)
+                        file_path = os.path.join(root, filename)
+                        if mimetype in files.XML_MIMETYPES:
+                            jats_path = file_path
+                            jats_filename = filename
+                        else:
+                            supplements.append(file_path)
 
-                if jats_path:
-                    with open(jats_path, 'r') as jats_file:
-                        articles.append(import_jats_article(
-                            jats_file.read(), journal, persist,
-                            jats_filename, owner, supplements,
-                        ))
+                    if jats_path:
+                        logger.info("[JATS] Importing from %s", jats_path)
+                        with open(jats_path, 'r') as jats_file:
+                            articles.append((
+                                jats_filename,
+                                import_jats_article(
+                                    jats_file.read(), journal, persist,
+                                    jats_filename, owner, supplements,
+                                ),
+                            ))
+                except Exception as err:
+                    errors.append((filenames, err))
 
-    return articles
+    return articles, errors
 
 
 
