@@ -1,6 +1,7 @@
 import csv
 import os
 import shutil
+import zipfile
 
 from django.conf import settings
 from django.contrib import messages
@@ -15,7 +16,15 @@ from rest_framework.decorators import api_view, permission_classes
 
 from api import permissions as api_permissions
 from core import files, models as core_models
-from plugins.imports import utils, forms, logic, models, export, serializers
+from plugins.imports import (
+    export,
+    forms,
+    jats,
+    logic,
+    models,
+    serializers,
+    utils,
+)
 from journal import models as journal_models
 from submission import models as submission_models
 from security import decorators
@@ -429,3 +438,46 @@ class ExportFilesViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+# JATS
+@decorators.has_journal
+@decorators.editor_user_required
+def import_from_jats(request):
+    articles = []
+    errors = []
+    if request.FILES and request.FILES.get("file"):
+        uploaded_file = request.FILES["file"]
+        if uploaded_file.content_type in files.XML_MIMETYPES:
+            try:
+                article = jats.import_jats_article(
+                    uploaded_file.read(), request.journal,
+                    filename=uploaded_file.name,
+                    owner=request.user,
+                    request=request,
+                )
+            except Exception as err:
+                errors.append(
+                    (uploaded_file.name, err)
+                )
+            else:
+                articles.append((uploaded_file.name, article))
+        elif zipfile.is_zipfile(uploaded_file):
+            articles, errors = jats.import_jats_zipped(
+                uploaded_file, request.journal,
+                owner=request.user,
+            )
+        else:
+            messages.add_message(
+                request,
+                messages.ERROR,
+                "Unsupported file with content %s" % uploaded_file.content_type,
+            )
+
+
+    print(articles)
+    template = 'import/jats.html'
+    context = {
+        'imported_articles': articles,
+        'errors': errors,
+    }
+
+    return render(request, template, context)

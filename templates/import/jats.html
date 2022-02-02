@@ -1,0 +1,82 @@
+{% extends "admin/core/base.html" %}
+
+{% block title %}Imports Plugin{% endblock %}
+{% block title-section %}Imports Plugin{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'imports_index' %}">Import Plugin</a></li>
+    <li>Editorial Loading</li>
+{% endblock %}
+
+{% block body %}
+
+    <div class="box">
+        <div class="title-area">
+            <h2>Import From Jats</h2>
+        </div>
+        <div class="content">
+            <p>You can import a single article from a JATS XML file or multiple articles by uploading a zip with all the JATS XML files.</p>
+            <p>When uploading a ZIP file, the figures must also be contained in the same directory as their matching article.</p>
+            <ul>
+                <li>articles</li>
+                <ul>
+                    <li>ID-3</li>
+                    <ul>
+                       <li>article_3.xml</li>
+                       <li>figure1.png</li>
+                    </ul>
+                    <li>ID-4</li>
+                    <ul>
+                       <li>article_4.xml</li>
+                       <li>figure1.png</li>
+                       <li>figure2.png</li>
+                    </ul>
+                 </ul>
+            </ul>
+            <p>The figure filenames must match the values entered in the <code>xlink:href</code> attribute in the JATS file</p>
+            <p>You can have as many intermediate directories as desired. The only structural requirements is to ensure a single JATS with its figures exists on each final directory</p>
+            <br>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="file">
+                <button class="button" name="upload"><i class="fa fa-upload"></i> Upload and import</button>
+            </form>
+            <hr>
+
+            {% if errors %}
+            <h4><i class="fa fa-warning"></i> Errors found</h4>
+            {% for file, error in errors %}
+            <div class="bs-callout bs-callout-danger"><p>{{ file }}: {{ error }}</p></div>
+            {% endfor %}
+            {% endif %}
+
+            {% if imported_articles %}
+            <h4><i class="fa fa-info-circle"></i> Imported Articles</h4>
+            <table class="table scroll small stripped">
+                <thead>
+                  <tr>
+                    <td>Source </td>
+                    <td>Article</td>
+                    <td>Imported Figures</td>
+                    <td></td>
+                  </tr>
+                </thead>
+                <tbody>
+            {% for file, article in imported_articles %}
+            <tr>
+                <td>{{ file }}</td>
+                <td><a targe="_blank" href="{% url 'manage_archive_article' article.pk %}">{{ article }}</a></td>
+                <td>{{ article.galley_set.first.all_images }}</td>
+                <td></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            </table>
+            {% endif %}
+
+
+
+        </div>
+    </div>
+
+{% endblock %}
