@@ -250,7 +250,8 @@ def update_article_metadata(request, reader, folder_path):
                 article = submission_models.Article.objects.create(
                     journal=journal,
                     title=prepared_row.get('primary_row').get('Article title'),
-                    article_agreement='Imported article'
+                    article_agreement='Imported article',
+                    is_import=True,
                 )
                 update_article(article, issue, prepared_row, folder_path)
                 article.owner = request.user
