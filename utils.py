@@ -443,6 +443,9 @@ def handle_author_import(row, article, author_order):
         if row.get('Author is primary (Y/N)') == 'Y':
             article.correspondence_author = author
             article.save()
+        elif article.correspondence_author == author:
+            article.correspondence_author = None
+            article.save()
 
     return author, frozen_author
 
