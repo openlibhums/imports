@@ -19,7 +19,7 @@ import zipfile
 import os
 
 CSV_DATA_1 = """Article title,Article abstract,Keywords,Licence,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Page numbers,Competing interests,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date
-Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,,,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9–43,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9–43,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
 ,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,,
 ,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,,
 """
@@ -57,8 +57,11 @@ def read_saved_article_data(article, structure='string'):
     Gets saved article data from the database for comparison
     with the expected article data
     """
+    row_i = 1
     csv_dict = {}
-    row = {
+    csv_dict[row_i] = dict.fromkeys(plugin_settings.UPDATE_CSV_HEADERS, '')
+
+    article_fields = {
         'Article title': article.title if article.title else '',
         'Article abstract': article.abstract if article.abstract else '',
         'Keywords': ", ".join([str(kw) for kw in article.keywords.all()]),
@@ -87,8 +90,9 @@ def read_saved_article_data(article, structure='string'):
         'Issue pub date': article.issue.date.isoformat() if article.issue else '',
     }
 
-    author_rows = {}
+    csv_dict[row_i].update(article_fields)
 
+    author_rows = {}
     for frozen_author in article.frozenauthor_set.all():
         order = frozen_author.order
         author_rows[order] = read_saved_frozen_author_data(
@@ -96,17 +100,12 @@ def read_saved_article_data(article, structure='string'):
             article
         )
 
-    row_i = 1
-    # gather article and author data in first row
-    for k, v in author_rows.pop(0).items():
-        row[k] = v
-    csv_dict[row_i] = row
-
-    # add subsequent author rows
-    for order in sorted(list(author_rows.keys())):
-        row_i += 1
-        csv_dict[row_i] = dict.fromkeys(csv_dict[1].keys(), '')
-        csv_dict[row_i].update(author_rows[order])
+    if author_rows:
+        for order in sorted(list(author_rows.keys())):
+            if row_i not in csv_dict:
+                csv_dict[row_i] = dict.fromkeys(plugin_settings.UPDATE_CSV_HEADERS, '')
+            csv_dict[row_i].update(author_rows[order])
+            row_i += 1
 
     if structure == 'dict':
         return csv_dict
@@ -331,8 +330,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_3[1]['Author is primary (Y/N)'] = 'Y'
         csv_data_3[1]['Author is corporate (Y/N)'] = 'N'
         csv_data_3[1]['Article ID'] = '1'
-        csv_data_3[1]['DOI'] = '10.1234/tst.1'
-        csv_data_3[1]['DOI (URL form)'] = 'https://doi.org/10.1234/tst.1'
+        # csv_data_3[1]['DOI'] = 
+        # csv_data_3[1]['DOI (URL form)'] = 
         csv_data_3[1]['Date accepted'] = '2021-10-25T10:25:25+00:00'
         csv_data_3[1]['Date published'] = '2021-10-26T10:26:00+00:00'
         csv_data_3[1]['Page numbers'] = 'iii-ix'
@@ -383,8 +382,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_12[1]['Author institution'] = ''
         csv_data_12[1]['Author department'] = ''
         csv_data_12[1]['Author biography'] = ''
-        csv_data_12[1]['Author is primary (Y/N)'] = 'Y'
-        csv_data_12[1]['Author is corporate (Y/N)'] = 'N'
+        csv_data_12[1]['Author is primary (Y/N)'] = ''
+        csv_data_12[1]['Author is corporate (Y/N)'] = ''
         csv_data_12[1]['Article ID'] = ''
         csv_data_12[1]['DOI'] = ''
         csv_data_12[1]['DOI (URL form)'] = ''
@@ -412,6 +411,10 @@ class TestImportAndUpdate(TestCase):
         csv_data_12[1]['Volume number'] = '0'
         csv_data_12[1]['Issue number'] = '0'
 
+        # remove second and third rows (authors)
+        csv_data_12.pop(2)
+        csv_data_12.pop(3)
+
         run_import(csv_data_12, self.mock_request)
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2, structure='dict')
@@ -427,17 +430,9 @@ class TestImportAndUpdate(TestCase):
         Tests whether Janeway properly interprets blank fields on update
         """
         self.maxDiff = None
-
         clear_cache()
 
-        # put something in every cell so you can test importing blanks
         csv_data_13 = dict_from_csv_string(CSV_DATA_1)
-        csv_data_13[1]['Article ID'] = '1'
-        csv_data_13[1]['DOI'] = '10.1234/tst.1'
-        csv_data_13[1]['DOI (URL form)'] = 'https://doi.org/10.1234/tst.1'
-
-        run_import(csv_data_13, self.mock_request)
-
 
         # blank out non-required rows to test whether blanks are written during update
         # csv_data_13[1]['Article title'] = 'Multipleistocene Exquilibriums'
@@ -449,12 +444,12 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['Author given name'] = ''
         csv_data_13[1]['Author middle name'] = ''
         csv_data_13[1]['Author surname'] = ''
-        # csv_data_13[1]['Author email'] = 'unrealperson3@example.com'
+        csv_data_13[1]['Author email'] = ''
         csv_data_13[1]['Author ORCID'] = ''
         csv_data_13[1]['Author institution'] = ''
         csv_data_13[1]['Author department'] = ''
         csv_data_13[1]['Author biography'] = ''
-        # csv_data_13[1]['Author is primary (Y/N)'] = 'Y'
+        csv_data_13[1]['Author is primary (Y/N)'] = ''
         csv_data_13[1]['Author is corporate (Y/N)'] = ''
         csv_data_13[1]['Article ID'] = '1' # update article ID in expected data
         csv_data_13[1]['DOI'] = ''
@@ -474,21 +469,21 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['Issue title'] = ''
         # csv_data_13[1]['Issue pub date'] = '2021-09-15T09:15:15+00:00'
 
+        # remove second and third rows (authors)
+        csv_data_13.pop(2)
+        csv_data_13.pop(3)
+
         run_import(csv_data_13, self.mock_request)
 
-
         # account for blanks in import data that aren't written to db
-        csv_data_13[1]['Author salutation'] = 'Prof'
-        csv_data_13[1]['Author is corporate (Y/N)'] = 'N'
         csv_data_13[1]['DOI'] = '10.1234/tst.1'
         csv_data_13[1]['DOI (URL form)'] = 'https://doi.org/10.1234/tst.1'
         csv_data_13[1]['ISSN'] = '0000-0000'
 
-
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1, structure='dict')
 
-        self.assertEqual(csv_data_13[1], saved_article_data[1])
+        self.assertEqual(csv_data_13, saved_article_data)
 
     def test_prepare_reader_rows(self):
         self.maxDiff = None

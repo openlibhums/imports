@@ -205,7 +205,6 @@ def update_article_metadata(request, reader, folder_path):
     """
     errors = []
     actions = []
-
     prepared_reader_rows = prepare_reader_rows(reader)
 
     for prepared_row in prepared_reader_rows:
@@ -253,7 +252,7 @@ def update_article_metadata(request, reader, folder_path):
                     article_agreement='Imported article',
                     is_import=True,
                 )
-                update_article(article, issue, prepared_row, folder_path)
+                article = update_article(article, issue, prepared_row, folder_path)
                 article.owner = request.user
                 article.save()
                 current_workflow_stages = set(journal.workflow_set.all().values_list(
@@ -346,22 +345,28 @@ def update_article(article, issue, prepared_row, folder_path):
             article=article,
         )
 
-    # import author from the primary row and then secondary rows
     updated_authors = []
-    author_order = 0
-    updated_authors.append(handle_author_import(row, article, author_order))
+    # If there is any author data in the first row, create or update authors
+    if any(get_author_fields(row)):
 
-    for author_row in prepared_row.get('author_rows'):
-        author_order += 1
-        updated_authors.append(handle_author_import(author_row, article, author_order))
+        # Import author from the primary row and then the secondary rows
+        updated_authors = []
+        author_order = 0
+        updated_authors.extend(handle_author_import(row, article, author_order))
 
-    # remove authors as needed in case of update
+        for author_row in prepared_row.get('author_rows'):
+            author_order += 1
+            updated_authors.extend(handle_author_import(author_row, article, author_order))
+
+    # Remove authors as needed in case of update
     for previous_author in article.authors.all():
         if previous_author not in updated_authors:
             article.authors.remove(previous_author)
-            previous_frozen_author = previous_author.frozen_author(article)
-            if previous_frozen_author:
-                previous_frozen_author.delete()
+
+    # Remove frozen authors as needed in case of update
+    for previous_frozen_author in article.frozen_authors():
+        if previous_frozen_author not in updated_authors:
+            previous_frozen_author.delete()
 
     # Turning off file imports to prep for overhaul
     # handle_file_import(row, article, folder_path)
@@ -401,31 +406,44 @@ def update_keywords(keywords, article):
     article.save()
 
 
-def handle_author_import(row, article, author_order):
-    author_fields = [
-        row.get('Author salutation'),
-        row.get('Author given name'),
-        row.get('Author middle name'),
-        row.get('Author surname'),
-        row.get('Author institution'),
-        row.get('Author department'),
-        row.get('Author biography'),
-        row.get('Author email'),
-        row.get('Author ORCID'),
-        row.get('Author is corporate (Y/N)'),
-        author_order,
+def get_author_fields(row):
+    """
+    Returns all author fields except author order
+    """
+
+    field_names = [
+        'Author salutation',
+        'Author given name',
+        'Author middle name',
+        'Author surname',
+        'Author institution',
+        'Author department',
+        'Author biography',
+        'Author email',
+        'Author ORCID',
+        'Author is corporate (Y/N)',
     ]
 
+    author_fields = []
+    for field_name in field_names:
+        author_fields.append(row.get(field_name))
+    return author_fields
+
+
+def handle_author_import(row, article, author_order):
+
+    author_fields = get_author_fields(row)
+    author_fields.append(author_order)
     if row.get('Author is corporate (Y/N)') == 'Y':
-        import_corporate_author(author_fields, article)
+        author, frozen_author = import_corporate_author(author_fields, article)
     else:
-        author = import_author(author_fields, article)
+        author, frozen_author = import_author(author_fields, article)
         author.save()
         if row.get('Author is primary (Y/N)') == 'Y':
             article.correspondence_author = author
             article.save()
 
-        return author
+    return author, frozen_author
 
 
 def handle_file_import(row, article, folder_path):
@@ -484,9 +502,9 @@ def validate_selected_char_fields(path, errors, journal):
 
     # Language
     language_choices = set()
-    for code, name in submission_models.LANGUAGE_CHOICES:
-        language_choices.add(code)
-        language_choices.add(name)
+    for language_code, language_name in submission_models.LANGUAGE_CHOICES:
+        language_choices.add(language_code)
+        language_choices.add(language_name)
     fields_to_validate['Language'] = language_choices
 
     for field, choices in fields_to_validate.items():
@@ -632,9 +650,9 @@ def import_author(author_fields, article):
     article.save()
     author.snapshot_self(article)
 
-    update_frozen_author(author, author_fields, article)
+    frozen_author = update_frozen_author(author, author_fields, article)
 
-    return author
+    return author, frozen_author
 
 def update_frozen_author(author, author_fields, article):
 
@@ -655,17 +673,19 @@ def update_frozen_author(author, author_fields, article):
     frozen_author.order = author_order
     frozen_author.save()
 
+    return frozen_author
 
 def import_corporate_author(author_fields, article):
     *_, institution, _department, _bio, _email, _orcid, \
         _is_corporate, author_order = author_fields
-    submission_models.FrozenAuthor.objects.get_or_create(
+    author = None
+    frozen_author, created = submission_models.FrozenAuthor.objects.get_or_create(
         article=article,
         is_corporate=True,
         institution=institution,
         order=author_order,
     )
-
+    return author, frozen_author
 
 def import_galley_from_uri(article, uri, figures_uri=None):
     parsed = urlparse(uri)
