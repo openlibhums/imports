@@ -598,12 +598,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_4[1]['Author department'] = 'Children\'s Center'
         csv_data_4[1]['Author biography'] = 'Many are the accomplishments '\
                                             'of Surreal Personne3'
-        csv_data_4[1]['Author is primary (Y/N)'] = 'N'
+        csv_data_4[1]['Author is primary (Y/N)'] = ''
         csv_data_4[1]['Author is corporate (Y/N)'] = 'N'
-
-
-        # make unrealperson6@example.com primary
-        csv_data_4[3]['Author is primary (Y/N)'] = 'Y'
 
         # remove unrealperson5@example.com
         csv_data_4[2] = csv_data_4.pop(3)
@@ -611,6 +607,9 @@ class TestImportAndUpdate(TestCase):
         # add article id
         csv_data_4[1]['Article ID'] = '1'
         csv_data_4[1]['File import identifier'] = '1'
+
+        # add primary N to expected data
+        csv_data_4[1]['Author is primary (Y/N)'] = 'N'
 
         run_import(csv_data_4, self.mock_request)
 

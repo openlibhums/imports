@@ -71,13 +71,13 @@ Language                  name of language or ISO code [#]_   yes, optional     
 Author Salutation         useful in templated emails          yes, optional     yes               no, ignored
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
 Author middle name        or middle initial                   yes, optional     yes               yes, optional, saves empty values
-Author surname            a.k.a. last name                    yes, required     yes               yes, optional, saves empty values [#]_
+Author surname            a.k.a. last name                    yes, optional     yes               yes, optional, saves empty values [#]_
 Author email              recommended [#]_                    yes, optional     yes               complicated! [#]_
 Author ORCID              starting with 'https' or the number yes, optional     yes               yes, optional, saves empty values
 Author institution        _                                   yes, optional     yes               yes, optional, saves empty values
 Author department         _                                   yes, optional     yes               yes, optional, saves empty values
 Author biography          _                                   yes, optional     yes               yes, optional, saves empty values
-Author is primary (Y/N)   Y or N [#]_                         yes, required     yes               yes, required
+Author is primary (Y/N)   Y or N [#]_                         yes, optional     yes               yes, optional, saves empty values
 Author is corporate (Y/N) i.e. an organization                yes, optional     yes               no, will make duplicates
 Article ID                controlled by Janeway               no, will break    yes               yes, required
 DOI                       starting with '10'                  yes, optional     yes               yes, optional, ignores empty values
@@ -102,10 +102,10 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 .. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, please use quotation marks.
 .. [#] Support for licence URLs will be added in future.
 .. [#] You can use conventional names like 'English' or 'Catalan' as well as three-letter language codes like 'eng' or 'cat'. Only one language per article. See `ISO 639 on Wikipedia`_.
-.. [#] For author names, emails, institutions, and ORCIDs, updating the values will only update what is called the 'frozen author' record for this article--that is, the author's information at the time of article submission. This information is separate from information tied to that person's Janeway account.
+.. [#] For author fields, running an update will only update what is called the 'frozen author' record for this article--that is, the author's information at the time of article submission (or first import). This information is separate from information tied to that person's Janeway account.
 .. [#] Email addresses are highly recommended for correspondence authors, since many parts of the workflow involve sending emails to authors, and these won't work without email addresses.
 .. [#] You should include existing email addresses in your CSV when you're trying to update other fields. You can also add or remove author records from an article with this tool. However, you shouldn't use this tool to change an author's email address, because Janeway will think you're trying to add a new author and will create a duplicate account with the new address. We will improve this behaviour in the future.
-.. [#] 'Author is primary' tells Janeway which author is the correspondence author. One author must be marked 'Y' and the rest 'N'.
+.. [#] 'Author is primary' tells Janeway which author is the correspondence author. Generally, one and only one author should be marked 'Y' and the rest 'N' or blank. If you leave this field blank for all authors, the article won't have a correspondence author.
 .. [#] See `ISO 8601 on Wikipedia`_. Examples of accepted date or date-and-time combinations: ``2022-01-04``, ``2022-01-04T10:12``, ``2022-01-04T10:12:38-05:00``.
 .. [#] The workflow stage has to match one of these values exactly: ``Unassigned`` (for peer review), ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``, ``Published``. If the field is left blank, the article will be put in the ``Unassigned`` stage
 .. [#] Currently the workflow stage cannot be changed en masse once the articles are imported, since that might break tasks in progress. In the future we want to make it possible to change the stage of multiple articles.
