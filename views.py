@@ -406,7 +406,8 @@ def export_articles_all(request):
         article.export_files = article.exportfile_set.all()
         article.export_file_pks = [ef.file.pk for ef in article.exportfile_set.all()]
 
-        article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
+        if proofing_assignments:
+            article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
 
     if request.POST:
         if 'export_all' in request.POST:
