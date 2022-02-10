@@ -292,6 +292,7 @@ def update_article(article, issue, prepared_row, folder_path):
         name=row.get('Article section'),
     )
     article.section = section_obj
+    article.rights = row.get('Rights')
     licence_obj, created = submission_models.Licence.objects.get_or_create(
         short_name=row.get('Licence'),
         journal=article.journal,
@@ -312,6 +313,11 @@ def update_article(article, issue, prepared_row, folder_path):
     else:
         article.language = None
 
+    if row.get('Peer reviewed (Y/N)') == 'Y':
+        article.peer_reviewed = True
+    else:
+        article.peer_reviewed = False
+
     keywords = []
     if row.get('Keywords'):
         keywords += row.get('Keywords').split(",")
@@ -331,7 +337,24 @@ def update_article(article, issue, prepared_row, folder_path):
     else:
         article.date_published = None
 
-    article.page_numbers = row.get('Page numbers')
+    if row.get('First page'):
+        try:
+            article.first_page = int(row.get('First page'))
+        except ValueError:
+            article.first_page = None
+    else:
+        article.first_page = None
+
+    if row.get('Last page'):
+        try:
+            article.last_page = int(row.get('Last page'))
+        except ValueError:
+            article.last_page = None
+    else:
+        article.last_page = None
+
+    article.page_numbers = row.get('Page numbers (custom)')
+
     article.competing_interests = row.get('Competing interests')
 
     article.primary_issue = issue

@@ -3,6 +3,12 @@ Import, Export, Update
 
 The Import / Export / Update tool lets you perform some batch actions in Janeway. You can import and export article metadata and files, and you can update some fields of existing articles.
 
+.. figure:: _static/import_export_update_start.png
+    :alt: The Import, Export, Update start page
+    :class: screenshot
+
+    The Import, Export, Update start page
+
 Importing
 ---------
 With this tool, you can create new articles in Janeway and load them directly into the desired workflow stage (peer review, copyediting, typesetting, or prepublication).
@@ -13,22 +19,22 @@ With this tool, you can create new articles in Janeway and load them directly in
 
 3. Save the file with a name of your choosing.
 
-4. From the journal's dashboard, navigate to **All Articles** under **Staff** in the lower left. You need to have 'staff' access to view this page.
+4. From the journal's dashboard, navigate to **All Articles** under **Staff** in the lower left. You need to have 'staff' access to view this page. (The tool also appears as **Article Import, Export, Update** in the Imports plugin start page.)
 
 5. Select **Upload Update** and upload your file. (It says 'update', but this is how you import new things too.)
 
-6. A table should load in your browser showing you the data you uploaded, before you import it. If everything looks good, select **Import**.
+6. A table should load in your browser showing you the data, before you import it. If everything looks good, select **Import**.
 
 Exporting
 ---------
 
 You can export a CSV containing metadata for all the articles currently in a given workflow stage. It will also download selected files from that stage.
 
-1. From the journal's dashboard, navigate to All Articles under Staff in the lower left. You need to have 'staff' access to view this page.
+1. From the journal's dashboard, navigate to **All Articles** under **Staff** in the lower left. You need to have 'staff' access to view this page.
 
 2. Use the **Filter by Stage** drop-down menu to choose a set of articles you want to export.
 
-3. If you want to download associated files, use the Files column to add files for each article.
+3. If you want to download associated files, use the **Files** column to add files for each article.
 
 4. Select **Export Articles**. A zip file should be downloaded containing the metadata in ``article_data.csv`` and the article files in subfolders numbered by article ID.
 
@@ -38,7 +44,10 @@ Updating
 
 You can update metadata for batches of articles in Janeway, so you don't have to click through each individual article to make the change.
 
-1. To update one field, you have to provide data for all the fields, or at least most of them. So we recommend you first export the set of articles you want to update. See `Exporting`_.
+1. To update one field, you have to provide data for all the fields, or at least most of them, because the tool interprets empty fields literally, and will save empty fields (potentially overwriting older data). So we recommend you first export the set of articles, and use that as the basis for changes. See `Exporting`_.
+
+.. warning::
+    The tool will let you overwrite old data if you leave fields blank, so make sure you start any update project by running an export.
 
 2. Extract the zip file you exported and open the CSV in your spreadsheet software of choice (but be careful with character encoding).
 
@@ -48,7 +57,7 @@ You can update metadata for batches of articles in Janeway, so you don't have to
 
 5. On the **All Articles** page, select **Upload Update** and upload your CSV file.
 
-6. A table should load in your browser showing you the data you uploaded, before you import it. If everything looks good, select **Import**.
+6. A table should load in your browser showing you the data you uploaded, so you can look it over before importing it. If everything looks good, select **Import**.
 
 
 Metadata Field Reference
@@ -66,9 +75,11 @@ Field                     Notes                               Import            
 Article title             include subtitle [#]_               yes, required     yes               yes, required
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
+Rights                    Rights statement (free text)        yes, optional     yes               yes, optional, saves empty values
 Licence                   name of licence [#]_                yes, optional     yes               yes, optional, saves empty values
 Language                  name of language or ISO code [#]_   yes, optional     yes               yes, optional, saves empty values
-Author Salutation         useful in templated emails          yes, optional     yes               no, ignored
+Peer reviewed (Y/N)       Y or N                              yes, optional     yes               yes, optional, saves empty values
+Author salutation         useful in templated emails          yes, optional     yes               no, ignored
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
 Author middle name        or middle initial                   yes, optional     yes               yes, optional, saves empty values
 Author surname            a.k.a. last name                    yes, optional     yes               yes, optional, saves empty values [#]_
@@ -79,17 +90,19 @@ Author department         _                                   yes, optional     
 Author biography          _                                   yes, optional     yes               yes, optional, saves empty values
 Author is primary (Y/N)   Y or N [#]_                         yes, optional     yes               yes, optional, saves empty values
 Author is corporate (Y/N) i.e. an organization                yes, optional     yes               no, will make duplicates
-Article ID                controlled by Janeway               no, will break    yes               yes, required
+Article ID                controlled and assigned by Janeway  no, will break    yes               yes, required
 DOI                       starting with '10'                  yes, optional     yes               yes, optional, ignores empty values
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
 Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
 Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     yes               yes, optional, saves empty values
-Page numbers              Custom page range such as '24–39'   yes, optional     yes               yes, optional, saves empty values
+First page                integer                             yes, optional     yes               yes, optional, saves empty values
+Last page                 integer                             yes, optional     yes               yes, optional, saves empty values
+Page numbers (custom)     Custom page range such as 'x–ix'    yes, optional     yes               yes, optional, saves empty values
 Competing interests       _                                   yes, optional     yes               yes, optional, saves empty values
 Article section           e.g. 'Article', 'Review'            yes, optional     yes               yes, optional, ignores empty values
 Stage                     the production workflow stage [#]_  yes, optional     yes               no, ignored [#]_
 File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
-Journal Code              must match Janeway                  yes, required     yes               yes, required
+Journal code              must match Janeway                  yes, required     yes               yes, required
 Journal title             must match Janeway                  yes, required     yes               yes, required
 ISSN                      '0000-0000' for new journals        no, ignored       yes               no, ignored
 Volume number             '0' if not specified                yes, optional     yes               no, ignored
