@@ -176,14 +176,18 @@ def export_using_import_format(articles):
         row['Keywords'] = ", ".join(
             [keyword.word for keyword in article.keywords.all()]
         )
+        row['Rights'] = article.rights
         row['Licence'] = article.license.short_name
         row['Language'] = article.get_language_display()
+        row['Peer reviewed (Y/N)'] = 'Y' if article.peer_reviewed else 'N'
         row['Article ID'] = article.pk
         row['DOI'] = article.get_doi() if article.get_doi() else ''
         row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
         row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
         row['Date published'] = article.date_published.isoformat() if article.date_published else ''
-        row['Page numbers'] = article.page_numbers if article.page_numbers else ''
+        row['First page'] = str(article.first_page) if article.first_page else ''
+        row['Last page'] = str(article.last_page) if article.last_page else ''
+        row['Page numbers (custom)'] = article.page_numbers if article.page_numbers else ''
         row['Competing interests'] = article.competing_interests if article.competing_interests else ''
         row['Article section'] = article.section.name
         row['Stage'] = article.stage

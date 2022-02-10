@@ -18,10 +18,10 @@ import re
 import zipfile
 import os
 
-CSV_DATA_1 = """Article title,Article abstract,Keywords,Licence,Language,Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,Page numbers,Competing interests,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date
-Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",CC BY-NC-SA 4.0,English,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9–43,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
-,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,,
-,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,,
+CSV_DATA_1 = """Article title,Article abstract,Keywords,Rights,Licence,Language,Peer reviewed (Y/N),Author salutation,Author given name,Author middle name,Author surname,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),Article ID,DOI,DOI (URL form),Date accepted,Date published,First page,Last page,Page numbers (custom),Competing interests,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date
+Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",In Copyright,CC BY-NC-SA 4.0,English,Y,Prof,Unreal,J.,Person3,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9,43,,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00
+,,,,,,,,Unreal,J.,Person5,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,,,,
+,,,,,,,,Unreal,J.,Person6,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,,,,
 """
 
 
@@ -65,8 +65,10 @@ def read_saved_article_data(article, structure='string'):
         'Article title': article.title if article.title else '',
         'Article abstract': article.abstract if article.abstract else '',
         'Keywords': ", ".join([str(kw) for kw in article.keywords.all()]),
+        'Rights': article.rights,
         'Licence': str(article.license) if article.license else '',
         'Language': article.get_language_display() if article.language else '',
+        'Peer reviewed (Y/N)': 'Y' if article.peer_reviewed else 'N',
         #  author columns will go here
         'Article ID': str(article.id),
         'DOI': article.get_doi() if article.get_doi() else '',
@@ -74,7 +76,9 @@ def read_saved_article_data(article, structure='string'):
             ) if article.get_doi() else '',
         'Date accepted': article.date_accepted.isoformat() if article.date_accepted else '',
         'Date published': article.date_published.isoformat() if article.date_published else '',
-        'Page numbers': article.page_numbers if article.page_numbers else '',
+        'First page': str(article.first_page) if article.first_page else '',
+        'Last page': str(article.last_page) if article.last_page else '',
+        'Page numbers (custom)': article.page_numbers if article.page_numbers else '',
         'Competing interests': article.competing_interests if article.competing_interests else '',
         'Article section': article.section.name if article.section else '',
         'Stage': article.stage if article.stage else '',
@@ -315,8 +319,10 @@ class TestImportAndUpdate(TestCase):
         csv_data_3[1]['Article title'] = 'Multipleistocene Exquilibriums'
         csv_data_3[1]['Article abstract'] = 'How it is still going down.'
         csv_data_3[1]['Keywords'] = 'better dinosaurs, worse teaching'
-        csv_data_3[1]['Licence'] = 'CC BY 4.0'
+        csv_data_3[1]['Rights'] = 'No Copyright'
+        csv_data_3[1]['Licence'] = 'CC0'
         csv_data_3[1]['Language'] = 'French'
+        csv_data_3[1]['Peer reviewed (Y/N)'] = 'N'
         csv_data_3[1]['Author salutation'] = 'Prof'
         csv_data_3[1]['Author given name'] = 'Unreal'
         csv_data_3[1]['Author middle name'] = 'J.'
@@ -334,7 +340,9 @@ class TestImportAndUpdate(TestCase):
         # csv_data_3[1]['DOI (URL form)'] = 
         csv_data_3[1]['Date accepted'] = '2021-10-25T10:25:25+00:00'
         csv_data_3[1]['Date published'] = '2021-10-26T10:26:00+00:00'
-        csv_data_3[1]['Page numbers'] = 'iii-ix'
+        csv_data_3[1]['First page'] = ''
+        csv_data_3[1]['Last page'] = ''
+        csv_data_3[1]['Page numbers (custom)'] = 'iii-ix'
         csv_data_3[1]['Competing interests'] = 'The author is unfortunately on the payroll ' \
                                                'of Rex from Toy Story.'
         # csv_data_3[1]['Article section'] = 
@@ -371,8 +379,10 @@ class TestImportAndUpdate(TestCase):
         # csv_data_12[1]['Article title'] = 'Multipleistocene Exquilibriums'
         csv_data_12[1]['Article abstract'] = ''
         csv_data_12[1]['Keywords'] = ''
+        csv_data_12[1]['Rights'] = ''
         csv_data_12[1]['Licence'] = ''
         csv_data_12[1]['Language'] = ''
+        csv_data_12[1]['Peer reviewed (Y/N)'] = ''
         csv_data_12[1]['Author salutation'] = ''
         csv_data_12[1]['Author given name'] = ''
         csv_data_12[1]['Author middle name'] = ''
@@ -389,7 +399,9 @@ class TestImportAndUpdate(TestCase):
         csv_data_12[1]['DOI (URL form)'] = ''
         csv_data_12[1]['Date accepted'] = ''
         csv_data_12[1]['Date published'] = ''
-        csv_data_12[1]['Page numbers'] = ''
+        csv_data_12[1]['First page'] = ''
+        csv_data_12[1]['Last page'] = ''
+        csv_data_12[1]['Page numbers (custom)'] = ''
         csv_data_12[1]['Competing interests'] = ''
         # csv_data_12[1]['Article section'] = 'Article'
         csv_data_12[1]['Stage'] = ''
@@ -404,6 +416,7 @@ class TestImportAndUpdate(TestCase):
 
 
         # add article id and a few other sticky things back to expected data
+        csv_data_12[1]['Peer reviewed (Y/N)'] = 'N'
         csv_data_12[1]['Article ID'] = '2'
         csv_data_12[1]['Stage'] = 'Unassigned'
         csv_data_12[1]['File import identifier'] = '2'
@@ -438,8 +451,10 @@ class TestImportAndUpdate(TestCase):
         # csv_data_13[1]['Article title'] = 'Multipleistocene Exquilibriums'
         csv_data_13[1]['Article abstract'] = ''
         csv_data_13[1]['Keywords'] = ''
+        csv_data_13[1]['Rights'] = ''
         csv_data_13[1]['Licence'] = ''
         csv_data_13[1]['Language'] = ''
+        csv_data_13[1]['Peer reviewed (Y/N)'] = ''
         csv_data_13[1]['Author salutation'] = ''
         csv_data_13[1]['Author given name'] = ''
         csv_data_13[1]['Author middle name'] = ''
@@ -456,7 +471,9 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['DOI (URL form)'] = ''
         csv_data_13[1]['Date accepted'] = ''
         csv_data_13[1]['Date published'] = ''
-        csv_data_13[1]['Page numbers'] = ''
+        csv_data_13[1]['First page'] = ''
+        csv_data_13[1]['Last page'] = ''
+        csv_data_13[1]['Page numbers (custom)'] = ''
         csv_data_13[1]['Competing interests'] = ''
         # csv_data_13[1]['Article section'] = 'Article'
         # csv_data_13[1]['Stage'] = 'Editor Copyediting'
@@ -474,6 +491,9 @@ class TestImportAndUpdate(TestCase):
         csv_data_13.pop(3)
 
         run_import(csv_data_13, self.mock_request)
+
+        # account for smoothed data
+        csv_data_13[1]['Peer reviewed (Y/N)'] = 'N'
 
         # account for blanks in import data that aren't written to db
         csv_data_13[1]['DOI'] = '10.1234/tst.1'
@@ -759,8 +779,10 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Article title'] = 'Title£$^^£&&££&££££$'
         csv_data_7[1]['Article abstract'] = 'Abstract;;;;;;'
         csv_data_7[1]['Keywords'] = 'Keywords2f, a09srh14!$'
+        csv_data_7[1]['Rights'] = 'Rights£%^^£&'
         csv_data_7[1]['Licence'] = 'License£%^^£&'
         # csv_data_7[1]['Language'] = 'fra'
+        csv_data_7[1]['Peer reviewed (Y/N)'] = 'I think so, but not sure'
         csv_data_7[1]['Author salutation'] = 'salutation$*^%*^%*&'
         csv_data_7[1]['Author given name'] = 'Author given name 2f0SD)F*'
         csv_data_7[1]['Author middle name'] = 'Author middle name %^&*%^&*'
@@ -770,13 +792,16 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Author institution'] = 'Author institution$^&*^%&(^%())'
         csv_data_7[1]['Author department'] = 'Author department 2043230'
         csv_data_7[1]['Author biography'] = 'se0f9asef)(FAE)(SH'
-        # csv_data_7[1]['Author is primary (Y/N)'] = 'Y'
+        csv_data_7[1]['Author is primary (Y/N)'] = 'gobbledy'
         csv_data_7[1]['Author is corporate (Y/N)'] = 'gobbeldy'
         csv_data_7[1]['Article ID'] = ''
         csv_data_7[1]['DOI'] = ''
         csv_data_7[1]['DOI (URL form)'] = ''
         csv_data_7[1]['Date accepted'] = ''
         csv_data_7[1]['Date published'] = ''
+        csv_data_7[1]['First page'] = 'not an integer'
+        csv_data_7[1]['Last page'] = 'also not'
+        csv_data_7[1]['Page numbers (custom)'] = '@$*@#@@FJj'
         csv_data_7[1]['Article section'] = 'Section $%^&$%^&$%*'
         csv_data_7[1]['Stage'] = 'Editor Copyediting'
         csv_data_7[1]['File import identifier'] = ''
@@ -797,8 +822,12 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Article ID'] = '2'
         csv_data_7[1]['File import identifier'] = '2'
 
-        # account for human-legible N for non corresondence author
+        # account for smoothed values
+        csv_data_7[1]['Peer reviewed (Y/N)'] = 'N'
+        csv_data_7[1]['Author is primary (Y/N)'] = 'N'
         csv_data_7[1]['Author is corporate (Y/N)'] = 'N'
+        csv_data_7[1]['First page'] = ''
+        csv_data_7[1]['Last page'] = ''
 
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2, structure='dict')
