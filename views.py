@@ -390,7 +390,7 @@ def export_articles_all(request):
     """
     A view that displays all articles in a journal and allows export.
     """
-    element = request.GET.get('element')
+    stage = request.GET.get('stage')
 
     articles = submission_models.Article.objects.filter(
         journal=request.journal,
@@ -398,12 +398,13 @@ def export_articles_all(request):
         'correspondence_author',
     )
 
-    if element in ['Published', 'Rejected']:
+    # Handle stage without elements
+    if stage in ['Published', 'Rejected']:
         articles = articles.filter(stage=element)
-    elif element:
+    elif stage:
         workflow_element = core_models.WorkflowElement.objects.get(
             journal=request.journal,
-            stage=element,
+            stage=stage,
         )
         articles = articles.filter(stage__in=workflow_element.stages)
 
@@ -427,7 +428,7 @@ def export_articles_all(request):
     context = {
         'articles_in_stage': articles,
         'stages': submission_models.STAGE_CHOICES,
-        'selected_element': element,
+        'selected_stage': stage,
     }
 
     return render(request, template, context)
