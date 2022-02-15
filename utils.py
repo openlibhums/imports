@@ -7,6 +7,7 @@ from urllib.parse import urlparse, unquote
 import uuid
 from zipfile import ZipFile
 
+from dateutil import parser as dateutil_parser
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -30,22 +31,22 @@ logger = get_logger(__name__)
 TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
-                 "publication stage, keywords, date/time accepted, date/time publishded , DOI, Author Salutation, " \
-                 "Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
-                 "PDF URI,XML URI, HTML URI, Figures URI (zip)"
+    "publication stage, keywords, date/time accepted, date/time publishded , DOI, First Page, Last Page, Total pages, Is Peer Reviewed (Y/N), License URL," \
+    "Author Salutation, Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
+    "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
-CSV_MAURO= "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
-                  "2018-01-02T09:00:00,10.1000/xyz123,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
+CSV_MAURO = "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
+    "2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
     "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images.zip"
-CSV_MARTIN = "1,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
-CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
+CSV_MARTIN = "1,,,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
-    def __init__(self, user):
+    def __init__(self, user, journal=None):
         self.user = user
-
+        self.journal = journal
 
 
 def import_editorial_team(request, reader):
@@ -358,7 +359,7 @@ def handle_file_import(row, article, zip_folder_path):
                 article.manuscript_files.add(file)
             else:
                 article.data_figure_files.add(file)
-            
+
 
 def verify_headers(reader):
     header_set = set(reader.fieldnames)
@@ -367,7 +368,7 @@ def verify_headers(reader):
     return header_set == expected_headers
 
 
-def import_article_metadata(request, reader):
+def import_article_metadata(request, reader, id_type=None):
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
@@ -394,6 +395,13 @@ def import_article_metadata(request, reader):
             if settings.DEBUG:
                 logger.exception(e)
             error_writer.writerow(line)
+        if line_id not in articles and id_type:
+            id_models.Identifier.objects.get_or_create(
+                id_type=id_type,
+                identifier=line_id,
+                article=article
+            )
+
         articles[line_id] = article
     error_file.close()
     return articles, errors, uuid_filename
@@ -401,68 +409,98 @@ def import_article_metadata(request, reader):
 
 @transaction.atomic
 def import_article_row(row, journal, issue_type, article=None):
-        *a_row, pdf, xml, html, figures = row
-        article_id, title, section, vol_num, issue_num, subtitle, abstract, \
-            stage, keywords, date_accepted, date_published, doi, *author_fields = a_row
+    *a_row, pdf, xml, html, figures = row
+    article_id, title, section, vol_num, issue_num, subtitle, abstract, \
+        stage, keywords, date_accepted, date_published, doi, \
+        first_page, last_page, total_pages, is_reviewed, license_url, \
+        *author_fields = a_row
+    parsed_date_published = datetime_parser(date_published)
+
+    # Only create issue for first row
+    if  article and article.primary_issue:
+        issue = article.primary_issue
+        created = False
+    else:
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=vol_num or 0,
             issue=issue_num or 0,
         )
-        if created:
-            issue.issue_type = issue_type
-            issue.save()
 
-        if not article:
-            if not title:
-                # New article row found with no author
-                raise ValueError("Row refers to an unknown article")
-            article = submission_models.Article.objects.create(
-                journal=journal,
-                title=title,
-            )
-            article.subtitle = subtitle
-            article.abstract = abstract
-            article.date_accepted = (parse_datetime(date_accepted)
-                    or parse_date(date_accepted))
-            article.date_published = (parse_datetime(date_published)
-                    or parse_date(date_published))
-            article.stage = stage
-            sec_obj, created = submission_models.Section.objects.get_or_create(journal=journal, name=section)
-            article.section = sec_obj
-            split_keywords = keywords.split("|")
-            for kw in split_keywords:
-                if kw.strip():
-                    new_kw, _ = submission_models.Keyword.objects.get_or_create(
-                        word=kw)
-                    article.keywords.add(new_kw)
-            article.save()
-            issue.articles.add(article)
-            issue.save()
-            id_models.Identifier.objects.create(
-                id_type='doi', identifier=doi, article=article)
-
-        # author import
-        *author_fields, is_corporate = author_fields
-        if is_corporate and is_corporate in "Yy":
-            import_corporate_author(author_fields, article)
+    if created:
+        issue.issue_type = issue_type
+        issue.date = parsed_date_published or issue.date
+        issue.save()
+    if not article:
+        if not title:
+            # New article row found with no title
+            raise ValueError("Row refers to an unknown article")
+        article = submission_models.Article.objects.create(
+            journal=journal,
+            title=title,
+        )
+        article.subtitle = subtitle
+        article.abstract = abstract
+        article.date_accepted = datetime_parser(date_accepted)
+        article.date_published = parsed_date_published
+        article.stage = stage
+        sec_obj, created = submission_models.Section.objects.get_or_create(journal=journal, name=section)
+        article.section = sec_obj
+        split_keywords = keywords.split("|")
+        for kw in split_keywords:
+            if kw.strip():
+                new_kw, _ = submission_models.Keyword.objects.get_or_create(
+                    word=kw)
+                article.keywords.add(new_kw)
+        if first_page and first_page.isdigit():
+            article.first_page = first_page
+        if last_page and last_page.isdigit():
+            article.last_page = last_page
+        if total_pages and total_pages.isdigit():
+            article.total_pages = total_pages
+        if is_reviewed and is_reviewed in "Yy":
+            article.peer_reviewed = True
         else:
-            import_author(author_fields, article)
+            article.peer_reviewed = False
+        if license_url:
+            license, _ = submission_models.Licence.objects.get_or_create(
+                url=license_url,
+                journal=article.journal,
+                defaults={
+                    'name': 'CSV License',
+                    'short_name': 'imported',
+                }
+            )
+            article.license = license
+
+        article.primary_issue = issue
+        article.save()
+        issue.articles.add(article)
+        issue.save()
+        id_models.Identifier.objects.create(
+            id_type='doi', identifier=doi, article=article)
+
+    # author import
+    *author_fields, is_corporate = author_fields
+    if is_corporate and is_corporate in "Yy":
+        import_corporate_author(author_fields, article)
+    else:
+        import_author(author_fields, article)
 
 
-        #files import
-        for uri in (pdf, html, xml):
-            if uri:
-                import_galley_from_uri(article, uri, figures)
+    #files import
+    for uri in (pdf, html, xml):
+        if uri:
+            import_galley_from_uri(article, uri, figures)
 
-        return article
+    return article
 
 
 def import_author(author_fields, article):
     salutation, first_name, middle_name, last_name, institution, bio, email = author_fields
     if not email:
         email = "{}{}".format(uuid.uuid4(), settings.DUMMY_EMAIL_DOMAIN)
-    author, created = core_models.Account.objects.get_or_create(email=email)
+    author, created = core_models.Account.objects.get_or_create(email=email.strip())
     if created:
         author.salutation = salutation
         author.first_name = first_name
@@ -683,3 +721,19 @@ def get_filename_from_headers(response):
             "No filename available in headers: %s" % response.headers
         )
     return None
+
+
+def datetime_parser(date_time_str):
+    if not date_time_str:
+        return
+
+    # Try ISO datetime
+    datetime_obj = parse_datetime(date_time_str)
+    # Try ISO Date
+    if not datetime_obj:
+        datetime_obj = parse_date(date_time_str)
+    # Try our best
+    if not datetime_obj:
+        datetime_obj = dateutil_parser.parse(date_time_str)
+
+    return datetime_obj
