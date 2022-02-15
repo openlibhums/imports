@@ -385,6 +385,8 @@ def export_articles_all(request):
 
     articles = submission_models.Article.objects.filter(
         journal=request.journal,
+    ).exclude(
+        stage=submission_models.STAGE_UNSUBMITTED,
     ).select_related(
         'correspondence_author',
     )
