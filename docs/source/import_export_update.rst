@@ -109,6 +109,7 @@ Volume number             '0' if not specified                yes, optional     
 Issue number              '0' if not specified                yes, optional     yes               no, ignored
 Issue name                e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
 Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     yes               yes, required
+PDF URI                   A valid URI                         yes, optional     no                yes, optional
 ========================= =================================== ================= ================= =====================================
 
 .. [#] Using a character encoding other than UTF-8 can cause bugs during imports or updates. (`What is character encoding?`_). These apps save CSVs with UTF-8 by default: OpenRefine, LibreOffice, Google Sheets, and Apple Numbers. However! If you use Microsoft Excel, keep in mind some versions don't automatically create CSV files with UTF-8 character encoding. This may cause punctuation and special characters to be garbled on import. So, when saving, look for the 'CSV (UTF-8)' option in the drop-down box.
@@ -122,7 +123,7 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 .. [#] See `ISO 8601 on Wikipedia`_. Examples of accepted date or date-and-time combinations: ``2022-01-04``, ``2022-01-04T10:12``, ``2022-01-04T10:12:38-05:00``.
 .. [#] The workflow stage has to match one of these values exactly: ``Unassigned`` (for peer review), ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``, ``Published``. If the field is left blank, the article will be put in the ``Unassigned`` stage
 .. [#] Currently the workflow stage cannot be changed en masse once the articles are imported, since that might break tasks in progress. In the future we want to make it possible to change the stage of multiple articles.
-.. [#] You can import some files along with the metadata, but this part of the tool is not well tested or documented. Contact Janeway support for help.
+.. [#] You can import PDF galleys with this process using the PDF URI field. The URI must use one of the following schemes: ``http``, ``https`` or ``file`` (When using `file` it points a local path of the running instance of Janeway, does not support netlocs)
 
 .. _`ISO 8601 on Wikipedia`: https://en.wikipedia.org/wiki/ISO_8601
 .. _`ISO 639 on Wikipedia`: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
