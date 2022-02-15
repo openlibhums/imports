@@ -16,7 +16,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
-from django.utils.timezone import is_aware, make_aware
+from django.utils.timezone import is_aware, make_aware, now
 
 from core import models as core_models, files, logic as core_logic, workflow
 from identifiers import models as id_models
@@ -176,7 +176,9 @@ def prep_update(row):
             code="issue",
             journal=journal,
         )
-        parsed_issue_date = get_aware_datetime(row.get('Issue pub date'))
+        issue_date = None
+        if row.get("Issue pub date"):
+            issue_date = get_aware_datetime(row.get('Issue pub date'))
         issue, created = journal_models.Issue.objects.get_or_create(
             journal=journal,
             volume=row.get('Volume number') or 0,
@@ -184,12 +186,13 @@ def prep_update(row):
             defaults={
                 'issue_title': row.get('Issue title'),
                 'issue_type': issue_type,
-                'date': parsed_issue_date,
+                'date': issue_date or now().date(),
             }
         )
 
         if not created:
-            issue.date = parsed_issue_date
+            if issue_date:
+                issue.date = issue_date
             issue.issue_title = row.get('Issue title')
             issue.save()
 
@@ -293,7 +296,7 @@ def update_article(article, issue, prepared_row, folder_path):
     article.abstract = row.get('Article abstract')
     section_obj, created = submission_models.Section.objects.get_or_create(
         journal=article.journal,
-        name=row.get('Article section'),
+        name=row.get('Article section', "Article"),
     )
     article.section = section_obj
     article.rights = row.get('Rights')
