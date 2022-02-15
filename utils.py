@@ -46,6 +46,14 @@ CSV_MARTIN = "1,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@jo
 CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
+IMPORT_STAGES = set(
+    stage
+    for stage, _ in
+    submission_models.Article._meta.get_field("stage").choices
+    + submission_models.Article._meta.get_field("stage").dynamic_choices
+)
+
+
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
     def __init__(self, user):
@@ -255,11 +263,8 @@ def update_article_metadata(request, reader, folder_path):
                 article = update_article(article, issue, prepared_row, folder_path)
                 article.owner = request.user
                 article.save()
-                current_workflow_stages = set(journal.workflow_set.all().values_list(
-                    "elements__stage", flat=True))
-                current_workflow_stages.add('Published')
                 proposed_stage = prepared_row.get('primary_row').get('Stage')
-                if proposed_stage in current_workflow_stages:
+                if proposed_stage in IMPORT_STAGES:
                     article.stage = proposed_stage
                 else:
                     article.stage = submission_models.STAGE_UNASSIGNED
@@ -520,11 +525,7 @@ def validate_selected_char_fields(path, errors, journal):
     fields_to_validate = {}
 
     # Stage
-    current_workflow_stages = set(
-        journal.workflow_set.all().values_list("elements__stage", flat=True)
-    )
-    current_workflow_stages.add('Published')
-    fields_to_validate['Stage'] = current_workflow_stages
+    fields_to_validate['Stage'] = IMPORT_STAGES
 
     # Language
     language_choices = set()
