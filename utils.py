@@ -285,6 +285,12 @@ def update_article_metadata(request, reader, folder_path):
                         'error': e,
                     }
                 )
+        if(
+            prepared_row["primary_row"]
+            and prepared_row["primary_row"].get("PDF URI")
+        ):
+            import_galley_from_uri(
+                article, prepared_row["primary_row"]["PDF URI"])
 
     return errors, actions
 
