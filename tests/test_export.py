@@ -42,7 +42,7 @@ class TestExport(TestCase):
         expected_csv_data = dict_from_csv_string(CSV_DATA_1)
 
         # account for Janeway-assigned article ID (also placed as File import identifier)
-        expected_csv_data[1]['Article ID'] = '1'
+        expected_csv_data[1]['Janeway ID'] = '1'
         expected_csv_data[1]['File import identifier'] = '1'
 
         self.assertEqual(expected_csv_data, csv_dict)
