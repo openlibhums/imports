@@ -50,6 +50,7 @@ def run_import(csv_string_or_dict, mock_request, path_to_zip=None):
         reader,
         zip_folder_path,
     )
+    return errors, actions
 
 
 def read_saved_article_data(article, structure='string'):
@@ -267,7 +268,11 @@ class TestImportAndUpdate(TestCase):
             'Y,N,,,,',
             'Y,N,1,,,'
         )
-        run_import(reset_csv_data, self.mock_request)
+        errors, actions = run_import(reset_csv_data, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
 
         article_2 = submission_models.Article.objects.filter(id=2).first()
         if article_2:
@@ -355,8 +360,12 @@ class TestImportAndUpdate(TestCase):
         # csv_data_3[1]['Issue number'] = 
         # csv_data_3[1]['Issue title'] = 
         # csv_data_3[1]['Issue pub date'] = 
-
-        run_import(csv_data_3, self.mock_request)
+        csv_data = csv_data_3
+        errors, actions = run_import(csv_data, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
 
         # Uncomment to get new sample_update.csv
         # print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
@@ -428,7 +437,12 @@ class TestImportAndUpdate(TestCase):
         csv_data_12.pop(2)
         csv_data_12.pop(3)
 
-        run_import(csv_data_12, self.mock_request)
+        csv_data = csv_data_12
+        errors, actions = run_import(csv_data, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
         article_2 = submission_models.Article.objects.get(id=2)
         saved_article_data = read_saved_article_data(article_2, structure='dict')
 
@@ -490,7 +504,13 @@ class TestImportAndUpdate(TestCase):
         csv_data_13.pop(2)
         csv_data_13.pop(3)
 
-        run_import(csv_data_13, self.mock_request)
+        csv_data = csv_data_13
+        errors, actions = run_import(csv_data, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
+        from nose.tools import set_trace;set_trace()
 
         # account for smoothed data
         csv_data_13[1]['Peer reviewed (Y/N)'] = 'N'
@@ -843,11 +863,16 @@ class TestImportAndUpdate(TestCase):
             some_whitespace = '             '
             csv_data_9[1][k] = some_whitespace+csv_data_9[1][k]+some_whitespace
 
-        run_import(csv_data_9, self.mock_request)
+            csv_data = csv_data_9
+            errors, actions = run_import(csv_data, self.mock_request)
+            if errors:
+                self.fail(
+                    "There where import errors, test not completed: %s " % errors
+                )
 
         # add article id
         csv_data_10 = dict_from_csv_string(CSV_DATA_1)
-        csv_data_10[1]['Article ID'] = '2'
+        csv_data_10[1]['Janeway ID'] = '2'
         csv_data_10[1]['File import identifier'] = '2'
 
         article_2 = submission_models.Article.objects.get(id=2)
@@ -871,9 +896,13 @@ class TestImportAndUpdate(TestCase):
         csv_data_14[1]['Author is primary (Y/N)'] = 'N'
         csv_data_14[1]['Author is corporate (Y/N)'] = 'Y'
 
-        run_import(csv_data_14, self.mock_request)
+        errors, actions = run_import(csv_data_14, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
 
-        csv_data_14[1]['Article ID'] = '2'
+        csv_data_14[1]['Janeway ID'] = '2'
         csv_data_14[1]['File import identifier'] = '2'
 
         article_2 = submission_models.Article.objects.get(id=2)
@@ -1018,12 +1047,20 @@ class TestImportAndUpdate(TestCase):
         ]
 
         csv_data_17[1]['Language'] = expected_languages[0][0]
-        run_import(csv_data_17, self.mock_request)
+        errors, actions = run_import(csv_data_17, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
         article = submission_models.Article.objects.all().order_by('-id')[0]
         saved_languages.append((article.language, article.get_language_display()))
 
         csv_data_17[1]['Language'] = expected_languages[1][1]
-        run_import(csv_data_17, self.mock_request)
+        errors, actions = run_import(csv_data_17, self.mock_request)
+        if errors:
+            self.fail(
+                "There where import errors, test not completed: %s " % errors
+            )
         article = submission_models.Article.objects.all().order_by('-id')[0]
         saved_languages.append((article.language, article.get_language_display()))
 
