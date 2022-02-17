@@ -158,7 +158,7 @@ def prepare_reader_rows(reader):
                     'author_rows': [],
                     'primary_row_number': i,
                     'article_id': row.get(
-                        'Article ID') if row_type == 'Update' else ''
+                    'Janeway ID') if row_type == 'Update' else ''
                 }
             )
         elif row_type == 'Author':
@@ -453,6 +453,7 @@ def get_author_fields(row):
         'Author given name',
         'Author middle name',
         'Author surname',
+        'Author suffix',
         'Author institution',
         'Author department',
         'Author biography',
@@ -663,7 +664,7 @@ def import_article_row(row, journal, issue_type, article=None):
 
 
 def import_author(author_fields, article):
-    salutation, first_name, middle_name, last_name, \
+    salutation, first_name, middle_name, last_name, suffix,\
         institution, department, bio, email, orcid, \
         is_corporate, author_order = author_fields
     if not email:
@@ -676,6 +677,7 @@ def import_author(author_fields, article):
         author.first_name = first_name
         author.middle_name = middle_name
         author.last_name = last_name
+        author.name_suffix = suffix
         author.institution = institution
         author.department = department
         author.biography = bio or None
@@ -695,13 +697,14 @@ def update_frozen_author(author, author_fields, article):
     """
     Updates frozen author records from import data, not author object fields.
     """
-    salutation, first_name, middle_name, last_name, \
+    salutation, first_name, middle_name, last_name, suffix,\
         institution, department, biography, email, orcid, \
         is_corporate, author_order = author_fields
     frozen_author = author.frozen_author(article)
     frozen_author.first_name = first_name
     frozen_author.middle_name = middle_name
     frozen_author.last_name = last_name
+    frozen_author.name_suffix = suffix
     frozen_author.institution = institution
     frozen_author.department = department
     frozen_author.frozen_biography = biography
