@@ -28,6 +28,7 @@ def hook_registry():
 
 
 UPDATE_CSV_HEADERS = [
+    'Janeway ID',
     'Article title',
     'Article abstract',
     'Keywords',
@@ -39,6 +40,7 @@ UPDATE_CSV_HEADERS = [
     'Author given name',
     'Author middle name',
     'Author surname',
+    'Author suffix',
     'Author email',
     'Author ORCID',
     'Author institution',
@@ -46,7 +48,6 @@ UPDATE_CSV_HEADERS = [
     'Author biography',
     'Author is primary (Y/N)',
     'Author is corporate (Y/N)',
-    'Article ID',
     'DOI',
     'DOI (URL form)',
     'Date accepted',
@@ -65,5 +66,6 @@ UPDATE_CSV_HEADERS = [
     'Issue number',
     'Issue title',
     'Issue pub date',
+    'PDF URI',
 ]
 
