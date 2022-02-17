@@ -72,6 +72,7 @@ The table also shows which fields you have to provide during imports and updates
 ========================= =================================== ================= ================= =====================================
 Field                     Notes                               Import            Export            Update
 ========================= =================================== ================= ================= =====================================
+Janeway ID                controlled and assigned by Janeway  no, will break    yes               yes, required [#]_
 Article title             include subtitle [#]_               yes, required     yes               yes, required
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
@@ -82,7 +83,8 @@ Peer reviewed (Y/N)       Y or N                              yes, optional     
 Author salutation         useful in templated emails          yes, optional     yes               no, ignored
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
 Author middle name        or middle initial                   yes, optional     yes               yes, optional, saves empty values
-Author surname            a.k.a. last name                    yes, optional     yes               yes, optional, saves empty values [#]_
+Author surname            a.k.a. last name or family name     yes, optional     yes               yes, optional, saves empty values [#]_
+Author suffix             e.g: 'Jr.' or 'III'                 yes, optional     yes               yes, optional, saves empty values [#]_
 Author email              recommended [#]_                    yes, optional     yes               complicated! [#]_
 Author ORCID              starting with 'https' or the number yes, optional     yes               yes, optional, saves empty values
 Author institution        _                                   yes, optional     yes               yes, optional, saves empty values
@@ -90,7 +92,6 @@ Author department         _                                   yes, optional     
 Author biography          _                                   yes, optional     yes               yes, optional, saves empty values
 Author is primary (Y/N)   Y or N [#]_                         yes, optional     yes               yes, optional, saves empty values
 Author is corporate (Y/N) i.e. an organization                yes, optional     yes               no, will make duplicates
-Article ID                controlled and assigned by Janeway  no, will break    yes               yes, required
 DOI                       starting with '10'                  yes, optional     yes               yes, optional, ignores empty values
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
 Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
@@ -112,6 +113,8 @@ Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     
 PDF URI                   A valid URI                         yes, optional     no                yes, optional
 ========================= =================================== ================= ================= =====================================
 
+
+.. [#] The Janeway ID should only be populated when updating a record that already exists in Janeway. These IDs are allocated by the system and can not be set by the user.
 .. [#] Using a character encoding other than UTF-8 can cause bugs during imports or updates. (`What is character encoding?`_). These apps save CSVs with UTF-8 by default: OpenRefine, LibreOffice, Google Sheets, and Apple Numbers. However! If you use Microsoft Excel, keep in mind some versions don't automatically create CSV files with UTF-8 character encoding. This may cause punctuation and special characters to be garbled on import. So, when saving, look for the 'CSV (UTF-8)' option in the drop-down box.
 .. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, please use quotation marks.
 .. [#] Support for licence URLs will be added in future.
