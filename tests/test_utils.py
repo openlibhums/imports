@@ -610,7 +610,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_11[1]['Issue title'] = 'Winter 2022'
         csv_data_11[1]['Issue pub date'] = '2022-01-15T01:15:15+00:00'
 
-        csv_data = csv_data_13
+        csv_data = csv_data_11
         errors, actions = run_import(csv_data, self.mock_request)
         if errors:
             self.fail(
@@ -667,7 +667,7 @@ class TestImportAndUpdate(TestCase):
         article_1 = submission_models.Article.objects.get(id=1)
         saved_article_data = read_saved_article_data(article_1, structure='dict')
 
-        self.assertEqual(csv_data_4, saved_article_data)
+        self.assertEqual(csv_data_4[1], saved_article_data[1])
 
     def test_update_frozen_author(self):
         self.maxDiff = None
@@ -779,9 +779,9 @@ class TestImportAndUpdate(TestCase):
         stages = [
             'Unassigned',
             'Editor Copyediting',
-            'typesetting_plugin',
             'pre_publication',
             'Published',
+            *submission_models.Article._meta.get_field("stage").dynamic_choices
         ]
 
         saved_stages = []
