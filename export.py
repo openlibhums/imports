@@ -124,6 +124,7 @@ def add_author_information(row, author, frozen, article):
     row['Author given name'] = author.first_name
     row['Author middle name'] = author.middle_name
     row['Author surname'] = author.last_name
+    row['Author suffix'] = author.name_suffix
     row['Author email'] = author.author.email if frozen and author.author else author.email
     if frozen and author.author and author.author.orcid:
         row['Author ORCID'] = "https://orcid.org/" + author.author.orcid
@@ -171,6 +172,7 @@ def export_using_import_format(articles):
         else:
             issue = None
 
+        row['Janeway ID'] = article.pk
         row['Article title'] = article.title
         row['Article abstract'] = article.abstract
         row['Keywords'] = ", ".join(
@@ -180,7 +182,6 @@ def export_using_import_format(articles):
         row['Licence'] = article.license.short_name
         row['Language'] = article.get_language_display()
         row['Peer reviewed (Y/N)'] = 'Y' if article.peer_reviewed else 'N'
-        row['Article ID'] = article.pk
         row['DOI'] = article.get_doi() if article.get_doi() else ''
         row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
         row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
