@@ -300,6 +300,8 @@ def update_article(article, issue, prepared_row, folder_path):
 
     article.title = row.get('Article title')
     article.abstract = row.get('Article abstract')
+    article.publication_title = row.get('Journal title override')
+    article.ISSN_override = row.get('ISSN override')
     section_obj, created = submission_models.Section.objects.get_or_create(
         journal=article.journal,
         name=row.get('Article section', "Article"),

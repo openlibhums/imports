@@ -61,7 +61,7 @@ UPDATE_CSV_HEADERS = [
     'File import identifier',
     'Journal code',
     'Journal title override',
-    'ISSN',
+    'ISSN override',
     'Volume number',
     'Issue number',
     'Issue title',
