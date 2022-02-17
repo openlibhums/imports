@@ -199,7 +199,7 @@ def prep_update(row):
     except journal_models.Journal.DoesNotExist:
         journal, issue_type, issue = None, None, None
 
-    article_id = row.get('Article ID')
+    article_id = row.get('Janeway ID')
     article = None
     if article_id:
         try:
