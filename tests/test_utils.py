@@ -18,8 +18,8 @@ import re
 import zipfile
 import os
 
-CSV_DATA_1 = """Janeway ID,Article title,Article abstract,Keywords,Rights,Licence,Language,Peer reviewed (Y/N),Author salutation,Author given name,Author middle name,Author surname,Author suffix,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),DOI,DOI (URL form),Date accepted,Date published,First page,Last page,Page numbers (custom),Competing interests,Article section,Stage,File import identifier,Journal code,Journal title,ISSN,Volume number,Issue number,Issue title,Issue pub date,PDF URI
-,Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",In Copyright,CC BY-NC-SA 4.0,English,Y,Prof,Unreal,J.,Person3,III,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9,43,,The author reports no competing interests.,Article,Editor Copyediting,,TST,Journal One,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00,
+CSV_DATA_1 = """Janeway ID,Article title,Article abstract,Keywords,Rights,Licence,Language,Peer reviewed (Y/N),Author salutation,Author given name,Author middle name,Author surname,Author suffix,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),DOI,DOI (URL form),Date accepted,Date published,First page,Last page,Page numbers (custom),Competing interests,Article section,Stage,File import identifier,Journal code,Journal title override,ISSN,Volume number,Issue number,Issue title,Issue pub date,PDF URI
+,Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",In Copyright,CC BY-NC-SA 4.0,English,Y,Prof,Unreal,J.,Person3,III,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9,43,,The author reports no competing interests.,Article,Editor Copyediting,,TST,,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00,
 ,,,,,,,,,Unreal,J.,Person5,,unrealperson5@example.com,,University of Calgary,Anthropology,Unreal J. Person5 is the author of <i>Being</i>.,N,N,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,Unreal,J.,Person6,,unrealperson6@example.com,,University of Mars,Crater Nine,Does Unreal J. Person6 exist?,N,N,,,,,,,,,,,,,,,,,,
 """
@@ -87,7 +87,7 @@ def read_saved_article_data(article, structure='string'):
         # read_saved_files needs updating
         # 'File import identifier': read_saved_files(article),
         'Journal code': article.journal.code,
-        'Journal title': article.journal.name,
+        'Journal title override': article.publication_title or '',
         'ISSN': article.journal.issn,
         'Volume number': str(article.issue.volume) if article.issue else '',
         'Issue number': str(article.issue.issue) if article.issue else '',
@@ -355,7 +355,7 @@ class TestImportAndUpdate(TestCase):
         # csv_data_3[1]['Stage'] = 
         csv_data_3[1]['File import identifier'] = '1'
         # csv_data_3[1]['Journal code'] = 
-        # csv_data_3[1]['Journal title'] = 
+        # csv_data_3[1]['Journal title override'] = 
         # csv_data_3[1]['ISSN'] = 
         # csv_data_3[1]['Volume number'] = 
         # csv_data_3[1]['Issue number'] = 
@@ -418,7 +418,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_12[1]['Stage'] = ''
         csv_data_12[1]['File import identifier'] = ''
         # csv_data_12[1]['Journal code'] = 'TST'
-        # csv_data_12[1]['Journal title'] = 'Journal One'
+        # csv_data_12[1]['Journal title override'] = 'Journal One'
         csv_data_12[1]['ISSN'] = ''
         csv_data_12[1]['Volume number'] = ''
         csv_data_12[1]['Issue number'] = ''
@@ -495,7 +495,7 @@ class TestImportAndUpdate(TestCase):
         # csv_data_13[1]['Stage'] = 'Editor Copyediting'
         csv_data_13[1]['File import identifier'] = '1' # update article ID in expected data
         # csv_data_13[1]['Journal code'] = 'TST'
-        # csv_data_13[1]['Journal title'] = 'Journal One'
+        # csv_data_13[1]['Journal title override'] = 'Journal One'
         csv_data_13[1]['ISSN'] = ''
         # csv_data_13[1]['Volume number'] = '1'
         # csv_data_13[1]['Issue number'] = '1'
@@ -850,7 +850,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Stage'] = 'Editor Copyediting'
         csv_data_7[1]['File import identifier'] = ''
         # csv_data_7[1]['Journal code'] = 'TST'
-        # csv_data_7[1]['Journal title'] = 'Journal One'
+        # csv_data_7[1]['Journal title override'] = 'Journal One'
         # csv_data_7[1]['ISSN'] = '0000-0000'
         # csv_data_7[1]['Volume number'] = 1
         # csv_data_7[1]['Issue number'] = 1
