@@ -105,7 +105,7 @@ Stage                     the production workflow stage [#]_  yes, optional     
 File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
 Journal code              must match Janeway                  yes, required     yes               yes, required
 Journal title override    Override for this article           yes, optional     yes               yes, optional
-ISSN                      '0000-0000' for new journals        no, ignored       yes               no, ignored
+ISSN override                      '0000-0000' for new journals        no, ignored       yes               no, ignored
 Volume number             '0' if not specified                yes, optional     yes               no, ignored
 Issue number              '0' if not specified                yes, optional     yes               no, ignored
 Issue name                e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
