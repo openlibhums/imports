@@ -60,7 +60,7 @@ UPDATE_CSV_HEADERS = [
     'Stage',
     'File import identifier',
     'Journal code',
-    'Journal title',
+    'Journal title override',
     'ISSN',
     'Volume number',
     'Issue number',
