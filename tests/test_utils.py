@@ -1,22 +1,23 @@
-from django.test import TestCase
-
-from plugins.imports import utils, export, views, plugin_settings
-from core import models as core_models, logic as core_logic
-from submission import models as submission_models
-from journal import models as journal_models
-from utils.testing import helpers
-from utils.shared import clear_cache
-from nose.tools import set_trace
-
 from datetime import datetime
-from django.utils.timezone import make_aware, utc
-from rest_framework import routers
-from django.http import HttpRequest
 import csv
 import io
+import os
 import re
 import zipfile
-import os
+
+
+from django.conf import settings
+from django.http import HttpRequest
+from django.test import TestCase
+from django.utils.timezone import make_aware, utc
+from rest_framework import routers
+
+from core import models as core_models, logic as core_logic
+from journal import models as journal_models
+from plugins.imports import utils, export, views, plugin_settings
+from submission import models as submission_models
+from utils.shared import clear_cache
+from utils.testing import helpers
 
 CSV_DATA_1 = """Janeway ID,Article title,Article abstract,Keywords,Rights,Licence,Language,Peer reviewed (Y/N),Author salutation,Author given name,Author middle name,Author surname,Author suffix,Author email,Author ORCID,Author institution,Author department,Author biography,Author is primary (Y/N),Author is corporate (Y/N),DOI,DOI (URL form),Date accepted,Date published,First page,Last page,Page numbers (custom),Competing interests,Article section,Stage,File import identifier,Journal code,Journal title override,ISSN override,Volume number,Issue number,Issue title,Issue pub date,PDF URI
 ,Variopleistocene Inquilibriums,How it all went down.,"dinosaurs, Socratic teaching",In Copyright,CC BY-NC-SA 4.0,English,Y,Prof,Unreal,J.,Person3,III,unrealperson3@example.com,https://orcid.org/0000-1234-5578-901X,University of Michigan Medical School,Cancer Center,Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.,Y,N,10.1234/tst.1,https://doi.org/10.1234/tst.1,2021-10-24T10:24:00+00:00,2021-10-25T10:25:25+00:00,9,43,,The author reports no competing interests.,Article,Editor Copyediting,,TST,,0000-0000,1,1,Fall 2021,2021-09-15T09:15:15+00:00,
@@ -231,7 +232,10 @@ def make_import_zip(
     return path_to_zip
 
 def clear_import_zips():
-    test_data_path = os.path.join('plugins','imports','tests','test_data')
+    test_data_path = os.path.join(
+        settings.BASE_DIR,
+        'plugins','imports','tests','test_data'
+    )
     for subdir, dirs, files in os.walk(test_data_path):
         for filename in files:
             filepath = subdir + os.sep + filename
@@ -994,6 +998,7 @@ class TestImportAndUpdate(TestCase):
 
     def test_prep_update_file_can_find_zip(self):
         test_data_path = os.path.join(
+            settings.BASE_DIR,
             'plugins',
             'imports',
             'tests',
@@ -1017,6 +1022,7 @@ class TestImportAndUpdate(TestCase):
 
     def test_prep_update_file_can_find_csv(self):
         test_data_path = os.path.join(
+            settings.BASE_DIR,
             'plugins',
             'imports',
             'tests',
@@ -1040,8 +1046,11 @@ class TestImportAndUpdate(TestCase):
     def test_verify_headers(self):
         csv_string = 'Inadequate,Headers\n' \
                      'data, other data'
-        path_to_csv = os.path.join('plugins','imports','tests','test_data',
-                                   'test_verify_headers.csv')
+        path_to_csv = os.path.join(
+            settings.BASE_DIR,
+            'plugins', 'imports', 'tests', 'test_data',
+            'test_verify_headers.csv',
+        )
         with open(path_to_csv, 'w') as fileobj:
             fileobj.write(csv_string)
         errors = []
@@ -1054,8 +1063,11 @@ class TestImportAndUpdate(TestCase):
         csv_string = 'Article title,Stage,Language\n' \
                      'title,Bad stage 1,zzz\n' \
                      'title,Bad stage 2,Dinosaur\n'
-        path_to_csv = os.path.join('plugins','imports','tests','test_data',
-                                   'test_validate_selected_char_fields.csv')
+        path_to_csv = os.path.join(
+            settings.BASE_DIR,
+            'plugins', 'imports', 'tests', 'test_data',
+            'test_validate_selected_char_fields.csv',
+        )
         with open(path_to_csv, 'w') as fileobj:
             fileobj.write(csv_string)
         errors = []

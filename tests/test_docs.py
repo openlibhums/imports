@@ -1,10 +1,14 @@
+import csv
+import os
+
+from django.conf import settings
 from django.test import TestCase
 
 from plugins.imports import plugin_settings
 
-import csv
 
 def get_headers_at_path(path):
+    path = os.path.join(settings.BASE_DIR, path)
     with open(path, 'r') as the_csv:
         return set(the_csv.readlines()[0][:-1].split(','))
 
