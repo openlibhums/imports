@@ -29,7 +29,7 @@ CSV_DATA_1 = """Janeway ID,Article title,Article abstract,Keywords,Rights,Licenc
 # Utils
 
 
-def run_import(csv_string_or_dict, mock_request, path_to_zip=None):
+def run_import(csv_string_or_dict, path_to_zip=None, owner=None):
     """
     Simulates the import
     """
@@ -46,9 +46,9 @@ def run_import(csv_string_or_dict, mock_request, path_to_zip=None):
         zip_folder_path = ''
 
     errors, actions = utils.update_article_metadata(
-        mock_request,
         reader,
         zip_folder_path,
+        owner=owner,
     )
     return errors, actions
 
@@ -251,8 +251,8 @@ class TestImportAndUpdate(TestCase):
             journal=cls.journal_one,
             code='issue'
         )
-        cls.mock_request = HttpRequest()
         cls.test_user = helpers.create_user(username='unrealperson12@example.com')
+        cls.mock_request = HttpRequest()
         cls.mock_request.user = cls.test_user
         cls.mock_request.journal = cls.journal_one
         for plugin_element_name in ['Typesetting Plugin']:
@@ -263,14 +263,14 @@ class TestImportAndUpdate(TestCase):
             )
             cls.journal_one.workflow().elements.add(element)
         csv_data_2 = CSV_DATA_1
-        run_import(csv_data_2, cls.mock_request)
+        run_import(csv_data_2, owner=cls.test_user)
 
     def tearDown(self):
         reset_csv_data = CSV_DATA_1.replace(
             'Y,N,,,,',
             'Y,N,1,,,'
         )
-        errors, actions = run_import(reset_csv_data, self.mock_request)
+        errors, actions = run_import(reset_csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -362,7 +362,7 @@ class TestImportAndUpdate(TestCase):
         # csv_data_3[1]['Issue title'] = 
         # csv_data_3[1]['Issue pub date'] = 
         csv_data = csv_data_3
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -440,7 +440,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_12.pop(3)
 
         csv_data = csv_data_12
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -507,7 +507,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13.pop(3)
 
         csv_data = csv_data_13
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -597,7 +597,7 @@ class TestImportAndUpdate(TestCase):
         clear_cache()
 
         article_1 = submission_models.Article.objects.get(id=1)
-        self.assertEqual(self.mock_request.user.email, article_1.owner.email)
+        self.assertEqual(self.test_user.email, article_1.owner.email)
 
     def test_changes_to_issue(self):
         self.maxDiff = None
@@ -611,7 +611,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_11[1]['Issue pub date'] = '2022-01-15T01:15:15+00:00'
 
         csv_data = csv_data_11
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -658,7 +658,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_4[1]['Author is primary (Y/N)'] = 'N'
 
         csv_data = csv_data_4
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -763,7 +763,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_5[1]['File import identifier'] = '1'
 
         csv_data = csv_data_5
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -796,7 +796,7 @@ class TestImportAndUpdate(TestCase):
             csv_data_6[1]['Stage'] = stage_name
 
             csv_data = csv_data_6
-            errors, actions = run_import(csv_data, self.mock_request)
+            errors, actions = run_import(csv_data, owner=self.test_user)
             if errors:
                 self.fail(
                     "There where import errors, test not completed: %s " % errors
@@ -861,7 +861,7 @@ class TestImportAndUpdate(TestCase):
         # Note: Not all of the above should not be importable,
         # esp. the email and orcid
         csv_data = csv_data_7
-        errors, actions = run_import(csv_data, self.mock_request)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -893,7 +893,7 @@ class TestImportAndUpdate(TestCase):
             csv_data_9[1][k] = some_whitespace+csv_data_9[1][k]+some_whitespace
 
             csv_data = csv_data_9
-            errors, actions = run_import(csv_data, self.mock_request)
+            errors, actions = run_import(csv_data, owner=self.test_user)
             if errors:
                 self.fail(
                     "There where import errors, test not completed: %s " % errors
@@ -926,7 +926,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_14[1]['Author is primary (Y/N)'] = 'N'
         csv_data_14[1]['Author is corporate (Y/N)'] = 'Y'
 
-        errors, actions = run_import(csv_data_14, self.mock_request)
+        errors, actions = run_import(csv_data_14, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -960,7 +960,7 @@ class TestImportAndUpdate(TestCase):
 #            test_data_path,
 #            csv_data_15,
 #        )
-#        run_import(csv_data_15, self.mock_request, path_to_zip=path_to_zip)
+#        run_import(csv_data_15, path_to_zip=path_to_zip, owner=self.test_user)
 #        csv_data_15 = csv_data_15.replace(
 #            'Y,N,',
 #            'Y,N,2'  # article id
@@ -1077,7 +1077,7 @@ class TestImportAndUpdate(TestCase):
         ]
 
         csv_data_17[1]['Language'] = expected_languages[0][0]
-        errors, actions = run_import(csv_data_17, self.mock_request)
+        errors, actions = run_import(csv_data_17, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -1086,7 +1086,7 @@ class TestImportAndUpdate(TestCase):
         saved_languages.append((article.language, article.get_language_display()))
 
         csv_data_17[1]['Language'] = expected_languages[1][1]
-        errors, actions = run_import(csv_data_17, self.mock_request)
+        errors, actions = run_import(csv_data_17, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors

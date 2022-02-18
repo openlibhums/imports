@@ -27,7 +27,7 @@ class TestExport(TestCase):
         cls.mock_request.user = cls.test_user
 
         csv_data_2 = CSV_DATA_1
-        run_import(csv_data_2, cls.mock_request)
+        run_import(csv_data_2, owner=cls.test_user)
 
     def test_export_using_import_format(self):
         self.maxDiff = None

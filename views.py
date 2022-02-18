@@ -140,9 +140,9 @@ def import_action(request, filename):
 
             if not errors:
                 errors, actions = utils.update_article_metadata(
-                    request,
                     reader,
                     folder_path,
+                    owner=request.user
                 )
 
         else:

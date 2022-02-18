@@ -211,7 +211,7 @@ def prep_update(row):
     return journal, article, issue_type, issue
 
 
-def update_article_metadata(request, reader, folder_path):
+def update_article_metadata(reader, folder_path=None, owner=None):
     """
     Takes a dictreader and creates or updates article records.
     """
@@ -265,7 +265,8 @@ def update_article_metadata(request, reader, folder_path):
                     is_import=True,
                 )
                 article = update_article(article, issue, prepared_row, folder_path)
-                article.owner = request.user
+                if owner:
+                    article.owner = owner
                 article.save()
                 proposed_stage = prepared_row.get('primary_row').get('Stage')
                 if proposed_stage in IMPORT_STAGES:
@@ -409,7 +410,8 @@ def update_article(article, issue, prepared_row, folder_path):
             previous_frozen_author.delete()
 
     # Turning off file imports to prep for overhaul
-    # handle_file_import(row, article, folder_path)
+    # if folder_path:
+        # handle_file_import(row, article, folder_path)
 
     if row.get('Stage') == 'typesetting_plugin':
         workflow_element = core_models.WorkflowElement.objects.get(
