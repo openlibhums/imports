@@ -195,7 +195,7 @@ def export_using_import_format(articles):
         row['File import identifier'] = article.pk
         row['Journal code'] = article.journal.code
         row['Journal title override'] = article.publication_title or ''
-        row['ISSN override'] = article.ISSN_Override
+        row['ISSN override'] = article.ISSN_override
         row['Volume number'] = issue.volume if issue and issue.volume else ''
         row['Issue number'] = issue.issue if issue and issue.issue else ''
         row['Issue title'] = issue.issue_title if issue and issue.issue_title else ''

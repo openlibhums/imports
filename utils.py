@@ -618,14 +618,14 @@ def import_article_row(row, journal, issue_type, article=None):
         stage, keywords, date_accepted, date_published, doi, \
         first_page, last_page, total_pages, is_reviewed, license_url, \
         *author_fields = a_row
-        author_fields.insert(5, '') # department
-        author_fields.insert(8, '') # orcid
-        author_fields.insert(9, '') # is_corporate
-        author_fields.insert(10, '') # author_order
+    author_fields.insert(5, '') # department
+    author_fields.insert(8, '') # orcid
+    author_fields.insert(9, '') # is_corporate
+    author_fields.insert(10, '') # author_order
     parsed_date_published = datetime_parser(date_published)
 
     # Only create issue for first row
-    if  article and article.primary_issue:
+    if article and article.primary_issue:
         issue = article.primary_issue
         created = False
     else:
