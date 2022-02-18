@@ -7,24 +7,24 @@
 <div class="large-12 columns">
     <div class="box">
         <div class="title-area">
-            <h2>Article Export</h2>
+            <h2>Article Import, Export, Update</h2>
         </div>
         <div class="content">
             <div class="row expanded">
                 <div class="large-3 columns">
                     <form method="GET">
-                         <select name="element" onchange="this.form.submit()">
+                         <select name="stage" onchange="this.form.submit()">
                             <option value="">- Filter by Stage -</option>
                             {% for element in request.journal.workflow.elements.all %}
-                            <option value="{{ element.stage }}"{% if selected_element == element.stage  %} selected{% endif %}>{{ element.element_name|capfirst }}</option>
+                            <option value="{{ element.stage }}"{% if selected_stage == element.stage  %} selected{% endif %}>{{ element.element_name|capfirst }}</option>
                             {% endfor %}
-                            <option value="Published"{% if selected_element == 'Published'  %} selected{% endif %}>Published</option>
-                            <option value="Rejected"{% if selected_element == 'Rejected'  %} selected{% endif %}>Rejected</option>
+                            <option value="Published"{% if selected_stage == 'Published'  %} selected{% endif %}>Published</option>
+                            <option value="Rejected"{% if selected_stage == 'Rejected'  %} selected{% endif %}>Rejected</option>
                         </select>
                     </form>
                 </div>
                 <div class="large-2 columns">
-                    {% if selected_element %}<a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>{% endif %}
+                    {% if selected_stage %}<a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>{% endif %}
                 </div>
                 <div class="large-2 columns">
                     <form method="POST">
@@ -145,8 +145,8 @@
             <div class="card-divider">
                 <h4>Upload Update</h4>
             </div>
-            <div class="card-section">
-                <button class="close-button" data-close aria-label="Close reveal" type="button">
+						<div class="card-section">
+               <button class="close-button" data-close aria-label="Close reveal" type="button">
                     <span aria-hidden="true">&times;</span>
                 </button>
                 <form method="POST" action="{% url 'imports_load' %}?type=update" enctype="multipart/form-data">
@@ -156,7 +156,7 @@
                         <span class="fa fa-upload">&nbsp;</span>Upload
                     </button>
                 </form>
-            </div>
+           </div>
         </div>
     </div>
 {% endblock body %}

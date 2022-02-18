@@ -56,22 +56,22 @@ def import_load(request):
     :param request: HttpRequest
     :return: HttpResponse or, on post, HttpRedirect
     """
-    type = request.GET.get('type')
+    request_type = request.GET.get('type')
 
     if request.POST and request.FILES:
         file = request.FILES.get('file')
         filename, path = files.save_file_to_temp(file)
-        reverse_url = '{url}?type={type}'.format(
+        reverse_url = '{url}?type={request_type}'.format(
             url=reverse(
                 'imports_action',
                 kwargs={'filename': filename}),
-            type=type,
+            request_type=request_type,
         )
         return redirect(reverse_url)
 
     template = 'import/editorial_load.html'
     context = {
-        'type': type,
+        'type': request_type,
     }
 
     return render(request, template, context)
@@ -85,15 +85,15 @@ def import_action(request, filename):
     :param filename: the name of a temp file
     :return: HttpResponse
     """
-    type = request.GET.get('type')
+    request_type = request.GET.get('type')
     path = files.get_temp_file_path_from_name(filename)
     errors = error_file = None
 
     if not os.path.exists(path):
         raise Http404()
 
-    if type == 'update':
-        path, zip_folder_path, errors = utils.unzip_update_file(path)
+    if request_type == 'update':
+        path, folder_path, errors = utils.prep_update_file(path)
 
         if errors:
             # If we have any errors delete the temp folder and redirect back.
@@ -102,45 +102,54 @@ def import_action(request, filename):
                 messages.ERROR,
                 ', '.join(errors)
             )
-            shutil.rmtree(zip_folder_path)
+            shutil.rmtree(folder_path)
             return redirect(
                 reverse(
                     'import_export_articles_all'
                 )
             )
-
     file = open(path, 'r', encoding="utf-8-sig")
-    if type == 'update':
+    if request_type == 'update':
         reader = csv.DictReader(file)
     else:
         reader = csv.reader(file)
 
     if request.POST:
-        if type == 'editorial':
+        if request_type == 'editorial':
             utils.import_editorial_team(request, reader)
-        if type == 'reviewers':
+        if request_type == 'reviewers':
             utils.import_reviewers(request, reader)
-        elif type == 'contacts':
+        elif request_type == 'contacts':
             utils.import_contacts_team(request, reader)
-        elif type == 'submission':
+        elif request_type == 'submission':
             utils.import_submission_settings(request, reader)
-        elif type == 'article_metadata':
+        elif request_type == 'article_metadata':
             with translation.override(settings.LANGUAGE_CODE):
                 _, errors, error_file = utils.import_article_metadata(
                     request, reader)
-        elif type == 'update':
-            headers_verified = utils.verify_headers(reader)
-            errors, actions = utils.update_article_metadata(
-                request,
-                reader,
-                zip_folder_path,
+        elif request_type == 'update':
+
+            # Verify a few things to help user spot problems
+            errors = utils.verify_headers(path, errors)
+
+            errors = utils.validate_selected_char_fields(
+                path,
+                errors,
+                request.journal
             )
-            print(actions, errors)
+
+            if not errors:
+                errors, actions = utils.update_article_metadata(
+                    reader,
+                    folder_path,
+                    owner=request.user
+                )
+
         else:
             raise Http404
-        files.unlink_temp_file(path)
-        messages.add_message(request, messages.SUCCESS, 'Import complete')
         if not errors:
+            files.unlink_temp_file(path)
+            messages.add_message(request, messages.SUCCESS, 'Import complete')
             return redirect(reverse('imports_index'))
 
     template = 'import/editorial_import.html'
@@ -149,7 +158,7 @@ def import_action(request, filename):
         'reader': reader,
         'errors': errors,
         'error_file': error_file,
-        'type': type,
+        'type': request_type,
     }
 
     return render(request, template, context)
@@ -381,20 +390,23 @@ def export_articles_all(request):
     """
     A view that displays all articles in a journal and allows export.
     """
-    element = request.GET.get('element')
+    stage = request.GET.get('stage')
 
     articles = submission_models.Article.objects.filter(
         journal=request.journal,
+    ).exclude(
+        stage=submission_models.STAGE_UNSUBMITTED,
     ).select_related(
         'correspondence_author',
     )
 
-    if element in ['Published', 'Rejected']:
+    # Handle stage without elements
+    if stage in ['Published', 'Rejected']:
         articles = articles.filter(stage=element)
-    elif element:
+    elif stage:
         workflow_element = core_models.WorkflowElement.objects.get(
             journal=request.journal,
-            stage=element,
+            stage=stage,
         )
         articles = articles.filter(stage__in=workflow_element.stages)
 
@@ -406,7 +418,8 @@ def export_articles_all(request):
         article.export_files = article.exportfile_set.all()
         article.export_file_pks = [ef.file.pk for ef in article.exportfile_set.all()]
 
-        article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
+        if proofing_assignments:
+            article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
 
     if request.POST:
         if 'export_all' in request.POST:
@@ -417,7 +430,7 @@ def export_articles_all(request):
     context = {
         'articles_in_stage': articles,
         'stages': submission_models.STAGE_CHOICES,
-        'selected_element': element,
+        'selected_stage': stage,
     }
 
     return render(request, template, context)

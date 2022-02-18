@@ -1,22 +1,26 @@
 # Imports
 A plugin for importing content into Janeway.
 
-# Installation instructions
- - Clone the project onto the plugins path of your janeway installation ('/path/to/janeway/src/plugins')
+## Installation instructions
+ - Clone the project onto the plugins path of your Janeway installation ('/path/to/janeway/src/plugins')
 
+
+## Import / Export / Update
+This tool lets you import, export, and update article metadata in batches, especially for articles in production.
+
+See https://janeway.readthedocs.io/en/v1.4-rc-5/imports.html
 
 ## Importers with a web interface
  - Editorial team import (from CSV file)
  - Reviewer database import (from CSV file)
- - Article metadata (from CSV file)
+ - Article metadata (from CSV file) (for use with backlist content)
  - Article images (from CSV file)
  - Wordpress news items
 
-This importers can be accesed from the janeway journal manager under the path `/plugins/imports`
+This importers can be accessed from the Janeway journal manager under the path `/plugins/imports`
 
 
-# Requirements
+## Requirements
 In addition to the base Janeway requirements this plugin needs `python-wordpress-xmlrpc` version 2.3.
 
 You can install it using pip: `pip install python-wordpress-xmlrpc==2.3`
-
