@@ -37,14 +37,14 @@ TMP_PREFIX = "janeway-imports"
 
 CSV_HEADER_ROW = "Article identifier, Article title,Section Name, Volume number, Issue number, Subtitle, Abstract, " \
     "publication stage, keywords, date/time accepted, date/time publishded , DOI, First Page, Last Page, Total pages, Is Peer Reviewed (Y/N), License URL," \
-    "Author Salutation, Author first name,Author Middle Name, Author last name, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
+    "Author Salutation, Author first name,Author Middle Name, Author last name, Author suffix, Author Institution, Biography, Author Email, Is Corporate (Y/N), " \
     "PDF URI,XML URI, HTML URI, Figures URI (zip)"
 
 CSV_MAURO = "1,some title,Articles,1,1,some subtitle,the abstract,Published,'keyword1|keyword2|keyword3',2018-01-01T09:00:00," \
-    "2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Mauro,Manuel,Sanchez Lopez,BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
+    "2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Mauro,Manuel,Sanchez Lopez,'The great',BirkbeckCTP,Mauro's bio,msanchez@journal.com,N," \
     "file:///path/to/file/file.pdf, file:///path/to/file/file.xml,file:///path/to/file/file.html,file:///path/to/images.zip"
-CSV_MARTIN = "1,,,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
-CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Andy,James Robert,Byers,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
+CSV_MARTIN = "1,,,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,,BirkbeckCTP,Martin's Bio, meve@journal.com,N,,,,"
+CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Andy,James Robert,Byers,Jr,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
 IMPORT_STAGES = set(
