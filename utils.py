@@ -247,7 +247,7 @@ def update_article_metadata(reader, folder_path=None, owner=None):
             try:
                 article = update_article(article, issue, prepared_row, folder_path)
                 actions.append(
-                    'Article {} updated.'.format(article.title)
+                    'Article {} ({}) updated.'.format(article.title, article.pk)
                 )
             except Exception as e:
                 errors.append(
@@ -276,7 +276,7 @@ def update_article_metadata(reader, folder_path=None, owner=None):
 
                 article.save()
                 actions.append(
-                    'Article {} created.'.format(article.title)
+                    'Article {} ({}) created.'.format(article.title, article.pk)
                 )
 
 
