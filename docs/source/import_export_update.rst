@@ -69,9 +69,9 @@ Much the same, while you can put something in Stage to send the content to the r
 
 The table also shows which fields you have to provide during imports and updates, regardless of whether you are changing those fields. For example, when you're importing new articles, you have to provide article titles. You also have to provide article titles when you are updating articles, even if you're not updating the titles but something else, like the keywords.
 
-========================= =================================== ================= ================= =====================================
+========================= =================================== ================= ================= ======================================
 Field                     Notes                               Import            Export            Update
-========================= =================================== ================= ================= =====================================
+========================= =================================== ================= ================= ======================================
 Janeway ID                controlled and assigned by Janeway  no, will break    yes               yes, required [#]_
 Article title             include subtitle [#]_               yes, required     yes               yes, required
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
@@ -105,13 +105,13 @@ Stage                     the production workflow stage [#]_  yes, optional     
 File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
 Journal code              must match Janeway                  yes, required     yes               yes, required
 Journal title override    Override for this article           yes, optional     yes               yes, optional
-ISSN override                      '0000-0000' for new journals        no, ignored       yes               no, ignored
+ISSN override             '0000-0000' for new journals        no, ignored       yes               no, ignored
 Volume number             '0' if not specified                yes, optional     yes               no, ignored
 Issue number              '0' if not specified                yes, optional     yes               no, ignored
 Issue name                e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
 Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     yes               yes, required
 PDF URI                   A valid URI                         yes, optional     no                yes, optional
-========================= =================================== ================= ================= =====================================
+========================= =================================== ================= ================= ======================================
 
 
 .. [#] The Janeway ID should only be populated when updating a record that already exists in Janeway. These IDs are allocated by the system and can not be set by the user.
