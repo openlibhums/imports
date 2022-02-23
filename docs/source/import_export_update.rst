@@ -84,7 +84,7 @@ Author salutation         useful in templated emails          yes, optional     
 Author given name         a.k.a. first name                   yes, optional     yes               yes, optional, saves empty values
 Author middle name        or middle initial                   yes, optional     yes               yes, optional, saves empty values
 Author surname            a.k.a. last name or family name     yes, optional     yes               yes, optional, saves empty values [#]_
-Author suffix             e.g: 'Jr.' or 'III'                 yes, optional     yes               yes, optional, saves empty values [#]_
+Author suffix             e.g: 'Jr.' or 'III'                 yes, optional     yes               yes, optional, saves empty values
 Author email              recommended [#]_                    yes, optional     yes               complicated! [#]_
 Author ORCID              starting with 'https' or the number yes, optional     yes               yes, optional, saves empty values
 Author institution        _                                   yes, optional     yes               yes, optional, saves empty values
