@@ -8,7 +8,7 @@ A plugin for importing content into Janeway.
 ## Import / Export / Update
 This tool lets you import, export, and update article metadata in batches, especially for articles in production.
 
-See https://janeway.readthedocs.io/en/v1.4-rc-5/imports.html
+See https://janeway-imports.readthedocs.io/en/latest/import_export_update.html
 
 ## Importers with a web interface
  - Editorial team import (from CSV file)
