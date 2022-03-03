@@ -572,6 +572,7 @@ def add_to_projected_issue(article, article_dict):
             },
         )
         article.projected_issue = issue
+        issue.articles.add(article)
     return issue
 
 def import_revision(client, submission_id, article, round_dict):
