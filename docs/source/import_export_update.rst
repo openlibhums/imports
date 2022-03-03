@@ -108,7 +108,7 @@ Journal title override    Override for this article           yes, optional     
 ISSN override             '0000-0000' for new journals        no, ignored       yes               no, ignored
 Volume number             '0' if not specified                yes, optional     yes               no, ignored
 Issue number              '0' if not specified                yes, optional     yes               no, ignored
-Issue name                e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
+Issue title               e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
 Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     yes               yes, required
 PDF URI                   A valid URI                         yes, optional     no                yes, optional
 ========================= =================================== ================= ================= ======================================
