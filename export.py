@@ -124,7 +124,7 @@ def add_author_information(row, author, frozen, article):
     row['Author given name'] = author.first_name
     row['Author middle name'] = author.middle_name
     row['Author surname'] = author.last_name
-    row['Author suffix'] = author.name_suffix
+    row['Author suffix'] = author.name_suffix if frozen and author.author else ''
     row['Author email'] = author.author.email if frozen and author.author else author.email
     if frozen and author.author and author.author.orcid:
         row['Author ORCID'] = "https://orcid.org/" + author.author.orcid
