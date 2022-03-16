@@ -158,13 +158,6 @@ def export_using_import_format(articles):
     for article in articles:
         row = {}
 
-        if article.is_accepted():
-            author_list = article.frozen_authors()
-            frozen = True
-        else:
-            author_list = article.authors.all()
-            frozen = False
-
         if article.issue:
             issue = article.issue
         elif article.projected_issue:
@@ -201,6 +194,12 @@ def export_using_import_format(articles):
         row['Issue title'] = issue.issue_title if issue and issue.issue_title else ''
         row['Issue pub date'] = issue.date.isoformat() if issue else ''
 
+        if article.frozen_authors():
+            author_list = article.frozen_authors()
+            frozen = True
+        else:
+            author_list = article.authors.all()
+            frozen = False
 
         author_dict = {}
         for author in author_list:
