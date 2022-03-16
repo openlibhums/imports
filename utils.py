@@ -27,6 +27,7 @@ from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
 from utils.logic import get_current_request
+from plugins.imports import models
 from plugins.imports.templatetags import row_identifier
 from plugins.imports.plugin_settings import UPDATE_CSV_HEADERS
 
@@ -211,13 +212,20 @@ def prep_update(row):
     return journal, article, issue_type, issue
 
 
-def update_article_metadata(reader, folder_path=None, owner=None):
+def update_article_metadata(reader, folder_path=None, owner=None, import_id=None):
     """
     Takes a dictreader and creates or updates article records.
     """
     errors = []
     actions = []
+    csv_import = None
     prepared_reader_rows = prepare_reader_rows(reader)
+    if import_id:
+        csv_import, created = models.CSVImport.objects.get_or_create(
+            filename=import_id)
+        if created:
+            logger.info("Created new Import: %s", import_id)
+
 
     for prepared_row in prepared_reader_rows:
         journal, article, issue_type, issue = prep_update(prepared_row.get('primary_row'))
@@ -245,6 +253,11 @@ def update_article_metadata(reader, folder_path=None, owner=None):
 
         if article:
             try:
+                if article and csv_import:
+                    models.CSVImportImportedArticle.objects.create(
+                        article=article,
+                        csv_import=csv_import,
+                    )
                 article = update_article(article, issue, prepared_row, folder_path)
                 actions.append(
                     'Article {} ({}) updated.'.format(article.title, article.pk)
@@ -264,6 +277,11 @@ def update_article_metadata(reader, folder_path=None, owner=None):
                     article_agreement='Imported article',
                     is_import=True,
                 )
+                if article and csv_import:
+                    models.CSVImportCreateArticle.objects.create(
+                        article=article,
+                        csv_import=csv_import,
+                    )
                 article = update_article(article, issue, prepared_row, folder_path)
                 if owner:
                     article.owner = owner
@@ -578,6 +596,9 @@ def import_article_metadata(request, reader, id_type=None):
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
+    csv_import, _ = models.CSVImport.objects.update_or_create(
+        filename=uuid_filename,
+    )
     path = files.get_temp_file_path_from_name(uuid_filename)
     error_file = open(path, "w")
     error_writer = csv.writer(error_file)
@@ -609,6 +630,10 @@ def import_article_metadata(request, reader, id_type=None):
             )
 
         articles[line_id] = article
+        models.CSVImportCreateArticle.objects.create(
+            article=article,
+            csv_import=csv_import
+        )
     error_file.close()
     return articles, errors, uuid_filename
 
