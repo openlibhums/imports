@@ -142,7 +142,8 @@ def import_action(request, filename):
                 errors, actions = utils.update_article_metadata(
                     reader,
                     folder_path,
-                    owner=request.user
+                    owner=request.user,
+                    import_id=filename,
                 )
 
         else:
