@@ -399,7 +399,7 @@ def export_articles_all(request):
     ).select_related(
         'correspondence_author',
     )
-
+    from nose.tools import set_trace; set_trace()
     # Handle stage without elements
     if stage in ['Published', 'Rejected']:
         articles = articles.filter(stage=element)
