@@ -56,6 +56,13 @@ IMPORT_STAGES = set(
 )
 
 
+DEFAULT_REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
+    'AppleWebKit/537.36 (KHTML, like Gecko)'
+    'Chrome/39.0.2171.95 Safari/537.36'
+}
+
+
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
     def __init__(self, user, journal=None):
@@ -309,8 +316,14 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
             prepared_row["primary_row"]
             and prepared_row["primary_row"].get("PDF URI")
         ):
-            import_galley_from_uri(
-                article, prepared_row["primary_row"]["PDF URI"])
+            try:
+                import_galley_from_uri(
+                    article, prepared_row["primary_row"]["PDF URI"])
+            except Exception as e:
+                errors.append({
+                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'error': e,
+                })
 
     return errors, actions
 
@@ -818,7 +831,7 @@ def import_galley_from_uri(article, uri, figures_uri=None):
         django_file = ContentFile(blob)
         django_file.name = os.path.basename(path)
     elif parsed.scheme in {"http", "https"}:
-        response = requests.get(uri)
+        response = requests.get(uri, headers=DEFAULT_REQUEST_HEADERS)
         response.raise_for_status()
         filename = get_filename_from_headers(response)
         if not filename:
