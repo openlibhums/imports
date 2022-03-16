@@ -28,11 +28,11 @@ class TestExport(TestCase):
 
         csv_data_2 = CSV_DATA_1
         run_import(csv_data_2, owner=cls.test_user)
+        router = routers.DefaultRouter()
+        router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
 
     def test_export_using_import_format(self):
         self.maxDiff = None
-        router = routers.DefaultRouter()
-        router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
         article_1 = submission_models.Article.objects.get(id=1)
         article_1.export_files = article_1.exportfile_set.all()
         filepath, _csv_name = export.export_using_import_format([article_1])
@@ -48,8 +48,6 @@ class TestExport(TestCase):
         self.assertEqual(expected_csv_data, csv_dict)
 
     def test_sorted_export_headers_match_import_headers(self):
-        router = routers.DefaultRouter()
-        router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
         article_1 = submission_models.Article.objects.get(id=1)
         article_1.export_files = article_1.exportfile_set.all()
         filepath, csv_name = export.export_using_import_format([article_1])
@@ -58,3 +56,25 @@ class TestExport(TestCase):
 
         sorted_expected_headers = ','.join(sorted(CSV_DATA_1.splitlines()[0].split(',')))
         self.assertEqual(sorted_exported_headers, sorted_expected_headers)
+
+    def test_export_unaccepted_article(self):
+        self.maxDiff = None
+        csv_data_3 = dict_from_csv_string(CSV_DATA_1)
+        csv_data_3[1]['Stage'] = 'Unassigned'
+        csv_data_3[1]['Date published'] = ''
+        run_import(csv_data_3, owner=self.test_user)
+        imported_article = submission_models.Article.objects.last()
+        imported_article.export_files = imported_article.exportfile_set.all()
+        filepath, csv_name = export.export_using_import_format([imported_article])
+        with open(filepath,'r') as export_csv:
+            csv_dict = dict_from_csv_string(export_csv.read())
+
+        # account for Janeway-assigned article ID (also placed as File import identifier)
+        expected_csv_data = csv_data_3
+        expected_csv_data[1]['Janeway ID'] = str(imported_article.pk)
+        expected_csv_data[1]['File import identifier'] = str(imported_article.pk)
+
+        # As account data will be pulled for authors, there won't be a name suffix
+        expected_csv_data[1]['Author suffix'] = ''
+
+        self.assertEqual(expected_csv_data, csv_dict)
