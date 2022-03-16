@@ -57,13 +57,15 @@ class TestExport(TestCase):
         sorted_expected_headers = ','.join(sorted(CSV_DATA_1.splitlines()[0].split(',')))
         self.assertEqual(sorted_exported_headers, sorted_expected_headers)
 
-    def test_export_unaccepted_article(self):
+    def test_export_article_with_no_frozen_authors(self):
         self.maxDiff = None
         csv_data_3 = dict_from_csv_string(CSV_DATA_1)
-        csv_data_3[1]['Stage'] = 'Unassigned'
-        csv_data_3[1]['Date published'] = ''
         run_import(csv_data_3, owner=self.test_user)
         imported_article = submission_models.Article.objects.last()
+        for frozen_author in imported_article.frozen_authors():
+            frozen_author.article = None
+            frozen_author.author = None
+            frozen_author.save()
         imported_article.export_files = imported_article.exportfile_set.all()
         filepath, csv_name = export.export_using_import_format([imported_article])
         with open(filepath,'r') as export_csv:
