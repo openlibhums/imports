@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class WordPressImport(models.Model):
@@ -13,11 +14,11 @@ class WordPressImport(models.Model):
         help_text='News items will be '
                   'created with this user '
                   'as the owner.')
-    
+
     def __str__(self):
         return 'Import from {url}'.format(url=self.url)
 
-      
+
 class ExportFile(models.Model):
     article = models.ForeignKey('submission.Article')
     file = models.ForeignKey('core.File')
@@ -32,7 +33,32 @@ class ExportFile(models.Model):
             self.article.title,
         )
 
-      
+
+class CSVImport(models.Model):
+    filename = models.CharField(max_length=999)
+    created_articles = models.ManyToManyField(
+        to="submission.Article", blank=True,
+        through="imports.CSVImportUpdateArticle",
+        related_name="csv_import_creation",
+    )
+    updated_articles = models.ManyToManyField(
+        to="submission.Article", blank=True,
+        through="imports.CSVImportCreateArticle",
+        related_name="csv_import_updates",
+    )
+
+
+class CSVImportCreateArticle(models.Model):
+    csv_import = models.ForeignKey("imports.CSVImport")
+    article = models.ForeignKey("submission.Article")
+    imported = models.DateTimeField(default=timezone.now)
+
+class CSVImportUpdateArticle(CSVImportCreateArticle):
+    pass
+
+
+
+
 class OJS3Section(models.Model):
     """Stores an ojs 3 section ID and maps it to the section in Janeway"""
     ojs_id = models.IntegerField()

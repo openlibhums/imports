@@ -27,6 +27,7 @@ from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
 from utils.logic import get_current_request
+from plugins.imports import models
 from plugins.imports.templatetags import row_identifier
 from plugins.imports.plugin_settings import UPDATE_CSV_HEADERS
 
@@ -53,6 +54,13 @@ IMPORT_STAGES = set(
     submission_models.Article._meta.get_field("stage").choices
     + submission_models.Article._meta.get_field("stage").dynamic_choices
 )
+
+
+DEFAULT_REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)'
+    'AppleWebKit/537.36 (KHTML, like Gecko)'
+    'Chrome/39.0.2171.95 Safari/537.36'
+}
 
 
 class DummyRequest():
@@ -211,13 +219,20 @@ def prep_update(row):
     return journal, article, issue_type, issue
 
 
-def update_article_metadata(reader, folder_path=None, owner=None):
+def update_article_metadata(reader, folder_path=None, owner=None, import_id=None):
     """
     Takes a dictreader and creates or updates article records.
     """
     errors = []
     actions = []
+    csv_import = None
     prepared_reader_rows = prepare_reader_rows(reader)
+    if import_id:
+        csv_import, created = models.CSVImport.objects.get_or_create(
+            filename=import_id)
+        if created:
+            logger.info("Created new Import: %s", import_id)
+
 
     for prepared_row in prepared_reader_rows:
         journal, article, issue_type, issue = prep_update(prepared_row.get('primary_row'))
@@ -245,6 +260,11 @@ def update_article_metadata(reader, folder_path=None, owner=None):
 
         if article:
             try:
+                if article and csv_import:
+                    models.CSVImportImportedArticle.objects.create(
+                        article=article,
+                        csv_import=csv_import,
+                    )
                 article = update_article(article, issue, prepared_row, folder_path)
                 actions.append(
                     'Article {} ({}) updated.'.format(article.title, article.pk)
@@ -264,6 +284,11 @@ def update_article_metadata(reader, folder_path=None, owner=None):
                     article_agreement='Imported article',
                     is_import=True,
                 )
+                if article and csv_import:
+                    models.CSVImportCreateArticle.objects.create(
+                        article=article,
+                        csv_import=csv_import,
+                    )
                 article = update_article(article, issue, prepared_row, folder_path)
                 if owner:
                     article.owner = owner
@@ -291,8 +316,14 @@ def update_article_metadata(reader, folder_path=None, owner=None):
             prepared_row["primary_row"]
             and prepared_row["primary_row"].get("PDF URI")
         ):
-            import_galley_from_uri(
-                article, prepared_row["primary_row"]["PDF URI"])
+            try:
+                import_galley_from_uri(
+                    article, prepared_row["primary_row"]["PDF URI"])
+            except Exception as e:
+                errors.append({
+                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'error': e,
+                })
 
     return errors, actions
 
@@ -578,6 +609,9 @@ def import_article_metadata(request, reader, id_type=None):
     headers = next(reader)  # skip headers
     errors = {}
     uuid_filename = '{0}-{1}.csv'.format(TMP_PREFIX, uuid.uuid4())
+    csv_import, _ = models.CSVImport.objects.update_or_create(
+        filename=uuid_filename,
+    )
     path = files.get_temp_file_path_from_name(uuid_filename)
     error_file = open(path, "w")
     error_writer = csv.writer(error_file)
@@ -609,6 +643,10 @@ def import_article_metadata(request, reader, id_type=None):
             )
 
         articles[line_id] = article
+        models.CSVImportCreateArticle.objects.create(
+            article=article,
+            csv_import=csv_import
+        )
     error_file.close()
     return articles, errors, uuid_filename
 
@@ -793,7 +831,7 @@ def import_galley_from_uri(article, uri, figures_uri=None):
         django_file = ContentFile(blob)
         django_file.name = os.path.basename(path)
     elif parsed.scheme in {"http", "https"}:
-        response = requests.get(uri)
+        response = requests.get(uri, headers=DEFAULT_REQUEST_HEADERS)
         response.raise_for_status()
         filename = get_filename_from_headers(response)
         if not filename:

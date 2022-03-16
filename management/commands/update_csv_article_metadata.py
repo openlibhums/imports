@@ -1,6 +1,7 @@
 
 import csv
 import pprint
+import uuid
 
 from core.models import Account
 from django.core.management.base import BaseCommand
@@ -23,10 +24,15 @@ class Command(BaseCommand):
 
         with open(options["csv_file"], "r") as f:
             reader = csv.DictReader(f, delimiter=",")
-            errors, actions = update_article_metadata(reader, owner=owner)
+            rows, actions = update_article_metadata(
+                reader,
+                owner=owner,
+                import_id=uuid.uuid4()
+            )
 
-            for e in errors:
-                self.sys.stderr(e)
+            for row in rows:
+                if row.get("error"):
+                    self.stderr.write(f"Row failed: {row.error}\n{row.article}")
             for action in actions:
                 print(action)
 
