@@ -1,4 +1,5 @@
 from django.test import TestCase, RequestFactory, override_settings
+from core import urls
 from utils.testing import helpers
 from utils.install import update_issue_types
 from plugins.imports.tests.test_utils import CSV_DATA_1, run_import, dict_from_csv_string
@@ -72,16 +73,5 @@ class TestViews(TestCase):
 #         response = views.export_articles_all(request)
 
         self.client.force_login(self.test_user)
-        response = self.client.get(
-            redirect(
-                reverse(
-                    'import_export_articles_all',
-                    current_app='imports',
-                    urlconf=urls,
-                ),
-                follow=True,
-            ),
-            domain='localhost',
-        )
-        from nose.tools import set_trace; set_trace()
+        response = self.client.get( "/plugins/imports/articles/all/", SERVER_NAME='testserver',)
         self.assertEqual(response.status_code, 200)
