@@ -3,7 +3,7 @@ from core import urls
 from utils.testing import helpers
 from utils.install import update_issue_types
 from plugins.imports.tests.test_utils import CSV_DATA_1, run_import, dict_from_csv_string
-from plugins.imports import views, urls
+from plugins.imports import views
 from submission import models as submission_models
 from journal import models as journal_models
 from django.http import HttpRequest
@@ -33,8 +33,6 @@ class TestViews(TestCase):
         cls.test_user.is_active = True
         cls.test_user.save()
 
-#         cls.factory = RequestFactory()
-
         cls.plugin_request = HttpRequest()
         cls.plugin_request.journal = cls.journal_one
         for plugin_element_name in ['Typesetting Plugin']:
@@ -50,28 +48,26 @@ class TestViews(TestCase):
 
     @override_settings(URLCONFIG='domain')
     def test_export_stages(self):
-
-        csv_data = dict_from_csv_string(CSV_DATA_1)
-        for stage in [
+        stages_to_test = [
             'Unassigned',
             'Editor Copyediting',
+            'Production',
+            'Proofing',
             'typesetting_plugin',
             'pre_publication',
             'Published'
-        ]:
+        ]
+
+        csv_data = dict_from_csv_string(CSV_DATA_1)
+        for stage in stages_to_test:
             csv_data[1]['Stage'] = stage
             run_import(csv_data, owner=self.test_user)
 
-#         request = self.factory.get('/plugins/imports/articles/all/')
-#         self.client.force_login(self.test_user)
-#         request.user = self.test_user
-#         request.journal = self.journal_one
-#         request.press = self.press
-#         request.site_type = self.journal_one
-#         request.model_content_type = ContentType.objects.get_for_model(request.journal)
-#         request.session = requests.Session() # This isn't right somehow
-#         response = views.export_articles_all(request)
-
         self.client.force_login(self.test_user)
-        response = self.client.get( "/plugins/imports/articles/all/", SERVER_NAME='testserver',)
-        self.assertEqual(response.status_code, 200)
+        for stage in stages_to_test:
+            response = self.client.get(
+                '/plugins/imports/articles/all/',
+                SERVER_NAME='testserver',
+                data = {'stage':stage}
+            )
+            self.assertEqual(200, response.status_code)
