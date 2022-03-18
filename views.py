@@ -401,7 +401,10 @@ def export_articles_all(request):
     )
 
     # Handle stage without elements
-    if stage in ['Production', 'Proofing', 'Published', 'Rejected']:
+    if stage in [
+        submission_models.STAGE_PUBLISHED,
+        submission_models.STAGE_REJECTED,
+    ]:
         articles = articles.filter(stage=stage)
     elif stage:
         workflow_element = core_models.WorkflowElement.objects.get(
