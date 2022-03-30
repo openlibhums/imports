@@ -80,3 +80,32 @@ class TestExport(TestCase):
         expected_csv_data[1]['Author suffix'] = ''
 
         self.assertEqual(expected_csv_data, csv_dict)
+
+    def test_export_article_with_frozen_authors_but_no_accounts(self):
+        self.maxDiff = None
+        csv_data_3 = dict_from_csv_string(CSV_DATA_1)
+        run_import(csv_data_3, owner=self.test_user)
+        imported_article = submission_models.Article.objects.last()
+        for frozen_author in imported_article.frozen_authors():
+            frozen_author.author = None
+            frozen_author.save()
+        imported_article.export_files = imported_article.exportfile_set.all()
+        filepath, csv_name = export.export_using_import_format([imported_article])
+        with open(filepath,'r') as export_csv:
+            csv_dict = dict_from_csv_string(export_csv.read())
+
+        # account for Janeway-assigned article ID (also placed as File import identifier)
+        expected_csv_data = csv_data_3
+        expected_csv_data[1]['Janeway ID'] = str(imported_article.pk)
+        expected_csv_data[1]['File import identifier'] = str(imported_article.pk)
+
+        # As account data will not be accessible, there won't be a name suffix
+        expected_csv_data[1]['Author suffix'] = ''
+
+        # As account data will not be accessible, there won't be a salutation
+        expected_csv_data[1]['Author salutation'] = ''
+
+        # As account data will not be accessible, non-primary author will be assumed
+        expected_csv_data[1]['Author is primary (Y/N)'] = 'N'
+
+        self.assertEqual(expected_csv_data, csv_dict)

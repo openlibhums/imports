@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from django.template.loader import render_to_string
 from submission import models as submission_models
 
-from core import files
+from core import files, models as core_models
 
 
 CSV_HEADER_ROW = "Article identifier, Article title, Section Name, Volume number, Issue number, Subtitle, Abstract," \
@@ -120,7 +120,13 @@ def add_author_information(row, author, frozen, article):
     Adds author information to article row dictionary.
     """
 
-    row['Author salutation'] = author.author.salutation if frozen and author.author else author.salutation
+    if frozen:
+        if author.author:
+            row['Author salutation'] = author.author.salutation
+        else:
+            row['Author salutation'] = ''
+    else:
+        row['Author salutation'] = author.salutation
     row['Author given name'] = author.first_name
     row['Author middle name'] = author.middle_name
     row['Author surname'] = author.last_name

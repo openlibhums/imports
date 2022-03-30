@@ -802,6 +802,7 @@ def update_frozen_author(author, author_fields, article):
     frozen_author.institution = institution
     frozen_author.department = department
     frozen_author.frozen_biography = biography
+    frozen_author.frozen_email = email
     frozen_author.frozen_orcid = orcid_from_url(orcid)
     frozen_author.order = author_order
     frozen_author.save()
