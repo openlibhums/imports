@@ -70,10 +70,11 @@ def export_csv(request, article, article_files):
     )
 
     for file in article_files:
-        zip_file.write(
-            file.self_article_path(),
-            file.original_filename,
-        )
+        if os.path.exists(file.self_article_path()):
+            zip_file.write(
+                file.self_article_path(),
+                file.original_filename,
+            )
 
     zip_file.close()
 
