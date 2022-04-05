@@ -11,6 +11,9 @@
         </div>
         <div class="content">
             <div class="row expanded">
+                <p>For help using this tool, please see the <a href='https://janeway-imports.readthedocs.io/en/latest/import_export_update.html'>latest documentation</a>.</p>
+            </div>
+            <div class="row expanded">
                 <div class="large-3 columns">
                     <form method="GET">
                          <select name="stage" onchange="this.form.submit()">
@@ -24,12 +27,20 @@
                     </form>
                 </div>
                 <div class="large-2 columns">
-                    {% if selected_stage %}<a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>{% endif %}
+                    {% if selected_stage %}
+                        <a class="button" href="{% url 'import_export_articles_all' %}">Clear Filter</a>
+                    {% else %}
+                        <p></p>
+                    {% endif %}
                 </div>
                 <div class="large-2 columns">
                     <form method="POST">
                         {% csrf_token %}
-                        <button name="export_all" class="button">Export Articles</button>
+                        {% if selected_stage %}
+                            <button name="export_all" class="button">Export Filtered</button>
+                        {% else %}
+                            <button name="export_all" class="button">Export All</button>
+                        {% endif %}
                     </form>
                 </div>
                 <div class="large-2 columns end">
@@ -48,11 +59,10 @@
                         <th>Editors</th>
                         <th>Section</th>
                         <th>Projected Issue</th>
-                        <th>Files</th>
                         <th>Edit Metadata</th>
                         <th>Archive</th>
+                        <th>Files</th>
                         <th>Export CSV</th>
-                        <th>Export HTML</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,14 +84,15 @@
                         <td>{% for editor in article.editors %}{{ editor.editor.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
                         <td>{{ article.section.name }}</td>
                         <td>{{ article.projected_issue }} <a target="_blank" href="{% url 'review_projected_issue' article.pk %}"><span class="fa fa-edit"></span></a></td>
-                        <td><a href="#" data-open="file-modal-{{ article.pk }}" class="tiny secondary button"><span class="fa fa-file"></span></a></td>
                         <td><a target="_blank" class="tiny secondary button" href="{% url 'edit_metadata' article.pk %}"><span class="fa fa-edit"></span></a></td>
                         <td><a target="_blank" class="tiny secondary button" href="{% url 'manage_archive_article' article.pk %}"><span class="fa fa-sticky-note"></span></a></td>
+                        <td><a href="#" data-open="file-modal-{{ article.pk }}" class="tiny secondary button"><span class="fa fa-file"></span></a></td>
                         <td>
-                            <a class="tiny secondary button" href="{% url 'import_export_article' article.pk 'csv' %}?in_stage=false"><span class="fa fa-download"></span> </a>
-                        </td>
-                        <td>
-                             <a class="tiny secondary button" href="{% url 'import_export_article' article.pk 'html' %}?in_stage=false"><span class="fa fa-download"></span> </a>
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" class="tiny secondary button" type="submit" name="article_id" value="{{article.pk}}">
+                                <button class="tiny secondary button" name="export_all"><span class="fa fa-download"></span></button>
+                            </form>
                         </td>
                     </tr>
                     {% empty %}
