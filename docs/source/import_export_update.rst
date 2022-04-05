@@ -36,7 +36,7 @@ You can export a CSV containing metadata for all the articles currently in a giv
 
 3. If you want to download associated files, use the **Files** column to add files for each article.
 
-4. Select **Export Articles**. A zip file should be downloaded containing the metadata in ``article_data.csv`` and the article files in subfolders numbered by article ID.
+4. Select **Export All** or **Export Filtered**. A zip file should be downloaded containing the metadata in ``article_data.csv`` and the article files in subfolders numbered by article ID.
 
 
 Updating
