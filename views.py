@@ -344,7 +344,7 @@ def wordpress_posts(request, import_id):
 
     return render(request, template, context)
 
-
+# The below function is not used as of v 1.4.1
 @decorators.has_journal
 @decorators.editor_user_required
 def export_article(request, article_id, format='csv'):
@@ -393,13 +393,21 @@ def export_articles_all(request):
     """
     stage = request.GET.get('stage')
 
-    articles = submission_models.Article.objects.filter(
-        journal=request.journal,
-    ).exclude(
-        stage=submission_models.STAGE_UNSUBMITTED,
-    ).select_related(
-        'correspondence_author',
-    )
+    if request.POST:
+        article_id = request.POST.get('article_id')
+    else:
+        article_id = None
+
+    if article_id:
+        articles = submission_models.Article.objects.filter(pk=article_id)
+    else:
+        articles = submission_models.Article.objects.filter(
+            journal=request.journal,
+        ).exclude(
+            stage=submission_models.STAGE_UNSUBMITTED,
+        ).select_related(
+            'correspondence_author',
+        )
 
     # Handle stage without elements
     if stage in [
