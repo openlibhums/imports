@@ -399,7 +399,10 @@ def export_articles_all(request):
         article_id = None
 
     if article_id:
-        articles = submission_models.Article.objects.filter(pk=article_id)
+        articles = submission_models.Article.objects.filter(
+            journal=request.journal,
+            pk=article_id,
+        )
     else:
         articles = submission_models.Article.objects.filter(
             journal=request.journal,

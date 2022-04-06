@@ -90,7 +90,7 @@
                         <td>
                             <form method="POST">
                                 {% csrf_token %}
-                                <input type="hidden" class="tiny secondary button" type="submit" name="article_id" value="{{article.pk}}">
+                                <input type="hidden" class="tiny secondary button" name="article_id" value="{{article.pk}}">
                                 <button class="tiny secondary button" name="export_all"><span class="fa fa-download"></span></button>
                             </form>
                         </td>
