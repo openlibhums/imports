@@ -1164,8 +1164,6 @@ def get_or_create_issue(issue_data, journal):
         issue_type = journal_models.IssueType.objects.get(
             code="issue", journal=journal)
         issue.issue_type = issue_type
-        if issue_data.get("description"):
-            issue.issue_description = issue_data["description"]
         issue.save()
         logger.info("Created new issue {}".format(issue))
 
@@ -1175,7 +1173,11 @@ def get_or_create_issue(issue_data, journal):
         or issue.date.year != int(year)
     ):
         issue.date = issue.date.replace(year=int(year))
-        issue.save()
+
+    if issue_data.get("description") and not issue.issue_description:
+        issue.issue_description = issue["description"]
+
+    issue.save()
 
     return issue
 
