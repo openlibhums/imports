@@ -1310,7 +1310,7 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
     date_modified = attempt_to_make_timezone_aware(
         file_json["date_modified"] or file_json["date_uploaded"])
     core_models.File.objects.filter(id=janeway_file.pk).update(
-        date_modified=date_modified)
+        last_modified=date_modified)
 
     return janeway_file
 
