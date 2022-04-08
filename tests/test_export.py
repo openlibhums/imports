@@ -109,3 +109,21 @@ class TestExport(TestCase):
         expected_csv_data[1]['Author is primary (Y/N)'] = 'N'
 
         self.assertEqual(expected_csv_data, csv_dict)
+
+    def test_export_article_with_no_authors(self):
+        self.maxDiff = None
+        csv_data = dict_from_csv_string(CSV_DATA_1)
+        run_import(csv_data, owner=self.test_user)
+
+        # Wipe authors
+        imported_article = submission_models.Article.objects.last()
+        imported_article.frozenauthor_set.all().delete()
+        imported_article.authors.all().delete()
+
+        # Test
+        imported_article.export_files = imported_article.exportfile_set.all()
+        filepath, csv_name = export.export_using_import_format([imported_article])
+        lines = len([l for l in open(filepath,'r')])
+
+
+        self.assertEqual(2, lines)
