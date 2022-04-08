@@ -233,6 +233,10 @@ def export_using_import_format(articles):
             body_rows.append(row)
             row = {}
 
+        # Handle article with no authors
+        if not author_dict:
+            body_rows.append(row)
+
     csv_name = '{0}.csv'.format(uuid.uuid4())
     filepath = files.get_temp_file_path_from_name(
         csv_name,
