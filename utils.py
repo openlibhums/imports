@@ -385,6 +385,14 @@ def update_article(article, issue, prepared_row, folder_path):
     else:
         article.date_published = None
 
+    if row.get('Article number'):
+        try:
+            article.article_number = int(row.get('Article number'))
+        except ValueError:
+            article.article_number = None
+    else:
+        article.article_number = None
+
     if row.get('First page'):
         try:
             article.first_page = int(row.get('First page'))
