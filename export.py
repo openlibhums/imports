@@ -187,6 +187,7 @@ def export_using_import_format(articles):
         row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
         row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
         row['Date published'] = article.date_published.isoformat() if article.date_published else ''
+        row['Article number'] = article.article_number
         row['First page'] = str(article.first_page) if article.first_page else ''
         row['Last page'] = str(article.last_page) if article.last_page else ''
         row['Page numbers (custom)'] = article.page_numbers if article.page_numbers else ''

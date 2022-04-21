@@ -96,6 +96,7 @@ DOI                       starting with '10'                  yes, optional     
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
 Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
 Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     yes               yes, optional, saves empty values
+Article number            integer (arbitrary / custom)        yes, optional     yes               yes, optional, saves empty values
 First page                integer                             yes, optional     yes               yes, optional, saves empty values
 Last page                 integer                             yes, optional     yes               yes, optional, saves empty values
 Page numbers (custom)     Custom page range such as 'x–ix'    yes, optional     yes               yes, optional, saves empty values
