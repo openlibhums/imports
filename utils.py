@@ -244,7 +244,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                     'error': 'No journal found.',
                 }
             )
-            continue  # Loop should end here, we cannot import without a journal object.
+            continue
 
         if article and article.journal != journal:
             errors.append(
@@ -256,14 +256,17 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                     ),
                 }
             )
-            continue  # Loop breaks here if article.journal and journal aren't the same.
+            continue
 
         if article:
             try:
                 if article and csv_import:
-                    models.CSVImportImportedArticle.objects.create(
+                    models.CSVImportUpdateArticle.objects.create(
                         article=article,
                         csv_import=csv_import,
+                        file_id=prepared_row["primary_row"].get(
+                            "File import identifier"
+                        ),
                     )
                 article = update_article(article, issue, prepared_row, folder_path)
                 actions.append(
@@ -288,6 +291,9 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                     models.CSVImportCreateArticle.objects.create(
                         article=article,
                         csv_import=csv_import,
+                        file_id=prepared_row["primary_row"].get(
+                            "File import identifier"
+                        ),
                     )
                 article = update_article(article, issue, prepared_row, folder_path)
                 if owner:
