@@ -1160,8 +1160,6 @@ def get_or_create_issue(issue_data, journal):
         issue_type = journal_models.IssueType.objects.get(
             code="issue", journal=journal)
         issue.issue_type = issue_type
-        if issue_data.get("description"):
-            issue.issue_description = issue_data["description"]
         issue.save()
         logger.info("Created new issue {}".format(issue))
 
@@ -1172,6 +1170,8 @@ def get_or_create_issue(issue_data, journal):
     ):
         issue.date = issue.date.replace(year=int(year))
         issue.save()
+    if issue_data.get("description"):
+        issue.issue_description = issue_data["description"]
 
     return issue
 
@@ -1304,7 +1304,7 @@ def import_file(client, file_json, article, label, file_name=None, owner=None):
     date_modified = attempt_to_make_timezone_aware(
         file_json["date_modified"] or file_json["date_uploaded"])
     core_models.File.objects.filter(id=janeway_file.pk).update(
-        date_modified=date_modified)
+        last_modified=date_modified)
 
     return janeway_file
 
