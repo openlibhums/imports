@@ -919,9 +919,8 @@ def import_galleys(article, layout_dict, client, owner=None):
                 client, galley.get("file"), article, galley.get("label"),
                 owner=owner,
             )
-
             if galley_file:
-                new_galley, c = core_models.Galley.objects.get_or_create(
+                new_galley, c = core_models.Galley.objects.update_or_create(
                     article=article,
                     type=GALLEY_TYPES.get(galley.get("label"), "other"),
                     defaults={
