@@ -875,6 +875,7 @@ def import_article_section(article_section_dict, issue, section, order):
             section=section,
         )
         ordering.order = order
+        ordering.save()
 
 def link_article_to_collection(collection, ojs_id, order):
     try:

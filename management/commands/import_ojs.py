@@ -66,4 +66,3 @@ class Command(BaseCommand):
         else:
             ojs.import_published_articles(
                 client, journal, not options["ignore_galleys"])
-            ojs.import_issues(client, journal)
