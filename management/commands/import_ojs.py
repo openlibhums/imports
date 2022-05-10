@@ -25,6 +25,8 @@ class Command(BaseCommand):
                             help="Imports only sections")
         parser.add_argument('--collections', action="store_true", default=False,
                             help="Imports only collections")
+        parser.add_argument('--issues', action="store_true", default=False,
+                            help="Imports only isssues")
         parser.add_argument('--ojs_id', default=False,
                             help="Imports only the article matching by ojs id")
         parser.add_argument('--metrics', action="store_true", default=False,
@@ -55,6 +57,8 @@ class Command(BaseCommand):
             ojs.import_sections(client, journal)
         elif options["collections"]:
             ojs.import_collections(client, journal)
+        elif options["issues"]:
+            ojs.import_issues(client, journal)
         elif options["ojs_id"]:
             ojs.import_article(client, journal, options["ojs_id"])
         elif options["metrics"]:
