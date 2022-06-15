@@ -48,6 +48,7 @@ def import_jats_article(
     meta["keywords"] = get_jats_keywords(metadata_soup)
     meta["section_name"] = get_jats_section_name(jats_soup)
     meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
+    meta["license_url"], meta["license_text"] = get_jats_license(jats_soup)
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
@@ -312,6 +313,23 @@ def save_article(journal, metadata, issue=None, owner=None):
             keyword, _ = submission_models.Keyword.objects.get_or_create(word=kwd)
             article.keywords.add(keyword)
 
+        if metadata["license_url"]:
+            url = metadata["license_url"]
+            try:
+                lic = submission_models.Licence.objects.get(
+                    url=url, journal=article.journal,
+                )
+            except submission_models.Licence.DoesNotExist:
+                lic = submission_models.Licence.objects.create(
+                    url=url,
+                    journal=article.journal,
+                    short_name=url[-14:],
+                    name="Imported License",
+                    text=metadata.get("license_text")
+                )
+            article.license = lic
+            article.save()
+
         if not issue:
             issue_type = journal_models.IssueType.objects.get(
                 code="issue",
@@ -346,6 +364,18 @@ def get_jats_identifiers(soup):
 
 
     return ids
+
+
+def get_jats_license(soup):
+    license_url = license_text = None
+    license_soup = soup.find("license")
+    if license_soup:
+        license_url = license_soup.get("xlink:href")
+        license_text = " ".join((
+            license_p.text
+            for license_p in license_soup.find_all("license-p")
+        ))
+    return license_url, license_text
 
 
 def default_email(seed):
