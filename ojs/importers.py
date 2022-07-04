@@ -906,30 +906,34 @@ def import_galleys(article, layout_dict, client, owner=None):
         owner = article.owner
 
     if layout_dict.get('galleys'):
-        for galley in layout_dict.get('galleys'):
+        for galley_dict in layout_dict.get('galleys'):
             logger.info(
                 'Adding Galley with label {label}'.format(
-                    label=galley.get('label')
+                    label=galley_dict.get('label')
                 )
             )
-            if not galley.get("file") or galley["file"] == "None":
-                logger.warning("Can't fetch galley: %s", galley)
+            if not galley_dict.get("file") or galley_dict["file"] == "None":
+                logger.warning("Can't fetch galley: %s", galley_dict)
                 continue
             galley_file = import_file(
-                client, galley.get("file"), article, galley.get("label"),
+                client, galley_dict.get("file"), article, galley_dict.get("label"),
                 owner=owner,
             )
             if galley_file:
-                new_galley, c = core_models.Galley.objects.update_or_create(
+                for galley in article.galley_set.filter(
+                        label=galley_dict.get("label", "File")
+                ):
+                    galley.unlink_files()
+                    galley.delete()
+                galley = core_models.Galley.objects.create(
                     article=article,
                     type=GALLEY_TYPES.get(galley.get("label"), "other"),
                     defaults={
-                        "label": galley.get("label"),
+                        "label": galley.get("label", "File"),
                         "file": galley_file,
                     },
                 )
-                if c:
-                    galleys.append(new_galley)
+                galleys.append(galley)
 
     return galleys
 
@@ -1169,9 +1173,11 @@ def get_or_create_issue(issue_data, journal):
         or issue.date.year != int(year)
     ):
         issue.date = issue.date.replace(year=int(year))
-        issue.save()
+
     if issue_data.get("description"):
         issue.issue_description = issue_data["description"]
+    issue.save()
+
 
     return issue
 
