@@ -187,6 +187,7 @@ def export_using_import_format(articles):
         row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
         row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
         row['Date published'] = article.date_published.isoformat() if article.date_published else ''
+        row['Article number'] = article.article_number
         row['First page'] = str(article.first_page) if article.first_page else ''
         row['Last page'] = str(article.last_page) if article.last_page else ''
         row['Page numbers (custom)'] = article.page_numbers if article.page_numbers else ''
@@ -232,6 +233,10 @@ def export_using_import_format(articles):
             row = add_author_information(row, author, frozen, article)
             body_rows.append(row)
             row = {}
+
+        # Handle article with no authors
+        if not author_dict:
+            body_rows.append(row)
 
     csv_name = '{0}.csv'.format(uuid.uuid4())
     filepath = files.get_temp_file_path_from_name(

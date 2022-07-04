@@ -875,6 +875,7 @@ def import_article_section(article_section_dict, issue, section, order):
             section=section,
         )
         ordering.order = order
+        ordering.save()
 
 def link_article_to_collection(collection, ojs_id, order):
     try:
@@ -918,10 +919,9 @@ def import_galleys(article, layout_dict, client, owner=None):
                 client, galley_dict.get("file"), article, galley_dict.get("label"),
                 owner=owner,
             )
-
             if galley_file:
                 for galley in article.galley_set.filter(
-                        label=galley_dict.get("label", "other")
+                        label=galley_dict.get("label", "File")
                 ):
                     galley.unlink_files()
                     galley.delete()
@@ -929,7 +929,7 @@ def import_galleys(article, layout_dict, client, owner=None):
                     article=article,
                     type=GALLEY_TYPES.get(galley.get("label"), "other"),
                     defaults={
-                        "label": galley.get("label"),
+                        "label": galley.get("label", "File"),
                         "file": galley_file,
                     },
                 )
@@ -1174,10 +1174,10 @@ def get_or_create_issue(issue_data, journal):
     ):
         issue.date = issue.date.replace(year=int(year))
 
-    if issue_data.get("description") and not issue.issue_description:
-        issue.issue_description = issue["description"]
-
+    if issue_data.get("description"):
+        issue.issue_description = issue_data["description"]
     issue.save()
+
 
     return issue
 

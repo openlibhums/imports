@@ -52,6 +52,7 @@ class CSVImportCreateArticle(models.Model):
     csv_import = models.ForeignKey("imports.CSVImport")
     article = models.ForeignKey("submission.Article")
     imported = models.DateTimeField(default=timezone.now)
+    file_id = models.CharField(max_length=999, blank=True, null=True)
 
 class CSVImportUpdateArticle(CSVImportCreateArticle):
     pass

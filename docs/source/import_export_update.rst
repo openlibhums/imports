@@ -96,6 +96,7 @@ DOI                       starting with '10'                  yes, optional     
 DOI (URL form)            starting with 'https'               no, ignored       yes               no, ignored
 Date accepted             YYYY-MM-DD (or any ISO 8601 [#]_)   yes, optional     yes               yes, optional, saves empty values
 Date published            YYYY-MM-DD (or any ISO 8601)        yes, optional     yes               yes, optional, saves empty values
+Article number            integer (arbitrary / custom)        yes, optional     yes               yes, optional, saves empty values
 First page                integer                             yes, optional     yes               yes, optional, saves empty values
 Last page                 integer                             yes, optional     yes               yes, optional, saves empty values
 Page numbers (custom)     Custom page range such as 'x–ix'    yes, optional     yes               yes, optional, saves empty values
@@ -104,13 +105,13 @@ Article section           e.g. 'Article', 'Review'            yes, optional     
 Stage                     the production workflow stage [#]_  yes, optional     yes               no, ignored [#]_
 File import identifier    for advanced users [#]_             yes, optional     yes               yes, optional
 Journal code              must match Janeway                  yes, required     yes               yes, required
-Journal title override    Override for this article           yes, optional     yes               yes, optional
-ISSN override             '0000-0000' for new journals        no, ignored       yes               no, ignored
+Journal title override    Override for this article [#]_      yes, optional     yes               yes, optional
+ISSN override             '0000-0000' for new journals [#]_   yes, optional     yes               yes, optional
 Volume number             '0' if not specified                yes, optional     yes               no, ignored
 Issue number              '0' if not specified                yes, optional     yes               no, ignored
 Issue title               e.g. 'Winter 2022'                  yes, optional     yes               yes, optional, saves empty values
-Issue pub date            YYYY-MM-DD (or any ISO 8601)        yes, required     yes               yes, required
-PDF URI                   A valid URI                         yes, optional     no                yes, optional
+Issue pub date            YYYY-MM-DD (or any ISO 8601) [#]_   yes, optional     yes               yes, optional
+PDF URI                   A valid URI (advanced users)        yes, optional     no                yes, optional
 ========================= =================================== ================= ================= ======================================
 
 
@@ -127,6 +128,9 @@ PDF URI                   A valid URI                         yes, optional     
 .. [#] The workflow stage has to match one of these values exactly: ``Unassigned`` (for peer review), ``Editor Copyediting``, ``typesetting_plugin``, ``pre_publication``, ``Published``. If the field is left blank, the article will be put in the ``Unassigned`` stage
 .. [#] Currently the workflow stage cannot be changed en masse once the articles are imported, since that might break tasks in progress. In the future we want to make it possible to change the stage of multiple articles.
 .. [#] You can import PDF galleys with this process using the PDF URI field. The URI must use one of the following schemes: ``http``, ``https`` or ``file`` (When using `file` it points a local path of the running instance of Janeway, does not support netlocs)
+.. [#] The journal title is generally no longer required for imports as long as the title has already been entered into journal settings. Only use the journal override field if an article has a different journal title than the current journal title on Janeway, as in the case of backlist content originally published under a different title.
+.. [#] The ISSN override field works in the same way as the journal title override, and it should only be used if you want to display a different ISSN for specific articles in special circumstances.
+.. [#] If Issue pub date is left blank, Janeway will insert the current day's date in this field.
 
 .. _`ISO 8601 on Wikipedia`: https://en.wikipedia.org/wiki/ISO_8601
 .. _`ISO 639 on Wikipedia`: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
