@@ -47,17 +47,16 @@ def run_import(csv_string_or_dict, path_to_zip=None, owner=None, **kwargs):
     else:
         zip_folder_path = ''
 
-    errors, actions, articles = utils.update_article_metadata(
+    errors, actions = utils.update_article_metadata(
         reader,
         zip_folder_path,
         owner=owner,
-        return_articles=True,
         mock_import_stages=mock_import_stages,
     )
-    return errors, actions, articles
+    return errors, actions
 
 
-def read_saved_article_data(article, structure='string'):
+def read_saved_article_data(article_pk, structure='string'):
     """
     Gets saved article data from the database for comparison
     with the expected article data
@@ -67,7 +66,7 @@ def read_saved_article_data(article, structure='string'):
     csv_dict[row_i] = dict.fromkeys(plugin_settings.UPDATE_CSV_HEADERS, '')
 
     # Get a fresh instance of the article
-    article = submission_models.Article.objects.get(id=article.pk)
+    article = submission_models.Article.objects.get(id=article_pk)
 
     article_fields = {
         'Janeway ID': str(article.id),
@@ -91,7 +90,7 @@ def read_saved_article_data(article, structure='string'):
         'Competing interests': article.competing_interests if article.competing_interests else '',
         'Article section': article.section.name if article.section else '',
         'Stage': article.stage if article.stage else '',
-        'File import identifier': str(article.pk),
+        'File import identifier': str(article_pk),
         # read_saved_files needs updating
         # 'File import identifier': read_saved_files(article),
         'Journal code': article.journal.code,
@@ -275,16 +274,16 @@ class TestImportAndUpdate(TestCase):
             )
             cls.journal_one.workflow().elements.add(element)
         csv_data_2 = CSV_DATA_1
-        cls.errors, cls.actions, cls.articles = run_import(
+        cls.errors, cls.actions = run_import(
             csv_data_2,
             owner=cls.test_user
         )
-        cls.set_up_article = cls.articles[-1] if cls.articles else None
+        cls.set_up_article_pk = max(cls.actions.keys()) if cls.actions else None
 
     def tearDown(self):
         reset_csv_data = dict_from_csv_string(CSV_DATA_1)
-        reset_csv_data[1]['Janeway ID'] = str(self.set_up_article.pk)
-        errors, actions, articles = run_import(
+        reset_csv_data[1]['Janeway ID'] = str(self.set_up_article_pk)
+        errors, actions = run_import(
             reset_csv_data,
             owner=self.test_user
         )
@@ -319,10 +318,10 @@ class TestImportAndUpdate(TestCase):
         # print('\n\n'+string_from_csv_dict(csv_data_2)+'\n\n')
 
         # add article id to expected data
-        csv_data_2[1]['Janeway ID'] = str(self.set_up_article.pk)
-        csv_data_2[1]['File import identifier'] = str(self.set_up_article.pk)
+        csv_data_2[1]['Janeway ID'] = str(self.set_up_article_pk)
+        csv_data_2[1]['File import identifier'] = str(self.set_up_article_pk)
 
-        saved_article_data = read_saved_article_data(self.set_up_article, structure='dict')
+        saved_article_data = read_saved_article_data(self.set_up_article_pk, structure='dict')
 
         self.assertEqual(csv_data_2, saved_article_data)
 
@@ -353,7 +352,7 @@ class TestImportAndUpdate(TestCase):
                                             'and so they are employed in a hospital.'
         csv_data_3[1]['Author is primary (Y/N)'] = 'Y'
         csv_data_3[1]['Author is corporate (Y/N)'] = 'N'
-        csv_data_3[1]['Janeway ID'] = str(self.set_up_article.pk)
+        csv_data_3[1]['Janeway ID'] = str(self.set_up_article_pk)
         # csv_data_3[1]['DOI'] = 
         # csv_data_3[1]['DOI (URL form)'] = 
         csv_data_3[1]['Date accepted'] = '2021-10-25T10:25:25+00:00'
@@ -366,7 +365,7 @@ class TestImportAndUpdate(TestCase):
                                                'of Rex from Toy Story.'
         # csv_data_3[1]['Article section'] = 
         # csv_data_3[1]['Stage'] = 
-        csv_data_3[1]['File import identifier'] = str(self.set_up_article.pk)
+        csv_data_3[1]['File import identifier'] = str(self.set_up_article_pk)
         # csv_data_3[1]['Journal code'] = 
         # csv_data_3[1]['Journal title override'] = 
         # csv_data_3[1]['ISSN override'] = 
@@ -375,7 +374,7 @@ class TestImportAndUpdate(TestCase):
         # csv_data_3[1]['Issue title'] = 
         # csv_data_3[1]['Issue pub date'] = 
         csv_data = csv_data_3
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -385,7 +384,7 @@ class TestImportAndUpdate(TestCase):
         # print('\n\nCopy and paste to docs/source/_static/sample_update.csv:')
         # print('\n\n'+string_from_csv_dict(csv_data_3)+'\n\n')
 
-        saved_article_data = read_saved_article_data(self.set_up_article, structure='dict')
+        saved_article_data = read_saved_article_data(self.set_up_article_pk, structure='dict')
         self.assertEqual(csv_data_3, saved_article_data)
 
     def test_empty_fields(self):
@@ -443,20 +442,20 @@ class TestImportAndUpdate(TestCase):
         csv_data_12.pop(3)
 
         csv_data = csv_data_12
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        article = articles[-1]
-        saved_article_data = read_saved_article_data(article, structure='dict')
+        article_pk = max(actions.keys())
+        saved_article_data = read_saved_article_data(article_pk, structure='dict')
 
         # add article id and a few other sticky things back to expected data
         csv_data_12[1]['Peer reviewed (Y/N)'] = 'N'
-        csv_data_12[1]['Janeway ID'] = str(article.pk)
+        csv_data_12[1]['Janeway ID'] = str(article_pk)
         csv_data_12[1]['Stage'] = 'Unassigned'
-        csv_data_12[1]['File import identifier'] = str(article.pk)
+        csv_data_12[1]['File import identifier'] = str(article_pk)
         csv_data_12[1]['ISSN override'] = '0000-0000'
         csv_data_12[1]['Volume number'] = '0'
         csv_data_12[1]['Issue number'] = '0'
@@ -497,7 +496,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['Author biography'] = ''
         csv_data_13[1]['Author is primary (Y/N)'] = ''
         csv_data_13[1]['Author is corporate (Y/N)'] = ''
-        csv_data_13[1]['Janeway ID'] = str(self.set_up_article.pk)
+        csv_data_13[1]['Janeway ID'] = str(self.set_up_article_pk)
         csv_data_13[1]['DOI'] = ''
         csv_data_13[1]['DOI (URL form)'] = ''
         csv_data_13[1]['Date accepted'] = ''
@@ -509,7 +508,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['Competing interests'] = ''
         # csv_data_13[1]['Article section'] = 'Article'
         # csv_data_13[1]['Stage'] = 'Editor Copyediting'
-        csv_data_13[1]['File import identifier'] = str(self.set_up_article.pk)
+        csv_data_13[1]['File import identifier'] = str(self.set_up_article_pk)
         # csv_data_13[1]['Journal code'] = 'TST'
         # csv_data_13[1]['Journal title override'] = 'Journal One'
         csv_data_13[1]['ISSN override'] = ''
@@ -523,7 +522,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13.pop(3)
 
         csv_data = csv_data_13
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -537,7 +536,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_13[1]['DOI (URL form)'] = 'https://doi.org/10.1234/tst.1'
         csv_data_13[1]['ISSN override'] = '0000-0000'
 
-        saved_article_data = read_saved_article_data(self.set_up_article, structure='dict')
+        saved_article_data = read_saved_article_data(self.set_up_article_pk, structure='dict')
 
         self.assertEqual(csv_data_13, saved_article_data)
 
@@ -547,7 +546,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_8 = dict_from_csv_string(CSV_DATA_1)
 
         # add article id to test update
-        csv_data_8[1]['Janeway ID'] = '1'
+        csv_data_8[1]['Janeway ID'] = str(self.set_up_article_pk)
 
         reader = csv.DictReader(string_from_csv_dict(csv_data_8).splitlines())
         article_groups = utils.prepare_reader_rows(reader)
@@ -561,7 +560,7 @@ class TestImportAndUpdate(TestCase):
             'primary_row': reader_rows[0],
             'author_rows': [reader_rows[1], reader_rows[2]],
             'primary_row_number': 0,
-            'article_id': '1',
+            'article_id': str(self.set_up_article_pk),
         }]
         self.assertEqual(expected_article_groups, article_groups)
 
@@ -570,7 +569,7 @@ class TestImportAndUpdate(TestCase):
         csv_data_16 = dict_from_csv_string(CSV_DATA_1)
 
         # add article id to test update
-        csv_data_16[1]['Janeway ID'] = self.set_up_article.pk
+        csv_data_16[1]['Janeway ID'] = str(self.set_up_article_pk)
 
         reader = csv.DictReader(string_from_csv_dict(csv_data_16).splitlines())
         prepared_reader_row = utils.prepare_reader_rows(reader)[0]
@@ -600,8 +599,9 @@ class TestImportAndUpdate(TestCase):
         clear_cache()
 
         keywords = ['better dinosaurs', 'worse teaching']
-        utils.update_keywords(keywords, self.set_up_article)
-        saved_keywords = [str(w) for w in self.set_up_article.keywords.all()]
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        utils.update_keywords(keywords, article)
+        saved_keywords = [str(w) for w in article.keywords.all()]
         self.assertEqual(keywords, saved_keywords)
 
     def test_user_becomes_owner(self):
@@ -609,7 +609,8 @@ class TestImportAndUpdate(TestCase):
 
         clear_cache()
 
-        self.assertEqual(self.test_user.email, self.set_up_article.owner.email)
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        self.assertEqual(self.test_user.email, article.owner.email)
 
     def test_changes_to_issue(self):
         """
@@ -627,19 +628,19 @@ class TestImportAndUpdate(TestCase):
         csv_data_11[1]['Issue pub date'] = '2022-01-15T01:15:15+00:00'
 
         csv_data = csv_data_11
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        article = articles[-1]
+        article_pk = max(actions.keys())
 
         # change article id
-        csv_data_11[1]['Janeway ID'] = str(article.pk)
-        csv_data_11[1]['File import identifier'] = str(article.pk)
+        csv_data_11[1]['Janeway ID'] = str(article_pk)
+        csv_data_11[1]['File import identifier'] = str(article_pk)
 
-        saved_article_data = read_saved_article_data(article, structure='dict')
+        saved_article_data = read_saved_article_data(article_pk, structure='dict')
 
         self.assertEqual(csv_data_11, saved_article_data)
 
@@ -671,20 +672,20 @@ class TestImportAndUpdate(TestCase):
         csv_data_4[2] = csv_data_4.pop(3)
 
         # add article id
-        csv_data_4[1]['Janeway ID'] = str(self.set_up_article.pk)
-        csv_data_4[1]['File import identifier'] = str(self.set_up_article.pk)
+        csv_data_4[1]['Janeway ID'] = str(self.set_up_article_pk)
+        csv_data_4[1]['File import identifier'] = str(self.set_up_article_pk)
 
         # add primary N to expected data
         csv_data_4[1]['Author is primary (Y/N)'] = 'N'
 
         csv_data = csv_data_4
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        saved_article_data = read_saved_article_data(self.set_up_article, structure='dict')
+        saved_article_data = read_saved_article_data(self.set_up_article_pk, structure='dict')
 
         self.assertEqual(csv_data_4[1], saved_article_data[1])
 
@@ -713,8 +714,9 @@ class TestImportAndUpdate(TestCase):
         ]
 
         author = core_models.Account.objects.get(email=author_fields[8])
-        utils.update_frozen_author(author, author_fields, self.set_up_article)
-        frozen_author = author.frozen_author(self.set_up_article)
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        utils.update_frozen_author(author, author_fields, article)
+        frozen_author = author.frozen_author(article)
 
         saved_fields = [
             'Prof',
@@ -739,7 +741,8 @@ class TestImportAndUpdate(TestCase):
         """
         self.maxDiff = None
         clear_cache()
-        saved_author_emails = sorted([a.email for a in self.set_up_article.authors.all()])
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        saved_author_emails = sorted([a.email for a in article.authors.all()])
         expected_author_emails = [
             'unrealperson3@example.com',
             'unrealperson5@example.com',
@@ -769,7 +772,8 @@ class TestImportAndUpdate(TestCase):
             'Prof Unreal J. Person3 teaches dinosaurs but they are employed in a hospital.',
         }
 
-        first_author = self.set_up_article.authors.all().first()
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        first_author = article.authors.all().first()
         saved_author_data = read_saved_author_data(first_author)
         self.assertEqual(expected_author_data, saved_author_data)
 
@@ -787,17 +791,17 @@ class TestImportAndUpdate(TestCase):
         csv_data_5[1]['Article section'] = 'Interview'
 
         # add article id
-        csv_data_5[1]['Janeway ID'] = str(self.set_up_article.pk)
-        csv_data_5[1]['File import identifier'] = str(self.set_up_article.pk)
+        csv_data_5[1]['Janeway ID'] = str(self.set_up_article_pk)
+        csv_data_5[1]['File import identifier'] = str(self.set_up_article_pk)
 
         csv_data = csv_data_5
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        saved_article_data = read_saved_article_data(self.set_up_article, structure='dict')
+        saved_article_data = read_saved_article_data(self.set_up_article_pk, structure='dict')
         self.assertEqual(csv_data_5, saved_article_data)
 
     def test_different_stages(self):
@@ -835,19 +839,19 @@ class TestImportAndUpdate(TestCase):
             csv_data_6[1]['Stage'] = stage_name
 
             csv_data = csv_data_6
-            errors, actions, articles = run_import(csv_data, owner=self.test_user, mock_import_stages=mock_import_stages)
+            errors, actions = run_import(csv_data, owner=self.test_user, mock_import_stages=mock_import_stages)
             if errors:
                 self.fail(
                     "There where import errors, test not completed: %s " % errors
                 )
 
-            article = articles[-1]
+            article_pk = max(actions.keys())
 
             # add article id
-            csv_data_6[1]['Janeway ID'] = str(article.pk)
-            csv_data_6[1]['File import identifier'] = str(article.pk)
+            csv_data_6[1]['Janeway ID'] = str(article_pk)
+            csv_data_6[1]['File import identifier'] = str(article_pk)
 
-            saved_article_data = read_saved_article_data(article, structure='dict')
+            saved_article_data = read_saved_article_data(article_pk, structure='dict')
             saved_stages.append(saved_article_data[1]['Stage'])
 
         self.assertEqual(stages, saved_stages)
@@ -905,7 +909,7 @@ class TestImportAndUpdate(TestCase):
         # Note: Not all of the above should not be importable,
         # esp. the email and orcid
         csv_data = csv_data_7
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
@@ -918,13 +922,13 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['First page'] = ''
         csv_data_7[1]['Last page'] = ''
 
-        article = articles[-1]
+        article_pk = max(actions.keys())
 
         # add article id
-        csv_data_7[1]['Janeway ID'] = str(article.pk)
-        csv_data_7[1]['File import identifier'] = str(article.pk)
+        csv_data_7[1]['Janeway ID'] = str(article_pk)
+        csv_data_7[1]['File import identifier'] = str(article_pk)
 
-        saved_article_data = read_saved_article_data(article, structure='dict')
+        saved_article_data = read_saved_article_data(article_pk, structure='dict')
         self.assertEqual(csv_data_7, saved_article_data)
 
     def test_data_with_whitespace(self):
@@ -941,20 +945,20 @@ class TestImportAndUpdate(TestCase):
             csv_data_9[1][k] = some_whitespace+csv_data_9[1][k]+some_whitespace
 
         csv_data = csv_data_9
-        errors, actions, articles = run_import(csv_data, owner=self.test_user)
+        errors, actions = run_import(csv_data, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        article = articles[-1]
+        article_pk = max(actions.keys())
         csv_data_10 = dict_from_csv_string(CSV_DATA_1)
 
         # add article id
-        csv_data_10[1]['Janeway ID'] = str(article.pk)
-        csv_data_10[1]['File import identifier'] = str(article.pk)
+        csv_data_10[1]['Janeway ID'] = str(article_pk)
+        csv_data_10[1]['File import identifier'] = str(article_pk)
 
-        saved_article_data = read_saved_article_data(article, structure='dict')
+        saved_article_data = read_saved_article_data(article_pk, structure='dict')
         self.assertEqual(csv_data_10, saved_article_data)
 
     def test_corporate_author_import(self):
@@ -978,18 +982,18 @@ class TestImportAndUpdate(TestCase):
         csv_data_14[1]['Author is primary (Y/N)'] = 'N'
         csv_data_14[1]['Author is corporate (Y/N)'] = 'Y'
 
-        errors, actions, articles = run_import(csv_data_14, owner=self.test_user)
+        errors, actions = run_import(csv_data_14, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
 
-        article = articles[-1]
+        article_pk = max(actions.keys())
 
-        csv_data_14[1]['Janeway ID'] = str(article.pk)
-        csv_data_14[1]['File import identifier'] = str(article.pk)
+        csv_data_14[1]['Janeway ID'] = str(article_pk)
+        csv_data_14[1]['File import identifier'] = str(article_pk)
 
-        saved_article_data = read_saved_article_data(article, structure='dict')
+        saved_article_data = read_saved_article_data(article_pk, structure='dict')
         self.assertEqual(csv_data_14, saved_article_data)
 
 #    Needs updating after new file import is written
@@ -1013,17 +1017,18 @@ class TestImportAndUpdate(TestCase):
 #            test_data_path,
 #            csv_data_15,
 #        )
-#        errors, actions, articles = run_import(csv_data_15, path_to_zip=path_to_zip, owner=self.test_user)
-#        article = articles[-1]
+#        errors, actions = run_import(csv_data_15, path_to_zip=path_to_zip, owner=self.test_user)
+#        article_pk = max(actions.keys())
 #        csv_data_15 = csv_data_15.replace(
 #            'Y,N,',
-#            f'Y,N,{article.pk}'  # article id
+#            f'Y,N,{article_pk}'  # article id
 #        )
-#        saved_article_data = read_saved_article_data(article)
+#        saved_article_data = read_saved_article_data(article_pk)
 #        self.assertEqual(csv_data_15, saved_article_data)
 
     def test_article_agreement_set(self):
-        self.assertEqual(self.set_up_article.article_agreement, 'Imported article')
+        article = submission_models.Article.objects.get(id=self.set_up_article_pk)
+        self.assertEqual(article.article_agreement, 'Imported article')
 
     def test_get_aware_datetime(self):
         test_timestamps = [
@@ -1137,21 +1142,23 @@ class TestImportAndUpdate(TestCase):
         ]
 
         csv_data_17[1]['Language'] = expected_languages[0][0]
-        errors, actions, articles = run_import(csv_data_17, owner=self.test_user)
+        errors, actions = run_import(csv_data_17, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
-        article = articles[-1]
+        article_pk = max(actions.keys())
+        article = submission_models.Article.objects.get(id=article_pk)
         saved_languages.append((article.language, article.get_language_display()))
 
         csv_data_17[1]['Language'] = expected_languages[1][1]
-        errors, actions, articles = run_import(csv_data_17, owner=self.test_user)
+        errors, actions = run_import(csv_data_17, owner=self.test_user)
         if errors:
             self.fail(
                 "There where import errors, test not completed: %s " % errors
             )
-        article = articles[-1]
+        article_pk = max(actions.keys())
+        article = submission_models.Article.objects.get(id=article_pk)
         saved_languages.append((article.language, article.get_language_display()))
 
         self.assertEqual(expected_languages, saved_languages)

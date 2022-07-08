@@ -224,8 +224,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
     Takes a dictreader and creates or updates article records.
     """
     errors = []
-    actions = []
-    articles = []
+    actions = {}
     return_articles = kwargs.get('return_articles')
     mock_import_stages = kwargs.get('mock_import_stages')
     csv_import = None
@@ -272,10 +271,8 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                         ),
                     )
                 article = update_article(article, issue, prepared_row, folder_path)
-                articles.append(article)
-                actions.append(
-                    'Article {} ({}) updated.'.format(article.title, article.pk)
-                )
+                actions[article.pk] = f'Article {article.title} ({article.pk}) updated.'
+
             except Exception as e:
                 errors.append(
                     {
@@ -315,10 +312,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                     article.stage = submission_models.STAGE_UNASSIGNED
 
                 article.save()
-                articles.append(article)
-                actions.append(
-                    'Article {} ({}) created.'.format(article.title, article.pk)
-                )
+                actions[article.pk] = f'Article {article.title} ({article.pk}) updated.'
 
 
             except Exception as e:
@@ -341,10 +335,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                         'error': e,
                 })
 
-    if articles and return_articles:
-        return errors, actions, articles
-    else:
-        return errors, actions
+    return errors, actions
 
 
 def update_article(article, issue, prepared_row, folder_path):
