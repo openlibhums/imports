@@ -19,7 +19,7 @@ from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import is_aware, make_aware, now
 
-from core import models as core_models, files, logic as core_logic, workflow
+from core import models as core_models, files, logic as core_logic, workflow, plugin_loader
 from identifiers import models as id_models
 from journal import models as journal_models
 from production.logic import handle_zipped_galley_images, save_galley
@@ -48,6 +48,7 @@ CSV_MARTIN = "1,,,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,,BirkbeckCTP,Martin's Bio, m
 CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Andy,James Robert,Byers,Jr,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
+plugin_loader.load()
 IMPORT_STAGES = set(
     stage
     for stage, _ in
@@ -219,12 +220,15 @@ def prep_update(row):
     return journal, article, issue_type, issue
 
 
-def update_article_metadata(reader, folder_path=None, owner=None, import_id=None):
+def update_article_metadata(reader, folder_path=None, owner=None, import_id=None, **kwargs):
     """
     Takes a dictreader and creates or updates article records.
     """
     errors = []
     actions = []
+    articles = []
+    return_articles = kwargs.get('return_articles')
+    mock_import_stages = kwargs.get('mock_import_stages')
     csv_import = None
     prepared_reader_rows = prepare_reader_rows(reader)
     if import_id:
@@ -269,6 +273,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                         ),
                     )
                 article = update_article(article, issue, prepared_row, folder_path)
+                articles.append(article)
                 actions.append(
                     'Article {} ({}) updated.'.format(article.title, article.pk)
                 )
@@ -300,12 +305,18 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                     article.owner = owner
                 article.save()
                 proposed_stage = prepared_row.get('primary_row').get('Stage')
-                if proposed_stage in IMPORT_STAGES:
+                if mock_import_stages:
+                    import_stages = mock_import_stages
+                else:
+                    import_stages = IMPORT_STAGES
+
+                if proposed_stage in import_stages:
                     article.stage = proposed_stage
                 else:
                     article.stage = submission_models.STAGE_UNASSIGNED
 
                 article.save()
+                articles.append(article)
                 actions.append(
                     'Article {} ({}) created.'.format(article.title, article.pk)
                 )
@@ -331,7 +342,10 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                         'error': e,
                 })
 
-    return errors, actions
+    if articles and return_articles:
+        return errors, actions, articles
+    else:
+        return errors, actions
 
 
 def update_article(article, issue, prepared_row, folder_path):
