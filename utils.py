@@ -48,7 +48,6 @@ CSV_MARTIN = "1,,,,,,,,,,,,,,,,Prof,Martin,Paul,Eve,,BirkbeckCTP,Martin's Bio, m
 CSV_ANDY = "1,some title,Articles,1,1,some subtitle,the abstract,Published,key1|key2|key3,2018-01-01T09:00:00,2018-01-02T09:00:00,10.1000/xyz123,1,3,3,Y,https://creativecommons.org/licenses/by/4.0/,Mr,Andy,James Robert,Byers,Jr,BirkbeckCTP,Andy's Bio,abyers@journal.com,N,,,,"
 
 
-plugin_loader.load()
 IMPORT_STAGES = set(
     stage
     for stage, _ in
