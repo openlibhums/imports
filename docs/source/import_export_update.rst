@@ -25,6 +25,22 @@ With this tool, you can create new articles in Janeway and load them directly in
 
 6. A table should load in your browser showing you the data, before you import it. If everything looks good, select **Import**.
 
+.. tip::
+    Are you importing articles that have no authors? Leave all of these fields blank: 
+      - Author salutation
+      - Author given name
+      - Author middle name
+      - Author surname
+      - Author suffix
+      - Author institution
+      - Author department
+      - Author biography
+      - Author email
+      - Author ORCID
+      - Author is corporate (Y/N)
+
+Other text
+
 Exporting
 ---------
 
