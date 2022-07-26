@@ -89,8 +89,8 @@ The table also shows which fields you have to provide during imports and updates
 Field                     Notes                               Import            Export            Update
 ========================= =================================== ================= ================= ======================================
 Janeway ID                controlled and assigned by Janeway  no, will break    yes               yes, required [#]_
-Article title             include subtitle                    yes, required     yes               yes, required
-Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
+Article title             incl. subtitle; use <em> for ital   yes, required     yes               yes, required
+Article abstract          use <em> for italics                yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
 Rights                    Rights statement (free text)        yes, optional     yes               yes, optional, saves empty values
 Licence                   name of licence [#]_                yes, optional     yes               yes, optional, saves empty values
