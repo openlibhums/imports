@@ -89,7 +89,7 @@ The table also shows which fields you have to provide during imports and updates
 Field                     Notes                               Import            Export            Update
 ========================= =================================== ================= ================= ======================================
 Janeway ID                controlled and assigned by Janeway  no, will break    yes               yes, required [#]_
-Article title             include subtitle [#]_               yes, required     yes               yes, required
+Article title             include subtitle                    yes, required     yes               yes, required
 Article abstract          use HTML tags for italics           yes, optional     yes               yes, optional, saves empty values
 Keywords                  separate keywords with commas       yes, optional     yes               yes, optional, saves empty values
 Rights                    Rights statement (free text)        yes, optional     yes               yes, optional, saves empty values
@@ -133,7 +133,6 @@ PDF URI                   A valid URI (advanced users)        yes, optional     
 
 .. [#] The Janeway ID should only be populated when updating a record that already exists in Janeway. These IDs are allocated by the system and can not be set by the user.
 .. [#] Using a character encoding other than UTF-8 can cause bugs during imports or updates. (`What is character encoding?`_). These apps save CSVs with UTF-8 by default: OpenRefine, LibreOffice, Google Sheets, and Apple Numbers. However! If you use Microsoft Excel, keep in mind some versions don't automatically create CSV files with UTF-8 character encoding. This may cause punctuation and special characters to be garbled on import. So, when saving, look for the 'CSV (UTF-8)' option in the drop-down box.
-.. [#] Janeway doesn't yet support italics inside article titles. If your article title contains the title of a work, please use quotation marks.
 .. [#] Support for licence URLs will be added in future.
 .. [#] You can use conventional names like 'English' or 'Catalan' as well as three-letter language codes like 'eng' or 'cat'. Only one language per article. See `ISO 639 on Wikipedia`_.
 .. [#] For author fields, running an update will only update what is called the 'frozen author' record for this article--that is, the author's information at the time of article submission (or first import). This information is separate from information tied to that person's Janeway account.
