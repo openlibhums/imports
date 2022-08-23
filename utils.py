@@ -97,14 +97,21 @@ def import_reviewers(request, reader):
         if not user.is_reviewer(request):
             user.add_account_role('reviewer', request.journal)
 
+def import_editors(request, reader):
+    row_list = [row for row in reader]
+    row_list.remove(row_list[0])
+
+    for row in row_list:
+        user, _ = import_user(request, row, reset_pwd=True)
+        if not user.is_editor(request):
+            user.add_account_role('editor', request.journal)
 
 def import_user(request, row, reset_pwd=False):
     try:
         country = core_models.Country.objects.get(code=row[7])
     except core_models.Country.DoesNotExist:
         country = None
-    user, created = core_models.Account.objects.get_or_create(
-        username=row[4],
+    user, created = core_models.Account.objects.update_or_create(
         email=row[4],
         defaults={
             'salutation': row[0],
