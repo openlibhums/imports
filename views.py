@@ -115,7 +115,6 @@ def import_action(request, filename):
         reader = csv.reader(file)
 
     if request.POST:
-        import pdb;pdb.set_trace()
         if request_type == 'editorial':
             utils.import_editorial_team(request, reader)
         elif request_type == 'reviewers':
