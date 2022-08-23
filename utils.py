@@ -91,9 +91,12 @@ def import_editorial_team(request, reader):
 def import_reviewers(request, reader):
     row_list = [row for row in reader]
     row_list.remove(row_list[0])
+    reset_pwd = False
 
     for row in row_list:
-        user, _ = import_user(request, row, reset_pwd=True)
+        if "reset-passwords" in request.POST:
+            reset_pwd = True
+        user, _ = import_user(request, row, reset_pwd=reset_pwd)
         if not user.is_reviewer(request):
             user.add_account_role('reviewer', request.journal)
 
