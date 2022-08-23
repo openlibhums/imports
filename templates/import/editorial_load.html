@@ -21,11 +21,18 @@
                 {% include "import/contacts_description.html" %}
             {% elif type == 'reviewers' %}
                 {% include "import/reviewers_description.html" %}
+            {% elif type == 'editors' %}
+                {% include "import/editors_description.html" %}
             {% endif %}
 
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="file" name="file">
+                {% if type == 'editors' or type == 'reviewers' %}
+                <br>
+                <input type="checkbox" name="reset-passwords" id="reset-passwords"> <label for="reset-passwords" class="toggle">Reset users' passwords (they will receive a password reset email) </label>
+                <br>
+                {% endif %}
                 <button class="button"><i class="fa fa-upload"></i> Upload</button>
             </form>
 
