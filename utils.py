@@ -257,7 +257,8 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
 
 
     for prepared_row in prepared_reader_rows:
-        journal, article, issue_type, issue = prep_update(prepared_row.get('primary_row'))
+        primary_row = prepared_row.get("primary_row")
+        journal, article, issue_type, issue = prep_update(primary_row)
 
         if not journal:
             errors.append(
@@ -296,7 +297,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
             except Exception as e:
                 errors.append(
                     {
-                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'article': primary_row.get('Article title'),
                         'error': e,
                     }
                 )
@@ -304,7 +305,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
             try:
                 article = submission_models.Article.objects.create(
                     journal=journal,
-                    title=prepared_row.get('primary_row').get('Article title'),
+                    title=primary_row.get('Article title'),
                     article_agreement='Imported article',
                     is_import=True,
                 )
@@ -320,7 +321,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                 if owner:
                     article.owner = owner
                 article.save()
-                proposed_stage = prepared_row.get('primary_row').get('Stage')
+                proposed_stage = primary_row.get('Stage')
                 if mock_import_stages:
                     import_stages = mock_import_stages
                 else:
@@ -338,22 +339,21 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
             except Exception as e:
                 errors.append(
                     {
-                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'article': primary_row.get('Article title'),
                         'error': e,
                     }
                 )
-        if(
-            prepared_row["primary_row"]
-            and prepared_row["primary_row"].get("PDF URI")
-        ):
+        if (primary_row and primary_row.get("PDF URI")):
             try:
-                import_galley_from_uri(
-                    article, prepared_row["primary_row"]["PDF URI"])
+                import_galley_from_uri( article, primary_row["PDF URI"])
             except Exception as e:
                 errors.append({
-                        'article': prepared_row.get('primary_row').get('Article title'),
+                        'article': primary_row.get('Article title'),
                         'error': e,
                 })
+
+        if primary_row:
+            import_custom_submission_fields(primary_row, article, errors)
 
     return errors, actions
 
@@ -687,6 +687,18 @@ def import_article_metadata(request, reader, id_type=None):
         )
     error_file.close()
     return articles, errors, uuid_filename
+
+
+def import_custom_submission_fields(row, article, errors):
+    for field in submission_models.Field.objects.filter(
+        journal=article.journal
+    ):
+        if field.name in row:
+            submission_models.FieldAnswer.objects.update_or_create(
+                field=field,
+                article=article,
+                answer=row[field.name]
+            )
 
 
 @transaction.atomic
