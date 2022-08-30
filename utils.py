@@ -7,6 +7,7 @@ from urllib.parse import urlparse, unquote
 import uuid
 from zipfile import ZipFile
 from string import whitespace
+from datetime import timedelta
 from dateutil import parser as dateparser
 import shutil
 import glob
@@ -23,6 +24,7 @@ from core import models as core_models, files, logic as core_logic, workflow, pl
 from identifiers import models as id_models
 from journal import models as journal_models
 from production.logic import handle_zipped_galley_images, save_galley
+from review import models as review_models
 from submission import models as submission_models
 from utils import setting_handler
 from utils.logger import get_logger
@@ -99,6 +101,53 @@ def import_reviewers(request, reader):
         user, _ = import_user(request, row, reset_pwd=reset_pwd)
         if not user.is_reviewer(request):
             user.add_account_role('reviewer', request.journal)
+
+def import_reviews(request, reader):
+    headers = next(reader)
+
+    for row in reader:
+        id_type, identifier, *review_row = row
+        try:
+            article = id_models.Identifier.objects.get(
+                article__journal=request.journal,
+                id_type=id_type,
+                identifier=identifier,
+            ).article
+        except id_models.Identifier.DoesNotExist:
+            pass
+        else:
+            import_article_review(article, review_row)
+
+def import_article_review(article, review_row):
+    (
+        reviewer_email, editor_email,
+        round, decision, body,
+        filename, date_assigned, date_started,
+        date_completed, visibility,
+    ) = review_row
+    reviewer, _ = core_models.Account.objects.get_or_create(email=reviewer_email)
+    editor, _ = core_models.Account.objects.get_or_create(email=editor_email)
+    review_round, _ = review_models.ReviewRound.objects.get_or_create(
+        round_number=round, article=article,
+        defaults={"date_started": date_started}
+    )
+    review_models.ReviewAssignment.objects.update_or_create(
+        reviewer=reviewer,
+        review_round=review_round,
+        editor=editor,
+        article=article,
+        defaults=dict(
+            date_requested=date_assigned,
+            date_accepted=date_started,
+            date_complete=date_completed,
+            date_due=date_completed or now() + timedelta(days=28),
+            is_complete=bool(date_completed),
+            decision=decision,
+            visibility=visibility,
+        )
+    )
+
+
 
 def import_editors(request, reader):
     row_list = [row for row in reader]
