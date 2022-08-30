@@ -1,6 +1,7 @@
 from datetime import datetime
 import csv
 import io
+from itertools import chain
 import os
 import re
 import zipfile
@@ -187,10 +188,9 @@ def dict_from_csv_string(csv_string):
         return_dict[i] = row
     return return_dict
 
-def string_from_csv_dict(
-        csv_dict,
-        fieldnames = CSV_DATA_1.splitlines()[0].split(',')
-    ):
+def string_from_csv_dict(csv_dict):
+    dict_keys = set(key for d in csv_dict.values() for key in d)
+    fieldnames = set(chain(CSV_DATA_1.splitlines()[0].split(','), dict_keys))
     with io.StringIO() as mock_csv_file:
 
         dialect = csv.excel()
@@ -1162,3 +1162,40 @@ class TestImportAndUpdate(TestCase):
         saved_languages.append((article.language, article.get_language_display()))
 
         self.assertEqual(expected_languages, saved_languages)
+
+    def test_import_custom_submission_field(self):
+        field_answer = "custom data"
+        field_name = "Custom Field"
+        field, c = submission_models.Field.objects.get_or_create(
+            name=field_name,
+            journal=self.journal_one,
+            defaults={"order": 0, "display": True}
+        )
+        csv_data = dict_from_csv_string(CSV_DATA_1)
+        csv_data[1][field_name] = field_answer
+        errors, actions = run_import(csv_data, owner=self.test_user)
+        article_pk = max(actions.keys())
+        article = submission_models.Article.objects.get(id=article_pk)
+        self.assertTrue(
+            article.custom_fields.filter(answer=field_answer).exists(),
+            msg=f"Custom Field not set.\nErrors: {errors}"
+        )
+
+    def test_export_custom_submission_field(self):
+        field_answer = "custom data"
+        field_name = "Custom Field"
+        field, c = submission_models.Field.objects.get_or_create(
+            name=field_name,
+            journal=self.journal_one,
+            defaults={"order": 0, "display": True}
+        )
+        csv_data = dict_from_csv_string(CSV_DATA_1)
+        csv_data[1][field_name] = field_answer
+        errors, actions = run_import(csv_data, owner=self.test_user)
+        article_pk = max(actions.keys())
+        article = submission_models.Article.objects.get(id=article_pk)
+
+        rows = export.generate_rows_for_article(article)
+
+        self.assertEqual(rows[0][field_name], field_answer)
+
