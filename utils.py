@@ -146,6 +146,11 @@ def import_article_review(article, review_row):
             visibility=visibility,
         )
     )
+    review_models.EditorAssignment.objects.get_or_create(
+        editor=editor,
+        article=article,
+        editor_type="editor",
+    )
 
 
 
