@@ -210,7 +210,7 @@ def generate_rows_for_article(article):
         [keyword.word for keyword in article.keywords.all()]
     )
     row['Rights'] = article.rights
-    row['Licence'] = article.license.short_name
+    row['Licence'] = article.license.short_name if article.license else ''
     row['Language'] = article.get_language_display()
     row['Peer reviewed (Y/N)'] = 'Y' if article.peer_reviewed else 'N'
     row['DOI'] = article.get_doi() if article.get_doi() else ''
@@ -244,18 +244,16 @@ def generate_rows_for_article(article):
 
     author_dict = {}
 
-
     for author in author_list:
         if frozen:
             order = author.order
         else:
-            order_obj = submission_models.ArticleAuthorOrder.objects.get(
-                article=article,
-                author=author
-            )
-            if order_obj:
-                order = order_obj.order
-            else:
+            try:
+                order = submission_models.ArticleAuthorOrder.objects.get(
+                    article=article,
+                    author=author
+                ).order
+            except submission_models.ArticleAuthorOrder.DoesNotExist:
                 order = next(filterfalse(
                     set(author_dict.keys()).__contains__,
                     count(1)
