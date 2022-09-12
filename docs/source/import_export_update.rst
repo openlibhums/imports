@@ -157,6 +157,7 @@ PDF URI                   A valid URI (advanced users)        yes, optional     
 Custom Submission Fields
 ------------------------
 If your journal has any additional submission fields available, this plugin will also allow you to export and update such fields.
-As a result, the CSV returned for such journals journals will have additional headers and content. If you are creating new articles via
-this plugin and you want to populate the custom additional field metadata, you will need to add the field name as a header on your spreadsheet.
+
+As a result, the CSV returned for such journals will have additional headers and content. If you are creating new articles via this plugin and you want to populate the custom additional field metadata, you will need to add the field name as a header on your spreadsheet.
+
 The header location is irrelevant, as long as the header matches the name of the field in Janeway exactly.
