@@ -2,7 +2,11 @@ import zipfile
 import os
 import uuid
 import csv
-from itertools import count, filterfalse
+from itertools import (
+    chain,
+    count,
+    filterfalse,
+)
 from uuid import uuid4
 from plugins.imports import plugin_settings
 
@@ -159,96 +163,121 @@ def export_using_import_format(articles):
     Import / Export / Update tool.
     """
 
-    export_headers = plugin_settings.UPDATE_CSV_HEADERS
-
     body_rows = []
+    default_headers = plugin_settings.UPDATE_CSV_HEADERS
+    custom_headers = {}
 
     for article in articles:
-        row = {}
-
-        if article.issue:
-            issue = article.issue
-        elif article.projected_issue:
-            issue = article.projected_issue
-        else:
-            issue = None
-
-        row['Janeway ID'] = article.pk
-        row['Article title'] = article.title
-        row['Article abstract'] = article.abstract
-        row['Keywords'] = ", ".join(
-            [keyword.word for keyword in article.keywords.all()]
-        )
-        row['Rights'] = article.rights
-        row['Licence'] = article.license.short_name
-        row['Language'] = article.get_language_display()
-        row['Peer reviewed (Y/N)'] = 'Y' if article.peer_reviewed else 'N'
-        row['DOI'] = article.get_doi() if article.get_doi() else ''
-        row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
-        row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
-        row['Date published'] = article.date_published.isoformat() if article.date_published else ''
-        row['Article number'] = article.article_number
-        row['First page'] = str(article.first_page) if article.first_page else ''
-        row['Last page'] = str(article.last_page) if article.last_page else ''
-        row['Page numbers (custom)'] = article.page_numbers if article.page_numbers else ''
-        row['Competing interests'] = article.competing_interests if article.competing_interests else ''
-        row['Article section'] = article.section.name
-        row['Stage'] = article.stage
-        row['File import identifier'] = article.pk
-        row['Journal code'] = article.journal.code
-        row['Journal title override'] = article.publication_title or ''
-        row['ISSN override'] = article.ISSN_override
-        row['Volume number'] = issue.volume if issue and issue.volume else ''
-        row['Issue number'] = issue.issue if issue and issue.issue else ''
-        row['Issue title'] = issue.issue_title if issue and issue.issue_title else ''
-        row['Issue pub date'] = issue.date.isoformat() if issue else ''
-
-        if article.frozen_authors():
-            author_list = article.frozen_authors()
-            frozen = True
-        else:
-            author_list = article.authors.all()
-            frozen = False
-
-        author_dict = {}
-        for author in author_list:
-            if frozen:
-                order = author.order
-            else:
-                order_obj = submission_models.ArticleAuthorOrder.objects.get(
-                    article=article,
-                    author=author
-                )
-                if order_obj:
-                    order = order_obj.order
-                else:
-                    order = next(filterfalse(
-                        set(author_dict.keys()).__contains__,
-                        count(1)
-                    ))
-            author_dict[order] = author
-
-        for order in sorted(list(author_dict.keys())):
-            author = author_dict[order]
-            row = add_author_information(row, author, frozen, article)
-            body_rows.append(row)
-            row = {}
-
-        # Handle article with no authors
-        if not author_dict:
-            body_rows.append(row)
+        body_rows.extend(generate_rows_for_article(article))
+        if article.journal.id not in custom_headers:
+            custom_headers[article.journal.id] = set(
+                article.journal.field_set.values_list("name", flat=True)
+            )
 
     csv_name = '{0}.csv'.format(uuid.uuid4())
     filepath = files.get_temp_file_path_from_name(
         csv_name,
     )
+
     with open(filepath, "w", encoding="utf-8") as f:
+        export_headers = set(chain(
+            default_headers,
+            *custom_headers.values()
+        ))
         wr = csv.DictWriter(f, fieldnames=export_headers)
         wr.writeheader()
         for row in body_rows:
             wr.writerow(row)
 
     return filepath, csv_name
+
+
+def generate_rows_for_article(article):
+    body_rows = []
+    row = {}
+
+    if article.issue:
+        issue = article.issue
+    elif article.projected_issue:
+        issue = article.projected_issue
+    else:
+        issue = None
+
+    row['Janeway ID'] = article.pk
+    row['Article title'] = article.title
+    row['Article abstract'] = article.abstract
+    row['Keywords'] = ", ".join(
+        [keyword.word for keyword in article.keywords.all()]
+    )
+    row['Rights'] = article.rights
+    row['Licence'] = article.license.short_name
+    row['Language'] = article.get_language_display()
+    row['Peer reviewed (Y/N)'] = 'Y' if article.peer_reviewed else 'N'
+    row['DOI'] = article.get_doi() if article.get_doi() else ''
+    row['DOI (URL form)'] = "https://doi.org/{}".format(article.get_doi()) if article.get_doi() else ''
+    row['Date accepted'] = article.date_accepted.isoformat() if article.date_accepted else ''
+    row['Date published'] = article.date_published.isoformat() if article.date_published else ''
+    row['Article number'] = article.article_number
+    row['First page'] = str(article.first_page) if article.first_page else ''
+    row['Last page'] = str(article.last_page) if article.last_page else ''
+    row['Page numbers (custom)'] = article.page_numbers if article.page_numbers else ''
+    row['Competing interests'] = article.competing_interests if article.competing_interests else ''
+    row['Article section'] = article.section.name
+    row['Stage'] = article.stage
+    row['File import identifier'] = article.pk
+    row['Journal code'] = article.journal.code
+    row['Journal title override'] = article.publication_title or ''
+    row['ISSN override'] = article.ISSN_override
+    row['Volume number'] = issue.volume if issue and issue.volume else ''
+    row['Issue number'] = issue.issue if issue and issue.issue else ''
+    row['Issue title'] = issue.issue_title if issue and issue.issue_title else ''
+    row['Issue pub date'] = issue.date.isoformat() if issue else ''
+
+    export_custom_submission_fields(row, article)
+
+    if article.frozen_authors():
+        author_list = article.frozen_authors()
+        frozen = True
+    else:
+        author_list = article.authors.all()
+        frozen = False
+
+    author_dict = {}
+
+
+    for author in author_list:
+        if frozen:
+            order = author.order
+        else:
+            order_obj = submission_models.ArticleAuthorOrder.objects.get(
+                article=article,
+                author=author
+            )
+            if order_obj:
+                order = order_obj.order
+            else:
+                order = next(filterfalse(
+                    set(author_dict.keys()).__contains__,
+                    count(1)
+                ))
+        author_dict[order] = author
+
+    for order in sorted(list(author_dict.keys())):
+        author = author_dict[order]
+        row = add_author_information(row, author, frozen, article)
+        body_rows.append(row)
+        row = {}
+
+    # Handle article with no authors
+    if not author_dict:
+        body_rows.append(row)
+
+    return body_rows
+
+
+def export_custom_submission_fields(row, article):
+    for field_answer in article.fieldanswer_set.all():
+        row[field_answer.field.name] = field_answer.answer
 
 
 def zip_export_files(journal, articles, csv_path):

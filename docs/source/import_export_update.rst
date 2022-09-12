@@ -152,3 +152,12 @@ PDF URI                   A valid URI (advanced users)        yes, optional     
 .. _`What is character encoding?`: https://www.w3.org/International/questions/qa-what-is-encoding
 .. _`on Windows`: https://support.microsoft.com/en-us/windows/zip-and-unzip-files-8d28fa72-f2f9-712f-67df-f80cf89fd4e5
 .. _`on a Mac`: https://support.apple.com/en-gb/guide/mac-help/mchlp2528/mac
+
+
+Custom Submission Fields
+------------------------
+If your journal has any additional submission fields available, this plugin will also allow you to export and update such fields.
+
+As a result, the CSV returned for such journals will have additional headers and content. If you are creating new articles via this plugin and you want to populate the custom additional field metadata, you will need to add the field name as a header on your spreadsheet.
+
+The header location is irrelevant, as long as the header matches the name of the field in Janeway exactly.

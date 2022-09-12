@@ -129,6 +129,8 @@ def import_action(request, filename):
             with translation.override(settings.LANGUAGE_CODE):
                 _, errors, error_file = utils.import_article_metadata(
                     request, reader)
+        elif request_type == 'article-reviews':
+            utils.import_reviews(request, reader)
         elif request_type == 'update':
 
             # Verify a few things to help user spot problems
