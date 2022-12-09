@@ -58,6 +58,15 @@ class CSVImport(models.Model):
         related_name="csv_import_updates",
     )
 
+    def timestamp(self):
+        if self.csvimportcreatearticle_set:
+            return self.csvimportcreatearticle_set.first().imported
+        elif self.csvimportupdatearticle_set:
+            return self.csvimportupdatearticle_set.first().imported
+
+    def __str__(self):
+        return f'{self.filename}'
+
 
 class CSVImportCreateArticle(models.Model):
     csv_import = models.ForeignKey(
