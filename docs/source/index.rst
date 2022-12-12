@@ -6,6 +6,8 @@
 Imports
 =======
 
+.. warning:: Users in the European Union should ensure that the data they are importing is done so in line with the General Data Protection Regulation.
+
 The Imports Plugin contains several toolsets for getting content into and out of Janeway. The main one for publishers using Janeway is the **Import / Export / Update** toolset.
 
 .. toctree::
@@ -13,6 +15,9 @@ The Imports Plugin contains several toolsets for getting content into and out of
    :caption: Contents
 
    import_export_update
+   editorial_team_import
+   reviewer_import
+   editor_import
 
 
 

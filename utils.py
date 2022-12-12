@@ -203,7 +203,7 @@ def import_contacts_team(request, reader):
     for row in row_list:
         core_models.Contacts.objects.get_or_create(
             content_type=request.model_content_type,
-            object_id = request.journal.id,
+            object_id=request.journal.id,
             name=row[0],
             email=row[1],
             role=row[2],
