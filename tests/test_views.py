@@ -1,23 +1,16 @@
-from django.test import TestCase, RequestFactory, override_settings
-from core import urls
+from django.test import TestCase, override_settings
+from django.http import HttpRequest
+from django.conf import settings
+
+from rest_framework import routers
+
 from core import models as core_models
 from utils.testing import helpers
-from utils.install import update_issue_types
 from plugins.imports.tests.test_utils import CSV_DATA_1, run_import, dict_from_csv_string
 from plugins.imports import views
-from submission import models as submission_models
 from journal import models as journal_models
-from django.http import HttpRequest
-from core import logic as core_logic, plugin_installed_apps
-from rest_framework import routers
-from django.core.urlresolvers import reverse
-from django.shortcuts import redirect
-from utils import shared as utils_shared
-from django.core.management import call_command
-from django.contrib.contenttypes.models import ContentType
-from django.conf import settings
-import requests
 from submission import models as submission_models
+from core import logic as core_logic, plugin_installed_apps
 
 
 class TestViews(TestCase):

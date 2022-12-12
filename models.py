@@ -11,18 +11,29 @@ class WordPressImport(models.Model):
     password = models.CharField(max_length=255)
     user = models.ForeignKey(
         'core.Account',
+        on_delete=models.CASCADE,
         help_text='News items will be '
                   'created with this user '
-                  'as the owner.')
+                  'as the owner.',
+    )
 
     def __str__(self):
         return 'Import from {url}'.format(url=self.url)
 
 
 class ExportFile(models.Model):
-    article = models.ForeignKey('submission.Article')
-    file = models.ForeignKey('core.File')
-    journal = models.ForeignKey('journal.Journal')
+    article = models.ForeignKey(
+        'submission.Article',
+        on_delete=models.CASCADE,
+    )
+    file = models.ForeignKey(
+        'core.File',
+        on_delete=models.CASCADE,
+    )
+    journal = models.ForeignKey(
+        'journal.Journal',
+        on_delete=models.CASCADE,
+    )
 
     class Meta:
         unique_together = ('article', 'file', 'journal')
@@ -49,15 +60,21 @@ class CSVImport(models.Model):
 
 
 class CSVImportCreateArticle(models.Model):
-    csv_import = models.ForeignKey("imports.CSVImport")
-    article = models.ForeignKey("submission.Article")
+    csv_import = models.ForeignKey(
+        "imports.CSVImport",
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+    article = models.ForeignKey(
+        "submission.Article",
+        on_delete=models.CASCADE,
+    )
     imported = models.DateTimeField(default=timezone.now)
     file_id = models.CharField(max_length=999, blank=True, null=True)
 
+
 class CSVImportUpdateArticle(CSVImportCreateArticle):
     pass
-
-
 
 
 class OJS3Section(models.Model):
@@ -75,11 +92,15 @@ class OJS3Section(models.Model):
             ('ojs_id', 'section'),
         )
 
+
 class OJSAccount(models.Model):
     ojs_id = models.IntegerField()
     journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
     account = models.ForeignKey(
-        'core.Account', blank=True, null=True,
+        'core.Account',
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
     )
 
     class Meta:
