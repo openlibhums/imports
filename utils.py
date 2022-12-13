@@ -203,11 +203,11 @@ def import_contacts_team(request, reader):
     for row in row_list:
         core_models.Contacts.objects.get_or_create(
             content_type=request.model_content_type,
-            object_id=request.journal.id,
+            object_id=request.journal.id if request.journal else request.press.id,
             name=row[0],
             email=row[1],
             role=row[2],
-            sequence=request.journal.next_contact_order()
+            sequence=request.journal.next_contact_order() if request.journal else request.press.next_contact_order(),
         )
 
 

@@ -43,25 +43,19 @@
                 </li>
 
                 <li class="accordion-item" data-accordion-item>
-                    <a href="#" class="accordion-title">Journal Contacts</a>
+                    <a href="#" class="accordion-title">Contact Import</a>
                     <div class="accordion-content" data-tab-content>
-                        <p>This import script allows you to pull in your journal contacts from a CSV file. It should
-                            have the following format:</p>
-                        <p>name, email_address, role</p>
-                        <p>Here is an example line from a dummy csv:<br/>
-                            Andy Byers,ajrb@voyager.com,Chief Engineer</p>
+                        <p>This import script allows you to pull in your contacts for your contact form from a CSV file.</p>
                         <a href="{% url 'imports_load' %}?type=contacts" class="button">Start Import</a>
                     </div>
                 </li>
 
                 <li class="accordion-item" data-accordion-item>
                     <a href="#" class="accordion-title">Copyright, Submission, Publication Fees & Reviewer
-                        Guidelines</a>
+                        Guidelines Import</a>
                     <div class="accordion-content" data-tab-content>
                         <p>This import script allows you to update journal copyright notice, submission checklist,
-                            publication fee and reviewer guidelines in one go:</p>
-                        <p>journal_code, copyright_notice, submission_checklist, publication_fees,
-                            reviewer_guidelines</p>
+                            publication fee and reviewer guidelines in one go.</p>
                         <a href="{% url 'imports_load' %}?type=submission" class="button">Start Import</a>
                     </div>
                 </li>
