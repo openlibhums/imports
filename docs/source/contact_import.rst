@@ -1,4 +1,4 @@
- Contact Import
+Contact Import
 ==============
 
 The contact import tool allows you to create contacts by uploading a CSV (Comma Seperated Value) file.
@@ -10,7 +10,5 @@ The contact import tool allows you to create contacts by uploading a CSV (Comma 
 3. On the Imports Plugin main page select **Contact Import** and click **Start Import**.
 4. Select your CSV and **Upload it**.
 5. Click **Import** to complete the process.
-
-.. warning:: It is important that you let editors know before you user the password reset function as it can result in editors suspecting the message is spam.
 
 .. tip:: Download the :download:`contact import sample <_static/contact_import_sample.csv>` CSV to see example data.
