@@ -18,6 +18,8 @@ The Imports Plugin contains several toolsets for getting content into and out of
    editorial_team_import
    reviewer_import
    editor_import
+   contact_import
+   copyright_submission_publication_reviewer
 
 
 
