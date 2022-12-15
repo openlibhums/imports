@@ -107,22 +107,23 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True):
                     for filename in filenames:
                         mimetype, _ = mimetypes.guess_type(filename)
                         file_path = os.path.join(root, filename)
+                        print(mimetype)
                         if mimetype in files.XML_MIMETYPES:
                             jats_path = file_path
                             jats_filename = filename
                         else:
                             supplements.append(file_path)
 
-                    if jats_path:
-                        logger.info("[JATS] Importing from %s", jats_path)
-                        with open(jats_path, 'r') as jats_file:
-                            articles.append((
-                                jats_filename,
-                                import_jats_article(
-                                    jats_file.read(), journal, persist,
-                                    jats_filename, owner, supplements,
-                                ),
-                            ))
+                        if jats_path:
+                            logger.info("[JATS] Importing from %s", jats_path)
+                            with open(jats_path, 'r') as jats_file:
+                                articles.append((
+                                    jats_filename,
+                                    import_jats_article(
+                                        jats_file.read(), journal, persist,
+                                        jats_filename, owner, supplements,
+                                    ),
+                                ))
                 except Exception as err:
                     errors.append((filenames, err))
 

@@ -1,0 +1,3 @@
+Identifier type, Identifier, Reviewer email, Editor email, Review round number, Review recommendation, Review body, Review filename, Date assigned, Date accepted/started, Date completed, Visibility
+id,1234,ensign.kim@voyager.com,janeway@voyager.com,1,accept,Here is my review,/home/username/files/kim_review.pdf,2022-12-10,2022-12-12,2022-12-14,open
+doi,10.1234/1234.1234,barclay@voyager.com,chakotay@voyager.com,2,reject,Here is another review,/home/username/files/barclay_review.pdf,2022-12-10,2022-12-12,2022-12-14,double-blind

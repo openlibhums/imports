@@ -240,7 +240,7 @@ def article_images(request):
             for error in errors:
                 messages.add_message(request, messages.WARNING, error)
 
-        return redirect(reverse('import_index'))
+        return redirect(reverse('imports_index'))
 
     template = 'import/article_images.html'
     context = {
@@ -470,6 +470,7 @@ class ExportFilesViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+
 # JATS
 @decorators.has_journal
 @decorators.editor_user_required
@@ -503,9 +504,6 @@ def import_from_jats(request):
                 messages.ERROR,
                 "Unsupported file with content %s" % uploaded_file.content_type,
             )
-
-
-    print(articles)
     template = 'import/jats.html'
     context = {
         'imported_articles': articles,
