@@ -153,7 +153,6 @@ def import_article_review(article, review_row):
     )
 
 
-
 def import_editors(request, reader):
     row_list = [row for row in reader]
     row_list.remove(row_list[0])
@@ -1022,7 +1021,11 @@ def load_article_images(request, reader):
             name, extension = os.path.splitext(filename)
             uuid_filename = '{0}{1}'.format(uuid.uuid4(), extension)
 
-            filepath = os.path.join(settings.BASE_DIR, 'files', 'articles', str(article.pk), uuid_filename)
+            directory = os.path.join(settings.BASE_DIR, 'files', 'articles', str(article.pk))
+            filepath = os.path.join(directory, uuid_filename)
+
+            if not os.path.exists(directory):
+                os.makedirs(directory)
 
             with open(filepath, 'wb') as f:
                 for chunk in image:

@@ -1,6 +1,5 @@
- Copyright, Submission, Publication Fees & Reviewer Guidelines Import
-====================================================================Contact Import
-==============
+Copyright, Submission, Publication Fees & Reviewer Guidelines Import
+====================================================================
 
 This tool allows you to update some article submission specific settings by uploading a CSV (Comma Seperated Value) file.
 
@@ -12,4 +11,4 @@ This tool allows you to update some article submission specific settings by uplo
 4. Select your CSV and **Upload it**.
 5. Click **Import** to complete the process.
 
-.. tip:: Download the :download:`contact import sample <_static/cspr_import_sample.csv>` CSV to see example data.
+.. tip:: Download the :download:`import sample <_static/cspr_import_sample.csv>` CSV to see example data.

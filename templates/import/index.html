@@ -95,13 +95,7 @@
                 <li class="accordion-item" data-accordion-item>
                     <a href="#" class="accordion-title">Article Reviews Import</a>
                     <div class="accordion-content" data-tab-content>
-                        <p>This script allows you to upload article peer reviews from a CSV file with the following structure:</p>
-                        <p>Identifier type, Identifier, Reviewer email, Editor email, Review round number, Review recommendation, Review body, Review filename, Date assigned, Date accepted/started, Date completed, Visibility</p>
-                        <p>Here are some example rows:<br/>
-                            id,1231,reviewer@noemail.com,editor@noemail.com,1,major_revisions,review text,1231/peer reviews/rev_1_1231.docx,2022-02-07,2022-02-08,2022-02-17,double-blind<br />
-                            ojs_id,142,other.reviewer@noemail.com,other.editor@noemail.com,1,minor_revisions, here is some other review text,142/peer reviews/rev.docx,2022-02-07,2022-02-09,2022-03-01,single-blind
-                        </p>
-
+                        <p>This tool allows you to upload article peer reviews from a CSV file.</p>
                         <a href="{% url 'imports_load' %}?type=article-reviews" class="button">Start Import</a>
                     </div>
                 </li>
@@ -135,14 +129,11 @@
                 <li class="accordion-item" data-accordion-item>
                     <a href="#" class="accordion-title">Article Images</a>
                     <div class="accordion-content" data-tab-content>
-                        <p>Allows you to supply a URL for an image, Janeway will download and mark it as the articles
-                            large image file.</p>
-                        <p>CSV format: id_type,id,url</p>
-                        <p>id,12,https://unsplash.com/photos/A8iLzX6OddM/download?force=true</p>
+                        <p>The article images import tool allows you to supply an article identifier and a URL for an image. Janeway will download the image and set it as the articles large image file (also known as the hero image).</p>
                         <p>You <b>MUST</b> ensure you have a license to download the image, we recommend Unsplash, where
-                            Images are licensed similar to CC0. The URL <b>MUST</b> be directly to the image, not the
+                            Images are licensed similar to CC0. The URL <strong>MUST</strong> be directly to the image, not the
                             landing page. On Unsplash you can get this
-                            by right clicking on the "Download free" button and selecting "Copy link address".</p>
+                            by right-clicking on the "Download free" button and selecting "Copy link address".</p>
                         <a href="{% url 'imports_article_images' %}" class="button">Start Import</a>
                     </div>
                 </li>
