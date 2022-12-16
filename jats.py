@@ -107,7 +107,6 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True):
                     for filename in filenames:
                         mimetype, _ = mimetypes.guess_type(filename)
                         file_path = os.path.join(root, filename)
-                        print(mimetype)
                         if mimetype in files.XML_MIMETYPES:
                             jats_path = file_path
                             jats_filename = filename
