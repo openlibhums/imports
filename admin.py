@@ -58,7 +58,6 @@ class CSVImportArticleAdmin(admin.ModelAdmin):
     list_filter = (
         'article__journal',
         'imported',
-        'csv_import',
     )
     search_fields = (
         'article__pk',
