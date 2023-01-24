@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from plugins.imports import models
-from plugins.imports import admin_utils
+from utils import admin_utils as utils_admin_utils
+from plugins.imports import admin_utils as imports_admin_utils
+
 
 
 class ExportFileAdmin(admin.ModelAdmin):
@@ -43,15 +45,15 @@ class CSVImportAdmin(admin.ModelAdmin):
     )
 
     inlines = [
-        admin_utils.CSVImportCreateArticleInline,
-        admin_utils.CSVImportUpdateArticleInline,
+        imports_admin_utils.CSVImportCreateArticleInline,
+        imports_admin_utils.CSVImportUpdateArticleInline,
     ]
 
 
-class CSVImportArticleAdmin(admin.ModelAdmin):
+class CSVImportArticleAdmin(utils_admin_utils.ArticleFKModelAdmin):
     list_display = (
-        'article',
-        'journal',
+        '_article',
+        '_journal',
         'imported',
         'csv_import',
     )
@@ -69,9 +71,6 @@ class CSVImportArticleAdmin(admin.ModelAdmin):
         'csv_import',
     )
     date_hierarchy = ('imported')
-
-    def journal(self, obj):
-        return obj.article.journal.code if obj else ''
 
 
 for pair in [
