@@ -59,9 +59,9 @@ class CSVImport(models.Model):
     )
 
     def timestamp(self):
-        if self.csvimportcreatearticle_set:
+        if self.created_articles.count() and self.csvimportcreatearticle_set.first():
             return self.csvimportcreatearticle_set.first().imported
-        elif self.csvimportupdatearticle_set:
+        elif self.updated_articles.count() and self.csvimportupdatearticle_set.first():
             return self.csvimportupdatearticle_set.first().imported
 
     def __str__(self):
