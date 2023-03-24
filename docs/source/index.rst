@@ -23,6 +23,7 @@ The Imports Plugin contains several toolsets for getting content into and out of
    copyright_submission_publication_reviewer
    article_images
    jats_import
+   wordpress
 
 
 
