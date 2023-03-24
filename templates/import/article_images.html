@@ -15,7 +15,9 @@
             <h2>Select CSV for Import</h2>
         </div>
         <div class="content">
-            <p>Upload your image csv here.</p>
+            <p>Select your CSV file, click upload and a preview will be shown. If the preview looks ok, click the import button.</p>
+            <p>Examples and documentation can be found on the <a href="https://janeway-imports.readthedocs.io/en/latest/">Janeway Imports Documentation</a> site.</p>
+
 
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
@@ -30,12 +32,12 @@
                 <table>
                     {% include "import/reader_element.html" with reader=reader %}
                 </table>
-            {% endif %}
 
-            <form method="POST">
-                {% csrf_token %}
-                <button name="import" class="button">Import</button>
-            </form>
+                <form method="POST">
+                    {% csrf_token %}
+                    <button name="import" class="button">Import</button>
+                </form>
+            {% endif %}
 
         </div>
     </div>

@@ -35,7 +35,8 @@
             </ul>
             <p>The figure filenames must match the values entered in the <code>xlink:href</code> attribute in the JATS file</p>
             <p>You can have as many intermediate directories as desired. The only structural requirements is to ensure a single JATS with its figures exists on each final directory</p>
-            <br>
+            <p>Examples and documentation can be found on the <a href="https://janeway-imports.readthedocs.io/en/latest/">Janeway Imports Documentation</a> site.</p>
+            <br />
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="file" name="file">

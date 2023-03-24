@@ -16,14 +16,20 @@
         </div>
         <div class="content">
             {% if type == 'editorial' %}
-                {% include "import/editorial_description.html" %}
+                {% include "import/elements/editorial_description.html" %}
             {% elif type == 'contacts' %}
-                {% include "import/contacts_description.html" %}
+                {% include "import/elements/contacts_description.html" %}
             {% elif type == 'reviewers' %}
-                {% include "import/reviewers_description.html" %}
+                {% include "import/elements/reviewers_description.html" %}
             {% elif type == 'editors' %}
-                {% include "import/editors_description.html" %}
+                {% include "import/elements/editors_description.html" %}
+            {% elif type == 'submission' %}
+                {% include "import/elements/submission_description.html" %}
+            {% elif type == 'article-reviews' %}
+                {% include "import/elements/article_review_description.html" %}
             {% endif %}
+
+            <p>Examples and documentation can be found on the <a href="https://janeway-imports.readthedocs.io/en/latest/">Janeway Imports Documentation</a> site.</p>
 
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
