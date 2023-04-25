@@ -348,6 +348,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                 actions[article.pk] = f'Article {article.title} ({article.pk}) updated.'
 
             except Exception as e:
+                import pdb;pdb.set_trace()
                 errors.append(
                     {
                         'article': primary_row.get('Article title'),
@@ -402,7 +403,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
             except Exception as e:
                 errors.append({
                         'article': primary_row.get('Article title'),
-                        'error': e,
+                        'error': f'Failed to import PDF: {e}',
                 })
 
         if primary_row:
@@ -950,7 +951,7 @@ def import_galley_from_uri(article, uri, figures_uri=None):
 
     if django_file:
         request = get_current_request()
-        if request and request.user.is_authenticated():
+        if request and request.user.is_authenticated:
             owner = request.user
         else:
             owner = core_models.Account.objects.filter(
