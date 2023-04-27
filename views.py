@@ -143,12 +143,13 @@ def import_action(request, filename):
             )
 
             if not errors:
-                errors, actions = utils.update_article_metadata(
-                    reader,
-                    folder_path,
-                    owner=request.user,
-                    import_id=filename,
-                )
+                with translation.override(settings.LANGUAGE_CODE):
+                    errors, actions = utils.update_article_metadata(
+                        reader,
+                        folder_path,
+                        owner=request.user,
+                        import_id=filename,
+                    )
 
         else:
             raise Http404
