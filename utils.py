@@ -880,7 +880,9 @@ def import_author(author_fields, article):
         author.department = department
         author.biography = bio or None
         author.orcid = orcid_from_url(orcid)
-        author.save()
+
+    author.add_account_role('author', article.journal)
+    author.save()
 
     article.authors.add(author)
     article.save()
