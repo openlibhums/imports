@@ -262,10 +262,9 @@ def import_review_data(article_dict, article, client):
 
     # Attempt to get the default review form
     try:
-        form = review_models.ReviewForm.objects.get(
+        form = review_models.ReviewForm.objects.filter(
             journal=article.journal,
-            slug="default-form",
-        )
+        ).first()
     except review_models.ReviewForm.DoesNotExit:
         logger.error(
             'You must have at least one review form for the journal before'

@@ -982,7 +982,6 @@ def generate_review_forms(request):
         default_review_form = review_models.ReviewForm.objects.create(
             journal=journal,
             name='Default Form',
-            slug='default-form',
             intro='Please complete the form below.',
             thanks='Thank you for completing the review.'
         )

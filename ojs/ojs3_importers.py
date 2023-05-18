@@ -440,8 +440,9 @@ def import_article_galleys(article, publication, journal, client):
 def import_reviews(client, article, article_dict):
     create_workflow_log(article, sm_models.STAGE_UNASSIGNED)
     logger.info("Importing peer reviews")
-    default_form = review_models.ReviewForm.objects.get(
-        slug="default-form", journal=article.journal)
+    default_form = review_models.ReviewForm.objects.filter(
+        journal=article.journal,
+    ).first()
     for round_dict in article_dict["reviewRounds"]:
         round, c = review_models.ReviewRound.objects.get_or_create(
             article=article,
