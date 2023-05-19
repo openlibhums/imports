@@ -27,8 +27,6 @@ class Command(BaseCommand):
                             help="Imports only issues")
         parser.add_argument('--collections', action="store_true", default=False,
                             help="Imports only collections")
-        parser.add_argument('--issues', action="store_true", default=False,
-                            help="Imports only isssues")
         parser.add_argument('--ojs_id', default=False,
                             help="Imports only the article matching by ojs id")
         parser.add_argument('--metrics', action="store_true", default=False,
