@@ -927,11 +927,9 @@ def import_galleys(article, layout_dict, client, owner=None):
                     galley.delete()
                 galley = core_models.Galley.objects.create(
                     article=article,
-                    type=GALLEY_TYPES.get(galley.get("label"), "other"),
-                    defaults={
-                        "label": galley.get("label", "File"),
-                        "file": galley_file,
-                    },
+                    type=GALLEY_TYPES.get(galley_dict.get("label"), "other"),
+                    label = galley_dict.get("label", "File"),
+                    file = galley_file,
                 )
                 galleys.append(galley)
 
@@ -1177,7 +1175,6 @@ def get_or_create_issue(issue_data, journal):
     if issue_data.get("description"):
         issue.issue_description = issue_data["description"]
     issue.save()
-
 
     return issue
 
