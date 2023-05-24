@@ -19,6 +19,7 @@ from django.db import transaction
 from django.template.defaultfilters import linebreaksbr
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import is_aware, make_aware, now
+from django_countries import countries
 
 from core import models as core_models, files, logic as core_logic, workflow, plugin_loader
 from identifiers import models as id_models
@@ -162,11 +163,10 @@ def import_editors(request, reader):
         if not user.is_editor(request):
             user.add_account_role('editor', request.journal)
 
+
 def import_user(request, row, reset_pwd=False):
-    try:
-        country = core_models.Country.objects.get(code=row[7])
-    except core_models.Country.DoesNotExist:
-        country = None
+    # Validate country code against ISO-3166-1
+    valid_country_code = countries.alpha2(row[7])
     user, created = core_models.Account.objects.update_or_create(
         email=row[4],
         defaults={
@@ -176,7 +176,7 @@ def import_user(request, row, reset_pwd=False):
             'last_name': row[3],
             'department': row[5],
             'institution': row[6],
-            'country': country,
+            'country': valid_country_code,
         }
     )
     if created and reset_pwd:
