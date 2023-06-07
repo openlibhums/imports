@@ -487,6 +487,7 @@ def import_from_jats(request):
                     filename=uploaded_file.name,
                     owner=request.user,
                     request=request,
+                    stage=stage,
                 )
             except Exception as err:
                 errors.append(
@@ -498,6 +499,7 @@ def import_from_jats(request):
             articles, errors = jats.import_jats_zipped(
                 uploaded_file, request.journal,
                 owner=request.user,
+                stage=stage,
             )
         else:
             messages.add_message(

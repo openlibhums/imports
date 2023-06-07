@@ -19,9 +19,11 @@ from core.models import Account
 from identifiers.models import Identifier
 from journal import models as journal_models
 from production.logic import save_galley, save_galley_image
-from plugins.imports.utils import DummyRequest
 from submission import models as submission_models
 from utils.logger import get_logger
+
+from plugins.imports import common
+from plugins.imports.utils import DummyRequest
 
 logger = get_logger(__name__)
 
@@ -29,7 +31,7 @@ logger = get_logger(__name__)
 def import_jats_article(
         jats_contents, journal,
         persist=True, filename=None, owner=None,
-        images=None, request=None
+        images=None, request=None, stage=None,
 ):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
@@ -69,7 +71,7 @@ def import_jats_article(
         return meta
     else:
         # Persist Article
-        article = save_article(journal, meta, owner=owner)
+        article = save_article(journal, meta, owner=owner, stage=stage)
         # Save Galleys
         if not isinstance(jats_contents, bytes):
             jats_contents = jats_contents.encode("utf-8")
@@ -83,7 +85,7 @@ def import_jats_article(
     return article
 
 
-def import_jats_zipped(zip_file, journal, owner=None, persist=True):
+def import_jats_zipped(zip_file, journal, owner=None, persist=True, stage=None):
     """ Import a batch of Zipped JATS articles and their figures
     :param zip_file: The zipped jats to be imported
     :param journal: Journal in which to import the articles
@@ -121,6 +123,7 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True):
                                     import_jats_article(
                                         jats_file.read(), journal, persist,
                                         jats_filename, owner, supplements,
+                                        stage=stage,
                                     ),
                                 ))
                 except Exception as err:
@@ -247,7 +250,7 @@ def get_jats_authors(soup, author_notes=None):
     return authors
 
 
-def save_article(journal, metadata, issue=None, owner=None):
+def save_article(journal, metadata, issue=None, owner=None, stage=None):
     with transaction.atomic():
         section, _ = submission_models.Section.objects \
             .get_or_create(
@@ -263,12 +266,13 @@ def save_article(journal, metadata, issue=None, owner=None):
             date_published=metadata["date_published"],
             date_accepted=metadata["date_submitted"],
             date_submitted=metadata["date_submitted"],
-            stage=submission_models.STAGE_PUBLISHED,
+            stage=stage or submission_models.STAGE_PUBLISHED,
             is_import=True,
             owner=owner,
         )
         article.section = section
         article.save()
+        common.create_article_workflow_log(article)
 
         if metadata["identifiers"]["doi"]:
             Identifier.objects.get_or_create(
