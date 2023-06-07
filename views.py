@@ -478,7 +478,11 @@ class ExportFilesViewSet(viewsets.ModelViewSet):
 def import_from_jats(request):
     articles = []
     errors = []
-    if request.FILES and request.FILES.get("file"):
+    journal = request.journal
+    stage_choices = [submission_models.STAGE_PUBLISHED]
+    stage_choices += [e.stage for e in journal.workflow().elements.all()]
+    if request.POST and request.FILES and request.FILES.get("file"):
+        stage = request.POST.get("stage")
         uploaded_file = request.FILES["file"]
         if uploaded_file.content_type in files.XML_MIMETYPES:
             try:
@@ -511,6 +515,7 @@ def import_from_jats(request):
     context = {
         'imported_articles': articles,
         'errors': errors,
+        'stage_choices': stage_choices,
     }
 
     return render(request, template, context)

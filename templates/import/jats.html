@@ -39,6 +39,13 @@
             <br />
             <form method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                <label> Select the stage to place the article(s) on
+                    <select name="stage">
+                        {% for stage in stage_choices %}
+                        <option value="{{ stage }}">{{ stage }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
                 <input type="file" name="file">
                 <button class="button" name="upload"><i class="fa fa-upload"></i> Upload and import</button>
             </form>
