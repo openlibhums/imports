@@ -16,6 +16,7 @@ See https://janeway-imports.readthedocs.io/en/latest/import_export_update.html
  - Article metadata (from CSV file) (for use with backlist content)
  - Article images (from CSV file)
  - Wordpress news items
+ - JATS importer for articles and issues
 
 This importers can be accessed from the Janeway journal manager under the path `/plugins/imports`
 
