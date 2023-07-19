@@ -713,11 +713,11 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
 
         if file_json["updatedAt"]:
             core_models.File.objects.filter(id=janeway_file.pk).update(
-                date_modified=attempt_to_make_timezone_aware(file_json["updatedAt"])
+                last_modified=attempt_to_make_timezone_aware(file_json["updatedAt"])
             )
         elif file_json["createdAt"]:
             core_models.File.objects.filter(id=janeway_file.pk).update(
-                date_modified=attempt_to_make_timezone_aware(file_json["createdAt"])
+                last_modified=attempt_to_make_timezone_aware(file_json["createdAt"])
             )
 
         return janeway_file
