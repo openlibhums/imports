@@ -690,10 +690,13 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
         file_name = delocalise(file_json["name"])
     if not owner:
         if file_json["uploaderUserId"]:
-            owner = models.OJSAccount.objects.get(
-                ojs_id=file_json["uploaderUserId"],
-                journal=article.journal
-            ).account
+            try:
+                owner = models.OJSAccount.objects.get(
+                    ojs_id=file_json["uploaderUserId"],
+                    journal=article.journal
+                ).account
+            except ObjectDoesNotExist:
+                owner = article.owner
         else:
             owner = article.owner
 
