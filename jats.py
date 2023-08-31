@@ -15,11 +15,13 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 
 from core import files
+from core import models as core_models
 from core.models import Account
 from identifiers.models import Identifier
 from journal import models as journal_models
 from production.logic import save_galley, save_galley_image
 from submission import models as submission_models
+from utils import install
 from utils.logger import get_logger
 
 from plugins.imports import common
@@ -102,8 +104,7 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True, stage=None):
 
             for root, path, filenames in os.walk(temp_dir):
                 try:
-                    jats_path = None
-                    jats_filename = None
+                    jats_path = jats_filename = pdf_path = pdf_filename = None
                     supplements = []
 
                     for filename in filenames:
@@ -350,6 +351,36 @@ def save_article(journal, metadata, issue=None, owner=None, stage=None):
         article.save()
 
         return article
+
+
+def import_pdf(article, pdf_path, pdf_filename):
+    owner = article.owner or Account.objects.get(pk=1)
+    with open(pdf_path, "rb") as f:
+        content_file = ContentFile(f.read())
+        content_file.name = pdf_filename
+        article_file = files.save_file_to_article(
+            content_file, article, owner, label="PDF",
+        )
+        core_models.Galley.objects.get_or_create(
+            article=article,
+            type="pdf",
+            defaults={
+                "label": "PDF",
+                "file": article_file,
+            }
+        )
+
+def get_or_create_journal(metadata):
+        code = metadata["journal"]["code"]
+        journal, c = journal_models.Journal.objects.get_or_create(
+            code=code,
+        )
+        if c:
+            journal.title = metadata["journal"].get("title", code)
+            journal.issn = metadata["journal"].get("issn") or "0000-0000"
+            # This part is copied from press/views.py, should live in core
+            install.update_issue_types(journal)
+            journal.setup_directory()
 
 
 def get_jats_identifiers(soup):
