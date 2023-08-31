@@ -54,6 +54,7 @@ def import_jats_article(
     meta["section_name"] = get_jats_section_name(jats_soup)
     meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
     meta["license_url"], meta["license_text"] = get_jats_license(jats_soup)
+    meta["rights"] = get_jats_rights_statement(jats_soup)
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
@@ -298,6 +299,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             date_published=metadata["date_published"],
             date_accepted=metadata["date_submitted"],
             date_submitted=metadata["date_submitted"],
+            rights=metadata["rights"],
             stage=stage or submission_models.STAGE_PUBLISHED,
             is_import=True,
             owner=owner,
@@ -442,6 +444,14 @@ def get_jats_license(soup):
             for license_p in license_soup.find_all("license-p")
         ))
     return license_url, license_text
+
+
+def get_jats_rights_statement(soup):
+    text = None
+    rights_soup = soup.find("copyright-statement")
+    if rights_soup:
+        text = rights_soup.text
+    return text
 
 
 def default_email(seed):
