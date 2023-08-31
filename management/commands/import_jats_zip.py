@@ -20,7 +20,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         journal = None
-        if options["journal_code"]
+        if options["journal_code"]:
             journal = models.Journal.objects.get(code=options["journal_code"])
         owner = Account.objects.get(pk=options["owner_id"])
         persist = True
