@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 
 def import_jats_article(
-        jats_contents, journal,
+        jats_contents, journal=None,
         persist=True, filename=None, owner=None,
         images=None, request=None, stage=None,
 ):
@@ -46,6 +46,7 @@ def import_jats_article(
 
     # Gather metadata
     meta = {}
+    meta["journal"] = get_jats_journal_metadata(metadata_soup)
     meta["title"] = get_jats_title(metadata_soup)
     meta["abstract"] = get_jats_abstract(metadata_soup)
     meta["issue"], meta["volume"] = get_jats_issue(jats_soup)
@@ -73,7 +74,7 @@ def import_jats_article(
         return meta
     else:
         # Persist Article
-        article = save_article(journal, meta, owner=owner, stage=stage)
+        article = save_article(meta, journal, owner=owner, stage=stage)
         # Save Galleys
         if not isinstance(jats_contents, bytes):
             jats_contents = jats_contents.encode("utf-8")
@@ -87,8 +88,8 @@ def import_jats_article(
     return article
 
 
-def import_jats_zipped(zip_file, journal, owner=None, persist=True, stage=None):
-    """ Import a batch of Zipped JATS articles and their figures
+def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=None):
+    """ Import a batch of Zipped JATS articles and their associated files
     :param zip_file: The zipped jats to be imported
     :param journal: Journal in which to import the articles
     :param owner: An instance of core.models.Account
@@ -113,25 +114,50 @@ def import_jats_zipped(zip_file, journal, owner=None, persist=True, stage=None):
                         if mimetype in files.XML_MIMETYPES:
                             jats_path = file_path
                             jats_filename = filename
+                        elif mimetype in files.PDF_MIMETYPES:
+                            pdf_path = file_path
+                            pdf_filename = filename
                         else:
                             supplements.append(file_path)
 
                     if jats_path:
                         logger.info("[JATS] Importing from %s", jats_path)
                         with open(jats_path, 'r') as jats_file:
-                            articles.append((
-                                jats_filename,
-                                import_jats_article(
-                                    jats_file.read(), journal, persist,
-                                    jats_filename, owner, supplements,
-                                    stage=stage,
-                                ),
-                            ))
+                            article = import_jats_article(
+                                jats_file.read(), journal, persist,
+                                jats_filename, owner, supplements,
+                                stage=stage,
+                            )
+                            articles.append((jats_filename, article))
+                        if pdf_path:
+                            import_pdf(article, pdf_path, pdf_filename)
                 except Exception as err:
                     errors.append((filenames, err))
 
     return articles, errors
 
+
+def get_jats_journal_metadata(soup):
+    journal_metadata = {}
+    journal_soup = soup.find("journal-meta")
+    if journal_soup:
+        # Journal code
+        id_soup = journal_soup.find(
+            "journal-id", {"journal-id-type": "publisher-id"})
+        if id_soup:
+            journal_metadata["code"] = id_soup.text
+        else:
+            abbrev_soup = journal_soup.find("abbrev-journal-title")
+            if abbrev_soup:
+                journal_metadata["code"] = abbrev_soup.text
+
+        # Journal title
+        title_soup = journal_soup.find("journal-title")
+        if title_soup:
+            journal_metadata["title"] = title_soup.text
+        issn_soup = journal_soup.find("issn")
+        if issn_soup:
+            journal_metadata["issn"] = issn_soup.text
 
 
 def get_jats_title(soup):
@@ -251,7 +277,12 @@ def get_jats_authors(soup, author_notes=None):
     return authors
 
 
-def save_article(journal, metadata, issue=None, owner=None, stage=None):
+def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
+    if not journal and metadata["journal"] and metadata["journal"].get("code"):
+        journal = get_or_create_journal(metadata)
+    elif not journal:
+        raise ImportError("No journal provided and no journal meta in JATS")
+
     with transaction.atomic():
         section, _ = submission_models.Section.objects \
             .get_or_create(

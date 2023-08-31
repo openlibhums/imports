@@ -14,12 +14,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('zip_file')
-        parser.add_argument('journal_code')
+        parser.add_argument('--journal_code')
         parser.add_argument('--owner_id', default=1)
         parser.add_argument('--dry-run', action="store_true", default=False)
 
     def handle(self, *args, **options):
-        journal = models.Journal.objects.get(code=options["journal_code"])
+        journal = None
+        if options["journal_code"]
+            journal = models.Journal.objects.get(code=options["journal_code"])
         owner = Account.objects.get(pk=options["owner_id"])
         persist = True
         if options["dry_run"]:
