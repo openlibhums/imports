@@ -58,6 +58,8 @@ def import_jats_article(
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
+    meta["first_page"] = int(metadata_soup.find("fpage").text)
+    meta["last_page"] = int(metadata_soup.find("lpage").text)
     history_soup = metadata_soup.find("history")
 
     if history_soup:
@@ -259,6 +261,21 @@ def get_jats_authors(soup, author_notes=None):
         institution = None
         if author.find("aff"):
             institution = author.find("aff").text
+
+        # in some cases the aff may be outside <contrib> in this case
+        # we can look for something like:
+        # <xref ref-type="aff" rid="aff1">1</xref>
+
+        if not institution:
+            aff_xref = author.find('xref', {'ref-type': 'aff'})
+            if aff_xref:
+                aff_id = aff_xref.get('rid')
+                if aff_id:
+                    aff = soup.find('aff', {'id': aff_id})
+                    if aff:
+                        aff.find('label').decompose()
+                        institution = aff.text.strip()
+
         if author.find("surname"):
             email_jats = author.find("email")
             if email_jats:
@@ -284,7 +301,7 @@ def get_jats_authors(soup, author_notes=None):
 def get_article(id_soup, journal):
     article = None
 
-    if identifiers_soup.get("doi"):
+    if id_soup.get("doi"):
         try:
             article = Identifier.objects.get(
                 id_type="doi",
@@ -294,7 +311,7 @@ def get_article(id_soup, journal):
         except Identifier.DoesNotExist:
             if id_soup.get("pubid"):
                 try:
-                    Identifier.objects.get(
+                    article = Identifier.objects.get(
                         id_type="pubid",
                         identifier=id_soup["pubid"],
                         article__journal=journal,
@@ -318,6 +335,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 name=metadata["section_name"],
         )
         section.save()
+
         article = get_article(metadata.get("identifiers", {}), journal)
         if not article:
             article = submission_models.Article.objects.create(
@@ -331,10 +349,23 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 stage=stage or submission_models.STAGE_PUBLISHED,
                 is_import=True,
                 owner=owner,
+                first_page=metadata["first_page"],
+                last_page=metadata["last_page"]
             )
             article.section = section
             article.save()
             common.create_article_workflow_log(article)
+        else:
+            article.title = metadata["title"]
+            article.abstract = metadata["abstract"]
+            article.date_published = metadata["date_published"]
+            article.date_published = metadata["date_published"]
+            article.date_accepted = metadata["date_submitted"]
+            article.date_submitted = metadata["date_submitted"]
+            article.rights = metadata["rights"]
+            article.first_page = metadata["first_page"]
+            article.last_page = metadata["last_page"]
+            article.save()
 
         if metadata["identifiers"]["doi"]:
             Identifier.objects.get_or_create(
@@ -439,15 +470,15 @@ def get_or_create_journal(metadata):
     journal = journal_models.Journal.objects.filter(code__iexact=code).first()
     if not journal and metadata["journal"].get("issn"):
         # Try with ISSN
-        setting = core_mode.SettingValue.objects.filter(
+        setting = core_models.SettingValue.objects.filter(
             setting__name="journal_issn",
-            value = metadata["journal"]["issn"],
+            value=metadata["journal"]["issn"],
         ).first()
         if setting:
             journal = setting.journal
     if not journal and metadata["journal"].get("title"):
         # Try with title
-        setting = core_mode.SettingValue.objects.filter(
+        setting = core_models.SettingValue.objects.filter(
             setting__name="journal_name",
             value = metadata["journal"]["title"],
         ).first()
