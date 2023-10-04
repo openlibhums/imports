@@ -77,6 +77,8 @@ def import_jats_article(
         # Persist Article
         article = save_article(meta, journal, owner=owner, stage=stage)
         # Save Galleys
+        for galley in article.galley_set.all():
+            galley.delete()
         if not isinstance(jats_contents, bytes):
             jats_contents = jats_contents.encode("utf-8")
         xml_file = ContentFile(jats_contents)
@@ -279,6 +281,30 @@ def get_jats_authors(soup, author_notes=None):
     return authors
 
 
+def get_article(id_soup, journal):
+    article = None
+
+    if identifiers_soup.get("doi"):
+        try:
+            article = Identifier.objects.get(
+                id_type="doi",
+                identifier=id_soup["doi"],
+            ).article
+            logger.info("Matched article by DOI: %s", article)
+        except Identifier.DoesNotExist:
+            if id_soup.get("pubid"):
+                try:
+                    Identifier.objects.get(
+                        id_type="pubid",
+                        identifier=id_soup["pubid"],
+                        article__journal=journal,
+                    ).article
+                    logger.info("Matched article by pubid: %s", article)
+                except Identifier.DoesNotExist:
+                    logger.info("No article matched")
+        return article
+
+
 def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
     if not journal and metadata["journal"] and metadata["journal"].get("code"):
         journal = get_or_create_journal(metadata)
@@ -292,22 +318,23 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 name=metadata["section_name"],
         )
         section.save()
-
-        article = submission_models.Article.objects.create(
-            journal=journal,
-            title=metadata["title"],
-            abstract=metadata["abstract"],
-            date_published=metadata["date_published"],
-            date_accepted=metadata["date_submitted"],
-            date_submitted=metadata["date_submitted"],
-            rights=metadata["rights"],
-            stage=stage or submission_models.STAGE_PUBLISHED,
-            is_import=True,
-            owner=owner,
-        )
-        article.section = section
-        article.save()
-        common.create_article_workflow_log(article)
+        article = get_article(metadata.get("identifiers", {}), journal)
+        if not article:
+            article = submission_models.Article.objects.create(
+                journal=journal,
+                title=metadata["title"],
+                abstract=metadata["abstract"],
+                date_published=metadata["date_published"],
+                date_accepted=metadata["date_submitted"],
+                date_submitted=metadata["date_submitted"],
+                rights=metadata["rights"],
+                stage=stage or submission_models.STAGE_PUBLISHED,
+                is_import=True,
+                owner=owner,
+            )
+            article.section = section
+            article.save()
+            common.create_article_workflow_log(article)
 
         if metadata["identifiers"]["doi"]:
             Identifier.objects.get_or_create(
