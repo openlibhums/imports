@@ -46,7 +46,7 @@ def import_jats_article(
 
     # Gather metadata
     meta = {}
-    meta["journal"] = get_jats_journal_metadata(metadata_soup)
+    meta["journal"] = get_jats_journal_metadata(jats_soup)
     meta["title"] = get_jats_title(metadata_soup)
     meta["abstract"] = get_jats_abstract(metadata_soup)
     meta["issue"], meta["volume"] = get_jats_issue(jats_soup)
@@ -159,6 +159,7 @@ def get_jats_journal_metadata(soup):
         issn_soup = journal_soup.find("issn")
         if issn_soup:
             journal_metadata["issn"] = issn_soup.text
+    return journal_metadata
 
 
 def get_jats_title(soup):
@@ -282,7 +283,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
     if not journal and metadata["journal"] and metadata["journal"].get("code"):
         journal = get_or_create_journal(metadata)
     elif not journal:
-        raise ImportError("No journal provided and no journal meta in JATS")
+        journal = get_lost_found_journal()
 
     with transaction.atomic():
         section, _ = submission_models.Section.objects \
@@ -318,6 +319,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             Identifier.objects.get_or_create(
                 id_type="pubid",
                 identifier=metadata["identifiers"]["pubid"],
+                article__journal=journal,
                 defaults={"article": article},
             )
         if metadata["identifiers"]["handle"]:
@@ -404,16 +406,42 @@ def import_pdf(article, pdf_path, pdf_filename):
         )
 
 def get_or_create_journal(metadata):
-        code = metadata["journal"]["code"]
-        journal, c = journal_models.Journal.objects.get_or_create(
-            code=code,
-        )
-        if c:
-            journal.title = metadata["journal"].get("title", code)
-            journal.issn = metadata["journal"].get("issn") or "0000-0000"
-            # This part is copied from press/views.py, should live in core
-            install.update_issue_types(journal)
-            journal.setup_directory()
+    # Try to get it with journal code
+    code = metadata["journal"]["code"]
+    created = None
+    journal = journal_models.Journal.objects.filter(code__iexact=code).first()
+    if not journal and metadata["journal"].get("issn"):
+        # Try with ISSN
+        setting = core_mode.SettingValue.objects.filter(
+            setting__name="journal_issn",
+            value = metadata["journal"]["issn"],
+        ).first()
+        if setting:
+            journal = setting.journal
+    if not journal and metadata["journal"].get("title"):
+        # Try with title
+        setting = core_mode.SettingValue.objects.filter(
+            setting__name="journal_name",
+            value = metadata["journal"]["title"],
+        ).first()
+        if setting:
+            journal = setting.journal
+    if not journal:
+        # Create a new journal
+        journal = journal_models.Journal.objects.create(code=code)
+
+    if created:
+        journal.title = metadata["journal"].get("title", code)
+        journal.issn = metadata["journal"].get("issn") or "0000-0000"
+        # This part is copied from press/views.py, should live in core
+        install.update_issue_types(journal)
+        journal.setup_directory()
+    return journal
+
+def get_lost_found_journal():
+    journal, created = journal_models.Journal.objects.get_or_create(
+        code="lost_found",
+    )
 
 
 def get_jats_identifiers(soup):
