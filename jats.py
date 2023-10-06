@@ -42,6 +42,10 @@ def import_jats_article(
     """
     jats_soup = BeautifulSoup((jats_contents), 'lxml')
     metadata_soup = jats_soup.find("article-meta")
+    if not metadata_soup:
+        err = ValueError("Invalid JATS-XML or no <article-meta> found")
+        logger.exception(err)
+        raise err
     if not owner:
         owner = Account.objects.get(pk=1)
 
@@ -65,7 +69,7 @@ def import_jats_article(
         meta["first_page"] = None
     try:
         meta["last_page"] = int(metadata_soup.find("lpage").text)
-    except (ValueError, TypeError):
+    except (ValueError, AttributeError):
         meta["last_page"] = None
     history_soup = metadata_soup.find("history")
 
