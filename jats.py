@@ -516,7 +516,12 @@ def get_lost_found_journal():
     journal, created = journal_models.Journal.objects.get_or_create(
         code="lost_found",
     )
-
+    journal.title = "Lost And Found"
+    journal.issn = "0000-0000"
+    # This part is copied from press/views.py, should live in core
+    install.update_issue_types(journal)
+    journal.setup_directory()
+    return journal
 
 def get_jats_identifiers(soup):
     ids = {
