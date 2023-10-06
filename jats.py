@@ -6,6 +6,7 @@ import hashlib
 import mimetypes
 import os
 import tempfile
+import traceback
 import uuid
 import zipfile
 
@@ -137,6 +138,8 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                         if pdf_path:
                             import_pdf(article, pdf_path, pdf_filename)
                 except Exception as err:
+                    logger.warning(err)
+                    logger.warning(traceback.format_exc())
                     errors.append((filenames, err))
 
     return articles, errors
