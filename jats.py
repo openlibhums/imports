@@ -59,8 +59,14 @@ def import_jats_article(
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
-    meta["first_page"] = int(metadata_soup.find("fpage").text)
-    meta["last_page"] = int(metadata_soup.find("lpage").text)
+    try:
+        meta["first_page"] = int(metadata_soup.find("fpage").text)
+    except (ValueError, AttributeError):
+        meta["first_page"] = None
+    try:
+        meta["last_page"] = int(metadata_soup.find("lpage").text)
+    except (ValueError, TypeError):
+        meta["last_page"] = None
     history_soup = metadata_soup.find("history")
 
     if history_soup:
