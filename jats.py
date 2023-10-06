@@ -273,7 +273,10 @@ def get_jats_authors(soup, author_notes=None):
                 if aff_id:
                     aff = soup.find('aff', {'id': aff_id})
                     if aff:
-                        aff.find('label').decompose()
+                        try:
+                            aff.find('label').decompose()
+                        except AttributeError:
+                            pass
                         institution = aff.text.strip()
 
         if author.find("surname"):
