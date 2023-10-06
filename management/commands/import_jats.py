@@ -14,9 +14,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('jats_xml_path')
-        parser.add_argument('journal_code')
-        parser.add_argument('--owner_id', default=1)
-        parser.add_argument('--dry-run', action="store_true", default=False)
+        parser.add_argument('-j', '--journal_code')
+        parser.add_argument('-o', '--owner_id', default=1)
+        parser.add_argument('-d', '--dry-run', action="store_true", default=False)
 
     def handle(self, *args, **options):
         journal = models.Journal.objects.get(code=options["journal_code"])
