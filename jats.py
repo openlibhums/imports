@@ -399,7 +399,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 defaults={"article": article},
             )
         for idx, author in enumerate(metadata["authors"]):
-            account, _ = Account.objects.get_or_create(
+            account, _ = Account.objects.update_or_create(
                 email=author["email"],
                 defaults={
                     "first_name": author["first_name"],
