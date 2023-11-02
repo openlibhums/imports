@@ -222,6 +222,8 @@ def import_author(article, author_data, idx):
 def make_xml_galley(article, owner, data):
     for galley in article.galley_set.all():
         galley.unlink_files()
+        galley.file.delete()
+        galley.images.all().delete()
         galley.delete()
 
     context = {
