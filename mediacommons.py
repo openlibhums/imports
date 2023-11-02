@@ -16,6 +16,8 @@ from review import models as rw_models
 from submission import models as sm_models
 from utils.logger import get_logger
 
+from plugins.imports import common
+
 
 logger = get_logger(__name__)
 
@@ -69,6 +71,7 @@ def import_article(journal, owner, data):
     article.snapshot_authors(article)
 
     make_xml_galley(article, owner, data)
+    common.create_article_workflow_log(article)
 
 
 def update_or_create_article_by_id(journal, pub_id, data):
