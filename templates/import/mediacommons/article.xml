@@ -1,0 +1,34 @@
+{% if video_url %}
+<sec>
+<title>Video Article</title>
+<fig>
+<media mimetype="video" position="anchor" specific-use="online" xlink:href="{{ video_url }}"/>
+</fig>
+<p></p>
+<p></p>
+</sec>
+{% endif %}
+{% if body %}
+<sec>
+    <title> Creator's Statement</title>
+    <p>{{ body|safe }}</p>
+</sec>
+{% endif %}
+{% if reviews %}
+<sec>
+    <title>Reviews </title>
+{% for review in reviews %}
+{% with reviews.reviewers|last as reviewer %}
+<sec>
+    {% if reviewer.name %}
+    <title> Review by {{ reviewer.name }}</title>
+    {% else %}
+    <title> Anonymous Review </title>
+    {% endif %}
+    <p>{{ review.body|safe }}</p>
+</sec>
+{% endwith %}
+{% endfor %}
+</sec>
+{% endif %}
+
