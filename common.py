@@ -11,7 +11,8 @@ def create_article_workflow_log(article):
     """
     journal_workflow = article.journal.workflow()
     for element in journal_workflow.elements.all():
-        log_stage_change(article, element)
+        if not article.workflowlog_set.filter(element=element).exists():
+            log_stage_change(article, element)
 
 
 def get_filename_from_headers(response):
