@@ -3,20 +3,27 @@ An import procedure written for the export of InTransition from mediacommons
 owner, Available from: https://github.com/NYULibraries/intransition
 """
 import datetime
+from os.path import basename
 import uuid
 
-from core import files, models as core_models
+from core import (
+        files,
+        logic as core_logic,
+        models as core_models,
+)
 from dateutil import parser as dateparser
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from django.utils import timezone
 from identifiers import models as id_models
 from journal import models as journal_models
+import requests
 from review import models as rw_models
 from submission import models as sm_models
 from utils.logger import get_logger
 
 from plugins.imports import common
+from plugins.imports.utils import DummyRequest
 
 
 logger = get_logger(__name__)
@@ -24,8 +31,8 @@ logger = get_logger(__name__)
 
 def import_article(journal, owner, data):
     pub_id = data["id"]
-    article, created = update_or_create_article_by_id(journal, pub_id, data)
-    article.owner = owner
+    article, created = update_or_create_article_by_id(
+        journal, owner, pub_id, data)
     if created:
         logger.info("Created record for ID %s", pub_id)
     else:
@@ -74,7 +81,7 @@ def import_article(journal, owner, data):
     common.create_article_workflow_log(article)
 
 
-def update_or_create_article_by_id(journal, pub_id, data):
+def update_or_create_article_by_id(journal, owner, pub_id, data):
     article = None
     created = False
     try:
@@ -106,6 +113,12 @@ def update_or_create_article_by_id(journal, pub_id, data):
     article.section = section
     article.stage = "Published"
     article.date_published = dateparser.parse(data["date"])
+    article.owner = owner
+    if data["representative_image"]:
+        content_file = fetch_remote_file(data["representative_image"])
+        request = DummyRequest(user=owner, journal=journal)
+        core_logic.handle_article_thumb_image_file(
+            content_file, article, request)
     article.save()
     return article, created
 
@@ -153,8 +166,13 @@ def update_or_create_account(data):
             first_name = ""
             middle_names = []
             last_name = data["mail"]
+        else:
+            raise
     website = data["url"]["url"] if data["url"] else None
-    acc, c = core_models.Account.objects.update_or_create(
+    pic_file = None
+    if data["picture"]:
+        pic_file = fetch_remote_file(data["picture"])
+    account, c = core_models.Account.objects.update_or_create(
         email=data["mail"],
         defaults = dict(
             institution=data["organization"],
@@ -164,9 +182,10 @@ def update_or_create_account(data):
             middle_name=" ".join(middle_names) or None,
             last_name=last_name,
             enable_public_profile=True,
+            profile_image=pic_file,
         ),
     )
-    return acc
+    return account
 
 def import_review_data(article, review_data):
     review_round, _ = rw_models.ReviewRound.objects.get_or_create(
@@ -252,3 +271,18 @@ def make_xml_galley(article, owner, data):
     )
     article.galley_set.add(galley)
 
+
+def fetch_remote_file(url, filename=None):
+    logger.info("Fetching file from %s", url)
+    response = requests.get(url)
+    if not response.ok:
+        logger.error("Status %s received", response.status_code)
+        return None
+    blob = response.content
+    content_file = ContentFile(blob)
+    if not filename:
+        filename = common.get_filename_from_headers(response)
+    if not filename:
+        filename = basename(url)
+    content_file.name = filename
+    return content_file
