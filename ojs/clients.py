@@ -10,6 +10,8 @@ from utils.logger import get_logger
 
 from core.files import check_in_memory_mime
 
+from plugins.imports import common
+
 logger = get_logger(__name__)
 
 class PaginatedResults():
@@ -179,7 +181,7 @@ class OJSJanewayClient(OJSBaseClient):
         except requests.exceptions.HTTPError as e:
             logger.error(e)
             return
-        response_filename = get_filename_from_headers(response)
+        response_filename = common.get_filename_from_headers(response)
         blob = response.content
         content_file = ContentFile(blob)
         if exc_mimes:
@@ -371,17 +373,6 @@ def strip_scheme(url):
     return parsed.geturl().replace(scheme, '', 1)
 
 
-def get_filename_from_headers(response):
-    try:
-        header = response.headers['content-disposition']
-        return re.findall("filename=(.+)", header)[0].strip('"')
-    except KeyError:
-        logger.debug("No content-disposition header")
-    except IndexError:
-        logger.debug("No Filename provided in headers")
-    return None
-
-
 class OJS3APIClient(OJSBaseClient):
     API_PATH = '/api/v1'
     ROOT_PATH = '_'
@@ -443,7 +434,7 @@ class OJS3APIClient(OJSBaseClient):
         except requests.exceptions.HTTPError as e:
             logger.error(e)
             return
-        response_filename = get_filename_from_headers(response)
+        response_filename = common.get_filename_from_headers(response)
         blob = response.content
         content_file = ContentFile(blob)
         if exc_mimes:
