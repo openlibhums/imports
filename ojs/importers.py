@@ -888,6 +888,7 @@ def link_article_to_collection(collection, ojs_id, order):
         logger.warning(
             "Collection %s has non-existant OJS ID %d", collection, ojs_id
         )
+        return
     collection.articles.add(article)
     if not article.primary_issue:
         article.primary_issue = collection
