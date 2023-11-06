@@ -335,6 +335,8 @@ def get_article(id_soup, journal):
                     logger.info("Matched article by pubid: %s", article)
                 except Identifier.DoesNotExist:
                     logger.info("No article matched")
+
+        print(id_soup.get("doi"), id_soup.get("pubid"),  article)
         return article
 
 

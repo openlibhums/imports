@@ -78,5 +78,6 @@ for pair in [
     (models.CSVImport, CSVImportAdmin),
     (models.CSVImportCreateArticle, CSVImportArticleAdmin),
     (models.CSVImportUpdateArticle, CSVImportArticleAdmin),
+    (models.OJSFile,),
 ]:
     admin.site.register(*pair)
