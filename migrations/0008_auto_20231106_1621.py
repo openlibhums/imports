@@ -9,7 +9,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('core', '0085_merge_20231025_1208'),
-        ('journal', '0061_auto_20231025_1207'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('imports', '0007_csvimportcreatearticle_file_id'),
     ]

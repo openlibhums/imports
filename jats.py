@@ -9,11 +9,14 @@ import tempfile
 import traceback
 import uuid
 import zipfile
+import json
+import re
 
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.utils import timezone
 
 from core import files
 from core import models as core_models
@@ -24,6 +27,10 @@ from production.logic import save_galley, save_galley_image
 from submission import models as submission_models
 from utils import install
 from utils.logger import get_logger
+from repository import models as repository_models
+from review import models as review_models
+from review.const import VisibilityOptions as VO
+from identifiers.models import DOI_REGEX_PATTERN
 
 from plugins.imports import common
 from plugins.imports.utils import DummyRequest
@@ -80,7 +87,11 @@ def import_jats_article(
     authors_soup = metadata_soup.find("contrib-group")
     author_notes = metadata_soup.find("author_notes")
     if authors_soup:
-        meta["authors"] = get_jats_authors(authors_soup, author_notes)
+        meta["authors"] = get_jats_authors(
+            authors_soup,
+            metadata_soup,
+            author_notes,
+        )
 
     meta["identifiers"] = get_jats_identifiers(metadata_soup)
 
@@ -257,7 +268,7 @@ def get_jats_keywords(soup):
     jats_keywords_soup = soup.find("kwd-group")
     if jats_keywords_soup:
         return {
-            keyword.text
+            keyword.text.strip()
             for keyword in jats_keywords_soup.find_all("kwd")
         }
     else:
@@ -268,12 +279,13 @@ def get_jats_section_name(soup):
     return soup.find("article").attrs.get("article-type")
 
 
-def get_jats_authors(soup, author_notes=None):
+def get_jats_authors(soup, metadata_soup, author_notes=None):
     authors = []
     for author in soup.find_all("contrib", {"contrib-type": "author"}):
         institution = None
         if author.find("aff"):
             institution = author.find("aff").text
+
 
         # in some cases the aff may be outside <contrib> in this case
         # we can look for something like:
@@ -284,7 +296,7 @@ def get_jats_authors(soup, author_notes=None):
             if aff_xref:
                 aff_id = aff_xref.get('rid')
                 if aff_id:
-                    aff = soup.find('aff', {'id': aff_id})
+                    aff = metadata_soup.find('aff', {'id': aff_id})
                     if aff:
                         try:
                             aff.find('label').decompose()
@@ -585,3 +597,271 @@ def load_jats_images(images, galley, request):
                         content_file, to_replace,
                         ('articles', galley.article.pk)
                     )
+
+
+def import_jats_preprint_zipped(zip_file, repository=None, owner=None, persist=True, stage=None):
+    """ Import a batch of Zipped JATS articles and their associated files
+    :param zip_file: The zipped jats to be imported
+    :param journal: Journal in which to import the articles
+    :param owner: An instance of core.models.Account
+    """
+    errors = []
+    preprints = []
+    temp_path = os.path.join(settings.BASE_DIR, 'files/temp')
+    with zipfile.ZipFile(zip_file, 'r') as zf:
+        with tempfile.TemporaryDirectory(dir=temp_path) as temp_dir:
+            zf.extractall(path=temp_dir)
+
+            for root, path, filenames in os.walk(temp_dir):
+                try:
+                    review_files = [] # HTML files are treated as reviews
+                    jats_path = jats_filename = pdf_path = pdf_filename = manifest = None
+
+                    for filename in filenames:
+                        mimetype, _ = mimetypes.guess_type(filename)
+                        file_path = os.path.join(root, filename)
+                        if mimetype in files.XML_MIMETYPES:
+                            jats_path = file_path
+                            jats_filename = filename
+                        elif mimetype in files.PDF_MIMETYPES:
+                            pdf_path = file_path
+                            pdf_filename = filename
+                        elif mimetype in files.HTML_MIMETYPES:
+                            review_files.append(file_path)
+                        elif mimetype == 'application/json' and filename == 'manifest.json':
+                            with open(file_path, 'r', encoding="utf-8") as manifest_file:
+                                manifest = json.loads(manifest_file.read())
+
+                    if jats_path:
+                        logger.info("[JATS] Importing from %s", jats_path)
+                        with open(jats_path, 'r') as jats_file:
+                            preprint = import_jats_preprint(
+                                jats_file.read(),
+                                repository,
+                                persist,
+                                jats_filename,
+                                owner,
+                                manifest,
+                                pdf_path,
+                                pdf_filename,
+                            )
+                            preprints.append((jats_filename, preprint))
+
+                        if persist and review_files and preprint and preprint.article:
+                            import_html_reviews(preprint, review_files, owner)
+
+                except Exception as err:
+                    logger.warning(err)
+                    logger.warning(traceback.format_exc())
+                    errors.append((filenames, err))
+
+    return preprints, errors
+
+
+def import_jats_preprint(
+        jats_contents,
+        repository=None,
+        persist=True,
+        filename=None,
+        owner=None,
+        manifest=None,
+        pdf_path=None,
+        pdf_filename=None,
+):
+    jats_soup = BeautifulSoup((jats_contents), 'lxml')
+    metadata_soup = jats_soup.find("article-meta")
+    meta = dict()
+    meta["title"] = get_jats_title(metadata_soup)
+    meta["abstract"] = get_jats_abstract(metadata_soup)
+    meta["keywords"] = get_jats_keywords(metadata_soup)
+    meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
+    meta["license_url"], meta["license_text"] = get_jats_license(jats_soup)
+    meta["authors"] = []
+    authors_soup = metadata_soup.find("contrib-group")
+    author_notes = metadata_soup.find("author_notes")
+    if authors_soup:
+        meta["authors"] = get_jats_authors(
+            authors_soup,
+            metadata_soup,
+            author_notes,
+        )
+    meta["identifiers"] = get_jats_identifiers(metadata_soup)
+
+    if not persist:
+        return meta
+    else:
+        # Persist Preprint
+        preprint = save_preprint(
+            meta,
+            repository,
+            owner=owner,
+            manifest=manifest,
+            pdf_path=pdf_path,
+            pdf_filename=pdf_filename,
+        )
+        if not isinstance(jats_contents, bytes):
+            jats_contents = jats_contents.encode("utf-8")
+        xml_file = ContentFile(jats_contents)
+        xml_file.name = filename or uuid.uuid4()
+        return preprint
+
+
+def save_preprint(
+        meta,
+        repository,
+        owner=None,
+        manifest={},
+        pdf_path=None,
+        pdf_filename=None,
+):
+    with transaction.atomic():
+        ident = article = None
+        if manifest.get('article_doi') and manifest.get('article_doi') != '_':
+            try:
+                _id = Identifier.objects.get(
+                    id_type='doi',
+                    identifier=manifest.get('article_doi'),
+                )
+                ident = _id.identifier
+                article = _id.article
+            except Identifier.DoesNotExist:
+                pass
+
+        preprint, _ = repository_models.Preprint.objects.get_or_create(
+            repository=repository,
+            title=meta['title'].strip(),
+            defaults={
+                'abstract': meta['abstract'],
+                'owner': owner,
+                'date_published': meta['date_published'],
+                'article': article,
+                'doi': ident,
+                'stage': repository_models.STAGE_PREPRINT_PUBLISHED,
+                'date_submitted': meta['date_published'],
+            }
+        )
+        for idx, author in enumerate(meta["authors"]):
+            account, _ = Account.objects.update_or_create(
+                email=author["email"],
+                defaults={
+                    "first_name": author["first_name"],
+                    "last_name": author["last_name"],
+                    "institution": author["institution"] or '',
+                }
+            )
+            repository_models.PreprintAuthor.objects.get_or_create(
+                preprint=preprint,
+                account=account,
+                defaults={
+                    'order': idx,
+                    'affiliation': author['institution'] or '',
+                }
+            )
+        for kwd in meta["keywords"]:
+            keyword, _ = submission_models.Keyword.objects.get_or_create(
+                word=kwd,
+            )
+            preprint.keywords.add(keyword)
+
+        if meta["license_url"]:
+            url = meta["license_url"]
+            try:
+                lic = submission_models.Licence.objects.get(
+                    url=url,
+                    journal=None,
+                )
+            except submission_models.Licence.DoesNotExist:
+                lic = submission_models.Licence.objects.create(
+                    url=url,
+                    short_name=url[-14:],
+                    name="Imported License",
+                    text=meta.get("license_text")
+                )
+            preprint.license = lic
+            preprint.save()
+
+        if pdf_path and pdf_filename:
+            with open(pdf_path, "rb") as f:
+                content_file = ContentFile(f.read())
+                content_file.name = pdf_filename
+                file, _ = repository_models.PreprintFile.objects.get_or_create(
+                    preprint=preprint,
+                    original_filename=f"{uuid.uuid4()}.pdf",
+                    mime_type='application/pdf',
+                    defaults={
+                        'file': content_file,
+                        'size': os.path.getsize(pdf_path),
+                    }
+                )
+
+                version, _ = repository_models.PreprintVersion.objects.get_or_create(
+                    preprint=preprint,
+                    version=manifest.get('version'),
+                    defaults={
+                        'date_time': meta['date_published'],
+                        'title': meta['title'],
+                        'abstract': meta['abstract'],
+                        'file': file,
+                    }
+                )
+
+                Identifier.objects.get_or_create(
+                    id_type='doi',
+                    identifier= meta["identifiers"]["doi"],
+                    preprint_version=version,
+                )
+
+        return preprint
+
+
+def import_html_reviews(preprint, review_files, owner):
+    review_round, _ = review_models.ReviewRound.objects.get_or_create(
+        round_number=1,
+        article=preprint.article,
+    )
+    form = review_models.ReviewForm.objects.filter(
+        journal=preprint.article.journal,
+    ).first()
+    for review_file in review_files:
+        with open(review_file, 'r') as r_file:
+            contents = r_file.read()
+            try:
+                review_doi = re.findall(
+                    DOI_REGEX_PATTERN,
+                    contents,
+                )[0]
+            except IndexError:
+                review_doi = None
+
+            review_assignment, _ = review_models.ReviewAssignment.objects.get_or_create(
+                article=preprint.article,
+                editor=owner,
+                review_round=review_round,
+                visibility=VO.OPEN.value,
+                defaults={
+                    'form': form,
+                    'access_code': uuid.uuid4(),
+                    'date_complete': timezone.now(),
+                    'date_due': timezone.now(),
+                    'is_complete': True,
+                    'for_author_consumption': True,
+                    'display_review_file': True,
+                    'permission_to_make_public': True,
+                    'display_public': True,
+                },
+            )
+            default_element = form.elements.all().first()
+            answer, _ = review_models.ReviewAssignmentAnswer.objects.get_or_create(
+                assignment=review_assignment,
+                original_element=default_element,
+                defaults={
+                    'answer': contents.strip().replace('\n', ''),
+                    'author_can_see': True,
+                }
+            )
+            default_element.snapshot(answer)
+            identifier, _ = Identifier.objects.get_or_create(
+                id_type='doi',
+                identifier=review_doi,
+                review=review_assignment,
+            )
