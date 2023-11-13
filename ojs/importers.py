@@ -1110,7 +1110,8 @@ def get_or_create_account(data, update=False):
             # Most likely due to a problem with case
             try:
                 account = core_models.Account.objects.get(
-                    email__iexact=email)
+                    email__iexact=email,
+                )
             except Exception as e:
                 logger.warning("Failed to create user %s" % data)
                 return None, created

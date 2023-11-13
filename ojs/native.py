@@ -21,7 +21,13 @@ def import_users(xml_content, journal):
     accounts = list()
 
     for user in users:
-        email = common.get_text_or_none(user, 'email')
+        try:
+            country = core_models.Country.objects.get(
+                code=common.get_text_or_none(user, 'country'),
+            )
+        except core_models.Country.DoesNotExist:
+            country = None
+        email = common.get_text_or_none(user, 'email').lower().strip()
         interests = common.get_text_or_none(user, 'review_interests')
         user_groups_soup = user.findAll('user_group_ref')
         user_groups = [group.text for group in user_groups_soup]
@@ -29,13 +35,13 @@ def import_users(xml_content, journal):
             'first_name': common.get_text_or_none(user, 'givenname'),
             'last_name': common.get_text_or_none(user, 'familyname'),
             'institution': common.get_text_or_none(user, 'affiliation'),
-            'country': common.get_text_or_none(user, 'country'),
+            'country': country,
             'biography': common.get_text_or_none(user, 'biography'),
             'is_active': True,
+            'email': email,
         }
-
         account, created = core_models.Account.objects.update_or_create(
-            email=email,
+            username=email,
             defaults=defaults
         )
         if created:

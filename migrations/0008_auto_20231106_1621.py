@@ -8,7 +8,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0085_merge_20231025_1208'),
+        ('core', '0084_xslt_1-5-1'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('imports', '0007_csvimportcreatearticle_file_id'),
     ]

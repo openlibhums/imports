@@ -600,9 +600,9 @@ def load_jats_images(images, galley, request):
 
 
 def import_jats_preprint_zipped(zip_file, repository=None, owner=None, persist=True, stage=None):
-    """ Import a batch of Zipped JATS articles and their associated files
+    """ Import a batch of Zipped JATS preprints and their associated files
     :param zip_file: The zipped jats to be imported
-    :param journal: Journal in which to import the articles
+    :param repository: Respository in which to import the articles
     :param owner: An instance of core.models.Account
     """
     errors = []
@@ -729,13 +729,13 @@ def save_preprint(
 
         preprint, _ = repository_models.Preprint.objects.get_or_create(
             repository=repository,
-            title=meta['title'].strip(),
+            doi=manifest.get('article_doi'),
             defaults={
+                'title': meta['title'].strip(),
                 'abstract': meta['abstract'],
                 'owner': owner,
                 'date_published': meta['date_published'],
                 'article': article,
-                'doi': ident,
                 'stage': repository_models.STAGE_PREPRINT_PUBLISHED,
                 'date_submitted': meta['date_published'],
             }
