@@ -316,6 +316,7 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                 "email": email,
                 "correspondence": False,
                 "institution": institution,
+                "orcid": get_orcid(author),
             }
             if author.attrs.get("corresp") == "yes" and author_notes:
                 author_data["correspondence"] = True
@@ -324,6 +325,17 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                     author_data["email"] = corresp_email.text
             authors.append(author_data)
     return authors
+
+
+def get_orcid(author_soup):
+    contrib_ids = author_soup.findAll('contrib-id')
+    for ci in contrib_ids:
+        if ci.attrs.get('contrib-id-type') == 'orcid':
+            orcid = ci.text
+            if orcid.startswith('https://'):
+                orcid = orcid.replace('https://orcid.org/', '')
+            return orcid
+    return None
 
 
 def get_article(id_soup, journal):
@@ -337,16 +349,7 @@ def get_article(id_soup, journal):
             ).article
             logger.info("Matched article by DOI: %s", article)
         except Identifier.DoesNotExist:
-            if id_soup.get("pubid"):
-                try:
-                    article = Identifier.objects.get(
-                        id_type="pubid",
-                        identifier=id_soup["pubid"],
-                        article__journal=journal,
-                    ).article
-                    logger.info("Matched article by pubid: %s", article)
-                except Identifier.DoesNotExist:
-                    logger.info("No article matched")
+            logger.info("No article matched")
 
         return article
 
@@ -415,26 +418,30 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 identifier=metadata["identifiers"]["handle"],
                 defaults={"article": article},
             )
-        for idx, author in enumerate(metadata["authors"]):
-            account, _ = Account.objects.update_or_create(
-                email=author["email"],
-                defaults={
-                    "first_name": author["first_name"],
-                    "last_name": author["last_name"],
-                    "institution": author["institution"] or journal.name,
-                }
-            )
-            article.authors.add(account)
-            author_order, created = submission_models.ArticleAuthorOrder \
-                .objects.get_or_create(article=article, author=account)
-            if created:
-                author_order.order = idx
-                author_order.save()
 
-            if author["correspondence"]:
+        # Delete all frozen authors for this article.
+        article.frozenauthor_set.all().delete()
+        for idx, author in enumerate(metadata["authors"]):
+            try:
+                account = Account.objects.get(
+                    email=author['email']
+                )
+            except Account.DoesNotExist:
+                account = None
+
+            fa = submission_models.FrozenAuthor.objects.create(
+                article=article,
+                author=account,
+                first_name=author["first_name"],
+                last_name=author["last_name"],
+                institution=author["institution"] or journal.name,
+                frozen_orcid=author["orcid"],
+                frozen_email=author['email'],
+                order=idx,
+            )
+            if account and author["correspondence"]:
                 article.correspondence_author = account
             article.save()
-        article.snapshot_authors(article)
 
         for kwd in metadata["keywords"]:
             keyword, _ = submission_models.Keyword.objects.get_or_create(word=kwd)

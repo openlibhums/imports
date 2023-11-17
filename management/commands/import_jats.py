@@ -33,3 +33,5 @@ class Command(BaseCommand):
             )
             if not persist:
                 pprint.pprint(article)
+
+            print(article)
