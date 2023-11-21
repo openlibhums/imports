@@ -217,7 +217,10 @@ def get_jats_issue(soup):
 
 
 def get_jats_pub_date(soup):
-    pub_date_soup = soup.find("pub-date")
+    pub_date_soup = soup.find("pub-date", attrs={'date-type': 'pub'})
+    if not pub_date_soup:
+        pub_date_soup = soup.find("pub-date")
+
     if pub_date_soup:
         day = pub_date_soup.find("day")
         day = day.text if day else 1
