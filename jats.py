@@ -773,10 +773,10 @@ def save_preprint(
         if meta["license_url"]:
             url = meta["license_url"]
             try:
-                lic = submission_models.Licence.objects.get(
+                lic = submission_models.Licence.objects.filter(
                     url=url,
                     journal=None,
-                )
+                ).first()
             except submission_models.Licence.DoesNotExist:
                 lic = submission_models.Licence.objects.create(
                     url=url,
