@@ -261,16 +261,12 @@ def import_review_data(article_dict, article, client):
         article.manuscript_files.add(author_revision)
 
     # Attempt to get the default review form
-    try:
-        form = review_models.ReviewForm.objects.filter(
-            journal=article.journal,
-        ).first()
-    except review_models.ReviewForm.DoesNotExit:
-        logger.error(
-            'You must have at least one review form for the journal before'
-            ' importing.'
-        )
-        raise
+    form = review_models.ReviewForm.objects.filter(
+        journal=article.journal,
+    ).first()
+    if not form:
+        logger.info('No review form found, generating a default one.')
+        article.journal.setup_default_review_form()
 
     # Set for avoiding duplicate review files
     for review in article_dict.get('reviews'):
