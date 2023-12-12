@@ -243,7 +243,7 @@
         </p>
     </xsl:template>
     
-    <xsl:template match="wml:link">
+    <xsl:template match="wml:header//wml:link">
         <uri>
             <xsl:attribute name="xlink:href"><xsl:value-of select="."/></xsl:attribute>
             <xsl:value-of select="."/>
@@ -350,6 +350,58 @@
             <xsl:attribute name="xlink:href"><xsl:value-of select="."/></xsl:attribute>
             <xsl:value-of select="."/>
         </ext-link>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:link">
+        <xsl:choose>
+            <!-- links are used for internal referencing when the href starts with #.-->
+            <xsl:when test="starts-with(@href, '#')">
+                <xsl:call-template name="xref"/>
+            </xsl:when>
+            <xsl:when test="starts-with(@href, 'http')">
+                <ext-link>
+                    <xsl:attribute name="xlink:href">
+                        <xsl:value-of select="replace(@href, 'http://', 'https://')"/>
+                    </xsl:attribute>
+                    <xsl:value-of select="."/>
+                </ext-link>
+            </xsl:when>
+        </xsl:choose>
+    </xsl:template>
+    
+    <xsl:template name="xref">
+
+        <xref>
+            <!-- removes leading # symbol used by wml -->
+            <xsl:attribute name="rid"><xsl:value-of select="substring(@href, 2)"/></xsl:attribute>
+            <!--
+                Link ids use textual patterns indicating the kind of object they point to.
+                There isn't a list of these in the DTD, so these have been found by greping over 2k+ articles.
+            --> 
+            <xsl:choose>
+                <xsl:when test="contains(@href, '-app-')">
+                    <xsl:attribute name="ref-type"><xsl:text>app</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-bib-')">
+                    <xsl:attribute name="ref-type"><xsl:text>bibr</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-fig-')">
+                    <xsl:attribute name="ref-type"><xsl:text>fig</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-note-')">
+                    <xsl:attribute name="ref-type"><xsl:text>fn</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-supl-')">
+                    <xsl:attribute name="supplementary-material"><xsl:text>bibr</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-supitem-')">
+                    <xsl:attribute name="supplementary-material"><xsl:text>bibr</xsl:text></xsl:attribute>
+                </xsl:when>
+                <xsl:when test="contains(@href, '-tbl')">
+                    <xsl:attribute name="table"><xsl:text>bibr</xsl:text></xsl:attribute>
+                </xsl:when>
+            </xsl:choose>
+        </xref>
     </xsl:template>
     
     <xsl:template match="wml:body//wml:email">
@@ -577,7 +629,7 @@
     
     <xsl:template match="mml:math|mml:math//*">
         <xsl:element name="mml:{name()}">
-            <xsl:copy-of select="namespace::*"/>
+            <xsl:copy-of select="namespace::mml"/>
             <xsl:apply-templates />
         </xsl:element>
     </xsl:template>
