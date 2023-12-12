@@ -302,10 +302,11 @@
             <xsl:apply-templates/>
         </body>
     </xsl:template>
-    
+
     <xsl:template match="wml:body//wml:p">
         <p><xsl:apply-templates/></p>
     </xsl:template>
+
 
     <xsl:template match="wml:body//wml:section">
         <sec>
@@ -370,6 +371,115 @@
         <graphic>
             <xsl:attribute name="xlink:href"><xsl:value-of select="utils:getFilename(@href, '/')"/></xsl:attribute>
         </graphic>
+    </xsl:template>
+    
+    <xsl:template match="wml:tabular|wml:tabularFixed">
+        <table-wrap>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:call-template name="table-caption"/>
+            <xsl:apply-templates select="wml:table"/>
+        </table-wrap>
+    </xsl:template>
+    
+    <xsl:template name="table-caption">
+        <xsl:apply-templates select="wml:label"/>
+        <xsl:if test="wml:title">
+            <caption>
+                <xsl:apply-templates select="wml:title"/>
+            </caption>
+        </xsl:if>
+        
+    </xsl:template>
+    <xsl:template match="wml:tabular/wml:table|wml:tabularFixed/wml:table">
+        <xsl:if test="./wml:tgroup/wml:colspec">
+            <colgroup>
+                <xsl:if test="./wml:tgroup/@align">
+                    <xsl:attribute name="align"><xsl:value-of select="wml:tgroup/@align"/></xsl:attribute>
+                </xsl:if>          
+            </colgroup>
+            <xsl:apply-templates select="wml:tgroup/wml:colspec"/>
+            <table>
+                <xsl:choose>
+                    <xsl:when test="@frame='topbot'">
+                        <xsl:attribute name="frame"><xsl:text>hsides</xsl:text></xsl:attribute>
+                    </xsl:when>
+                    <xsl:when test="@frame='void'">
+                        <xsl:attribute name="frame"><xsl:text>hsides</xsl:text></xsl:attribute>
+                    </xsl:when>  
+                </xsl:choose>
+                <xsl:apply-templates select="wml:tgroup/wml:thead"/>
+                <xsl:apply-templates select="wml:tgroup/wml:tbody"/>
+            </table>
+        </xsl:if>
+    </xsl:template>
+    
+    <xsl:template match="wml:tgroup/wml:colspec">
+        <col>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+        </col>
+    </xsl:template>
+    
+    <xsl:template match="wml:tgroup/wml:thead">
+        <thead>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@valign">
+                <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates select="wml:row"/>
+        </thead>
+    </xsl:template>
+    <xsl:template match="wml:tgroup/wml:tbody">
+        <tbody>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@valign">
+                <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates select="wml:row"/>
+        </tbody>
+    </xsl:template>
+    
+    <xsl:template match="wml:thead/wml:row|wml:tbody/wml:row">
+        <tr>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@valign">
+                <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates select="wml:entry"/>
+        </tr>
+    </xsl:template>
+    
+    <xsl:template match="wml:thead/wml:row/wml:entry">
+        <th>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@valign">
+                <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates/>
+        </th>
+    </xsl:template>
+    
+    <xsl:template match="wml:tbody/wml:row/wml:entry">
+        <td>
+            <xsl:if test="@align">
+                <xsl:attribute name="align"><xsl:value-of select="@align"/></xsl:attribute>
+            </xsl:if>
+            <xsl:if test="@valign">
+                <xsl:attribute name="valign"><xsl:value-of select="@valign"/></xsl:attribute>
+            </xsl:if>
+            <xsl:apply-templates/>
+        </td>
     </xsl:template>
     
     <!-- End JATS body -->
