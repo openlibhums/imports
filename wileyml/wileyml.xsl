@@ -500,6 +500,55 @@
         </attrib>
     </xsl:template>
     
+    <xsl:template match="wml:body//wml:list">
+        <list>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='custom'">
+                <xsl:attribute name="list-type"><xsl:text>custom</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='plain'">
+                <xsl:attribute name="list-type"><xsl:text>simple</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='bulleted'">
+                <xsl:attribute name="list-type"><xsl:text>bullet</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='checkbox'">
+                <xsl:attribute name="list-type"><xsl:text>checkbox</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='1'">
+                <xsl:attribute name="list-type"><xsl:text>order</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='I'">
+                <xsl:attribute name="list-type"><xsl:text>roman-upper</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='i'">
+                <xsl:attribute name="list-type"><xsl:text>roman-lower</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='A'">
+                <xsl:attribute name="list-type"><xsl:text>alpha-upper</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@style='a'">
+                <xsl:attribute name="list-type"><xsl:text>alpha-lower</xsl:text></xsl:attribute>                
+            </xsl:if>
+            <xsl:apply-templates select="wml:label[1]"/>
+            <xsl:apply-templates select="wml:title[1]"/>
+            <xsl:apply-templates select="wml:listItem"/>
+        </list>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:list/wml:listItem">
+        <list-item>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:apply-templates select="wml:label[1]"/>
+            <xsl:apply-templates select="wml:title[1]"/>
+            <xsl:apply-templates select="wml:list|wml:p"/>
+        </list-item>
+    </xsl:template>
+   
     
     <!-- End JATS body -->
     
