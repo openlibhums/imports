@@ -486,6 +486,21 @@
         </td>
     </xsl:template>
     
+    <xsl:template match="wml:body//wml:blockFixed">
+        <disp-quote>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:apply-templates/>
+        </disp-quote>
+    </xsl:template>
+    <xsl:template match="wml:body//wml:blockFixed/wml:source">
+        <attrib>
+            <xsl:apply-templates/>
+        </attrib>
+    </xsl:template>
+    
+    
     <!-- End JATS body -->
     
     <!-- Start utility functions -->
