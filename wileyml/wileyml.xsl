@@ -341,6 +341,10 @@
         <sub><xsl:apply-templates/></sub>
     </xsl:template>
     
+    <xsl:template match="wml:body//wml:sc">
+        <sc><xsl:apply-templates/></sc>
+    </xsl:template>
+    
     <xsl:template match="wml:body//wml:url">
         <ext-link>
             <xsl:attribute name="xlink:href"><xsl:value-of select="."/></xsl:attribute>
