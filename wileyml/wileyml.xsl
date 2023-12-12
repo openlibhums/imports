@@ -28,6 +28,8 @@
     <xsl:template match="/">
         <article article-type="research-article" dtd-version="1.2" xml:lang="en">
           <xsl:apply-templates />
+          <!-- There is no "back" on WML, so we call a template to build it with nodes from body -->
+           <xsl:call-template name="jats-back"/>
       </article>
     </xsl:template>
     
@@ -317,7 +319,7 @@
         </sec>
     </xsl:template>
     
-    <xsl:template match="wml:body//wml:section//wml:title">
+    <xsl:template match="wml:body//wml:title">
         <title><xsl:apply-templates/></title>
     </xsl:template>
     
@@ -621,7 +623,7 @@
     <xsl:template match="wml:body//wml:displayedItem[@type='mathematics']">
         <disp-formula>
             <xsl:if test="@xml:id">
-                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>       
             </xsl:if>
                 <xsl:apply-templates select="mml:math"/>
         </disp-formula>
@@ -632,12 +634,80 @@
             <xsl:copy-of select="namespace::mml"/>
             <xsl:apply-templates />
         </xsl:element>
+    </xsl:template>    
+    <!-- End JATS body -->
+    
+    <!-- Start JATS back -->
+    <!--remove nodes from body that will go in back -->
+    <xsl:template match="wml:body//wml:appendix"/>
+    <xsl:template match="wml:body//wml:noteGroup"/>
+    <xsl:template match="wml:body//wml:bibliography"/>
+    
+    
+    <xsl:template name="jats-back">
+        <back>
+            <xsl:if test="//wml:body//wml:appendix">
+                <app-group>
+                    <xsl:apply-templates select="//wml:body//wml:appendix" mode="back"/>
+                </app-group>
+            </xsl:if>
+            <xsl:if test="//wml:body//wml:noteGroup">
+                <fn-group>
+                    <xsl:apply-templates select="wml:title"/>
+                    <xsl:apply-templates select="//wml:body//wml:noteGroup/wml:note" mode="back"/>
+                </fn-group>
+            </xsl:if>
+            <xsl:if test="//wml:body//wml:bibliography">
+                <ref-list>
+                    <xsl:apply-templates select="wml:title"/>
+                    <xsl:apply-templates select="//wml:body//wml:bibliography/wml:bib" mode="back"/>
+                </ref-list>
+            </xsl:if>
+        </back>
     </xsl:template>
     
-
-   
+    <xsl:template match="wml:body/wml:appendix" mode="back">
+        <app>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>       
+            </xsl:if>
+            <xsl:apply-templates/>
+        </app>    
+    </xsl:template>
     
-    <!-- End JATS body -->
+    <xsl:template match="wml:note" mode="back">
+      <fn>
+        <xsl:if test="@xml:id">
+            <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>       
+        </xsl:if>
+        <xsl:apply-templates/>
+       </fn>
+    </xsl:template>
+    
+    <xsl:template match="wml:bib" mode="back">
+        <ref>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>       
+            </xsl:if>
+            <xsl:apply-templates/>
+        </ref>
+    </xsl:template>
+    <xsl:template match="wml:bib/wml:citation">
+        <mixed-citation>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>       
+            </xsl:if>
+            <xsl:attribute name="publication-type"><xsl:value-of select="@type"/></xsl:attribute>
+            <xsl:apply-templates/>
+        </mixed-citation>
+    </xsl:template>
+    <xsl:template match="wml:citation/wml:journalTitle|wml:citation/wml:chapterTitle|wml:citation/wml:otherTitle">
+        <source>
+            <xsl:apply-templates/>
+        </source>
+    </xsl:template>
+    
+    <!-- End JATS back -->
     
     <!-- Start utility functions -->
     <xsl:function name="utils:getFilename">
