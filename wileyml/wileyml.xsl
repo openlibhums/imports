@@ -548,6 +548,24 @@
             <xsl:apply-templates select="wml:list|wml:p"/>
         </list-item>
     </xsl:template>
+
+    <xsl:template match="wml:body//wml:displayedItem[@type='mathematics']">
+        <disp-formula>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+                <xsl:apply-templates select="mml:math"/>
+        </disp-formula>
+    </xsl:template>
+    
+    <xsl:template match="mml:math|mml:math//*">
+        <xsl:element name="mml:{name()}">
+            <xsl:copy-of select="namespace::*"/>
+            <xsl:apply-templates />
+        </xsl:element>
+    </xsl:template>
+    
+
    
     
     <!-- End JATS body -->
