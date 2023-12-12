@@ -311,7 +311,7 @@
     <xsl:template match="wml:body//wml:section">
         <sec>
             <xsl:if test="@xml:id">
-                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>          
             </xsl:if>
             <xsl:apply-templates/>
         </sec>
@@ -356,6 +356,20 @@
         <email><xsl:value-of select="."/></email>
     </xsl:template>
     
+    <xsl:template match="wml:body//wml:inlineGraphic">
+        <inline-graphic>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:if test="@alt">
+                <xsl:attribute name="alt-text"><xsl:value-of select="@alt"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:attribute name="xlink:href">
+                <xsl:value-of select="utils:getFilename(@location, '/')"/>
+            </xsl:attribute>
+        </inline-graphic>
+    </xsl:template>
+    
     <xsl:template match="wml:body//wml:figure">
         <fig>
             <xsl:if test="@xml:id">
@@ -374,6 +388,9 @@
     <xsl:template match="wml:body//wml:figure/wml:mediaResourceGroup/wml:mediaResource[@rendition='webOriginal']">
         <graphic>
             <xsl:attribute name="xlink:href"><xsl:value-of select="utils:getFilename(@href, '/')"/></xsl:attribute>
+            <xsl:if test="@alt">
+                <alt-text><xsl:value-of select="@alt"/></alt-text>            
+            </xsl:if>
         </graphic>
     </xsl:template>
     
