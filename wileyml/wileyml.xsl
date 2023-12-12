@@ -398,12 +398,6 @@
     </xsl:template>
     <xsl:template match="wml:tabular/wml:table|wml:tabularFixed/wml:table">
         <xsl:if test="./wml:tgroup/wml:colspec">
-            <colgroup>
-                <xsl:if test="./wml:tgroup/@align">
-                    <xsl:attribute name="align"><xsl:value-of select="wml:tgroup/@align"/></xsl:attribute>
-                </xsl:if>          
-            </colgroup>
-            <xsl:apply-templates select="wml:tgroup/wml:colspec"/>
             <table>
                 <xsl:choose>
                     <xsl:when test="@frame='topbot'">
@@ -413,6 +407,12 @@
                         <xsl:attribute name="frame"><xsl:text>hsides</xsl:text></xsl:attribute>
                     </xsl:when>  
                 </xsl:choose>
+                <colgroup>
+                    <xsl:if test="./wml:tgroup/@align">
+                        <xsl:attribute name="align"><xsl:value-of select="wml:tgroup/@align"/></xsl:attribute>
+                    </xsl:if>          
+                    <xsl:apply-templates select="wml:tgroup/wml:colspec"/>
+                </colgroup>
                 <xsl:apply-templates select="wml:tgroup/wml:thead"/>
                 <xsl:apply-templates select="wml:tgroup/wml:tbody"/>
             </table>
