@@ -7,7 +7,8 @@
     xmlns:mml="http://www.w3.org/1998/Math/MathML"
     xmlns:wiley="http://www.wiley.com/namespaces/wiley/wiley"
     xmlns:wml="http://www.wiley.com/namespaces/wiley"
-    exclude-result-prefixes="xsi wiley wml"
+    xmlns:utils="https://example.org"
+    exclude-result-prefixes="xsi wiley wml utils"
     version="2.0">
     
     <xsl:output
@@ -301,8 +302,66 @@
             <xsl:apply-templates/>
         </body>
     </xsl:template>
-    <!-- End JATS body -->
+    
+    <xsl:template match="wml:body//wml:p">
+        <p><xsl:apply-templates/></p>
+    </xsl:template>
+
+    <xsl:template match="wml:body//wml:section">
+        <sec>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:apply-templates/>
+        </sec>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:section//wml:title">
+        <title><xsl:apply-templates/></title>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:label">
+        <label><xsl:apply-templates/></label>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:b">
+        <bold><xsl:apply-templates/></bold>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:i">
+        <italic><xsl:apply-templates/></italic>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:sup">
+        <sup><xsl:apply-templates/></sup>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:sub">
+        <sub><xsl:apply-templates/></sub>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:url">
+        <ext-link>
+            <xsl:attribute name="xlink:href"><xsl:value-of select="."/></xsl:attribute>
+            <xsl:value-of select="."/>
+        </ext-link>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:email">
+        <email><xsl:value-of select="."/></email>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:figure">
+        <fig>
+            <xsl:if test="@xml:id">
+                <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
+            </xsl:if>
+            <xsl:apply-templates select="wml:label"/>
+            <xsl:apply-templates select="wml:caption"/>
+            <xsl:apply-templates select="wml:mediaResourceGroup/wml:mediaResource[@rendition='webOriginal']"/>
+        </fig>
+    </xsl:template>
+    
 
     
 </xsl:stylesheet>
-
