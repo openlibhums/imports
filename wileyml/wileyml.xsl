@@ -362,6 +362,25 @@
         </fig>
     </xsl:template>
     
-
+    <xsl:template match="wml:body//wml:figure/wml:caption">
+        <caption><xsl:apply-templates/></caption>
+    </xsl:template>
+    
+    <xsl:template match="wml:body//wml:figure/wml:mediaResourceGroup/wml:mediaResource[@rendition='webOriginal']">
+        <graphic>
+            <xsl:attribute name="xlink:href"><xsl:value-of select="utils:getFilename(@href, '/')"/></xsl:attribute>
+        </graphic>
+    </xsl:template>
+    
+    <!-- End JATS body -->
+    
+    <!-- Start utility functions -->
+    <xsl:function name="utils:getFilename">
+        <xsl:param name="str"/>
+        <!--str e.g. document-uri(.), filename and path-->
+        <xsl:param name="char"/>
+        <xsl:value-of select="subsequence(reverse(tokenize($str, $char)), 1, 1)"/>
+    </xsl:function>
+    <!-- End utility functions -->
     
 </xsl:stylesheet>
