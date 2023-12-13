@@ -309,7 +309,6 @@
         <p><xsl:apply-templates/></p>
     </xsl:template>
 
-
     <xsl:template match="wml:body//wml:section">
         <sec>
             <xsl:if test="@xml:id">
@@ -456,6 +455,7 @@
             </xsl:if>
             <xsl:call-template name="table-caption"/>
             <xsl:apply-templates select="wml:table"/>
+            <xsl:apply-templates select="wml:noteGroup"/>
         </table-wrap>
     </xsl:template>
     
@@ -558,6 +558,20 @@
         </td>
     </xsl:template>
     
+    <xsl:template match="wml:tabular/wml:noteGroup|wml:tabularFixed/wml:noteGroup">
+        <table-wrap-foot>
+            <fn-group>
+                <xsl:apply-templates/>
+            </fn-group>
+        </table-wrap-foot>
+    </xsl:template>
+    
+    <xsl:template match="wml:tabular/wml:noteGroup/wml:note|wml:tabularFixed/wml:noteGroup/wml:note">
+        <xsl:apply-templates select="." mode="back"/>
+    </xsl:template>
+    
+    <!-- blockquotes -->
+    
     <xsl:template match="wml:body//wml:blockFixed">
         <disp-quote>
             <xsl:if test="@xml:id">
@@ -641,7 +655,7 @@
     <!-- Start JATS back -->
     <!--remove nodes from body that will go in back -->
     <xsl:template match="wml:body//wml:appendix"/>
-    <xsl:template match="wml:body//wml:noteGroup"/>
+    <!--<xsl:template match="wml:body/wml:noteGroup"/>-->
     <xsl:template match="wml:body//wml:bibliography"/>
     
     
@@ -652,10 +666,10 @@
                     <xsl:apply-templates select="//wml:body//wml:appendix" mode="back"/>
                 </app-group>
             </xsl:if>
-            <xsl:if test="//wml:body//wml:noteGroup">
+            <xsl:if test="//wml:body/wml:noteGroup">
                 <fn-group>
                     <xsl:apply-templates select="wml:title"/>
-                    <xsl:apply-templates select="//wml:body//wml:noteGroup/wml:note" mode="back"/>
+                    <xsl:apply-templates select="//wml:body/wml:noteGroup/wml:note" mode="back"/>
                 </fn-group>
             </xsl:if>
             <xsl:if test="//wml:body//wml:bibliography">
