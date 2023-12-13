@@ -88,7 +88,11 @@ class CSVImportUpdateArticle(CSVImportCreateArticle):
 
 class OJS3Section(models.Model):
     """Stores an ojs 3 section ID and maps it to the section in Janeway"""
-    ojs_id = models.IntegerField()
+    ojs_id = models.IntegerField(
+        null=True,
+        blank=True,
+    )
+    ojs_ref = models.CharField(max_length=10, blank=True, null=True)
     journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
     section = models.ForeignKey(
         'submission.Section', blank=True, null=True,
@@ -116,3 +120,12 @@ class OJSAccount(models.Model):
         unique_together = (
             ('ojs_id', 'journal', 'account'),
         )
+
+
+class OJSFile(models.Model):
+    ojs_id = models.IntegerField()
+    journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
+    file = models.ForeignKey(
+        'core.File',
+        on_delete=models.CASCADE,
+    )

@@ -208,7 +208,7 @@ def create_frozen_record(author, article, emails=None, author_dict=None):
         'last_name': author.last_name,
         'institution': author.institution or '',
         'order': order,
-               'author': author,
+        'author': author,
     }
     if author_dict:
         frozen_dict["first_name"] = author_dict["first_name"]
@@ -1102,10 +1102,11 @@ def get_or_create_account(data, update=False):
             )
             created = True
         except Exception as e:
-            #Most likely due to a problem with case
+            # Most likely due to a problem with case
             try:
                 account = core_models.Account.objects.get(
-                    email__iexact=email)
+                    email__iexact=email,
+                )
             except Exception as e:
                 logger.warning("Failed to create user %s" % data)
                 return None, created

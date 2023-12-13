@@ -3,8 +3,11 @@ import pprint
 from django.core.management.base import BaseCommand
 from journal import models
 from core.models import Account
+from utils.logger import get_logger
 
 from plugins.imports.jats import import_jats_article
+
+logger = get_logger(__name__)
 
 
 class Command(BaseCommand):
@@ -19,6 +22,12 @@ class Command(BaseCommand):
         parser.add_argument('-d', '--dry-run', action="store_true", default=False)
 
     def handle(self, *args, **options):
+        verbosity = int(options['verbosity'])
+        if verbosity > 2:
+            logger.setLevel(logging.DEBUG)
+        elif verbosity > 1:
+            logger.setLevel(logging.INFO)
+
         journal = models.Journal.objects.get(code=options["journal_code"])
         owner = Account.objects.get(pk=options["owner_id"])
         with open(options["jats_xml_path"], "r") as jats_file:
