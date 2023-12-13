@@ -105,7 +105,7 @@
     </xsl:template>
     
     <xsl:template match="wml:creator">
-        <contrib>
+        <contrib contrib-type="author">
             <xsl:apply-templates />
             <xsl:variable name="rid" select="replace(@xml:id, 'cr', 'aff')"/>
             <xsl:if test="../../wml:affiliationGroup/wml:affiliation[@xml:id=$rid]">
