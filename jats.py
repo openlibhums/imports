@@ -309,10 +309,9 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
 
         if author.find("surname"):
             email_jats = author.find("email")
+            email = None
             if email_jats:
                 email = email_jats.text
-            else:
-                email = default_email(author)
             author_data = {
                 "first_name": author.find("given-names").text,
                 "last_name": author.find("surname").text,
@@ -425,12 +424,17 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
         # Delete all frozen authors for this article.
         article.frozenauthor_set.all().delete()
         for idx, author in enumerate(metadata["authors"]):
-            try:
-                account = Account.objects.get(
+            account = None
+            if author["email"]:
+                account, c = Account.objects.get_or_create(
                     email=author['email']
+                    defaults={
+                        "first_name": author["first_name"],
+                        "last_name": author["last_name"],
+                        "institution": author["institution"] or journal.name,
+                        "orcid": author["orcid"],
+                    },
                 )
-            except Account.DoesNotExist:
-                account = None
 
             fa = submission_models.FrozenAuthor.objects.create(
                 article=article,
