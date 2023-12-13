@@ -427,7 +427,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             account = None
             if author["email"]:
                 account, c = Account.objects.get_or_create(
-                    email=author['email']
+                    email=author['email'],
                     defaults={
                         "first_name": author["first_name"],
                         "last_name": author["last_name"],
