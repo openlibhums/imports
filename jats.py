@@ -130,7 +130,7 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
         with tempfile.TemporaryDirectory(dir=temp_path) as temp_dir:
             zf.extractall(path=temp_dir)
 
-            for root, path, filenames in os.walk(temp_dir):
+            for root, dirs, filenames in os.walk(temp_dir):
                 try:
                     jats_path = jats_filename = pdf_path = pdf_filename = None
                     supplements = []
@@ -147,7 +147,16 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                         else:
                             supplements.append(file_path)
 
+
                     if jats_path:
+                        # Check nested dirs relative to xml like ./figures
+                        for dir_ in dirs:
+                            dir_path = os.path.join(root, dir_)
+                            for filename in os.listdir(dir_path):
+                                mimetype, _ = mimetypes.guess_type(filename)
+                                file_path = os.path.join(dir_path, filename)
+                                supplements.append(file_path)
+
                         logger.info("[JATS] Importing from %s", jats_path)
                         with open(jats_path, 'r') as jats_file:
                             article = import_jats_article(
