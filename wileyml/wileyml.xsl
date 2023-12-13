@@ -403,6 +403,7 @@
                     <xsl:attribute name="table"><xsl:text>bibr</xsl:text></xsl:attribute>
                 </xsl:when>
             </xsl:choose>
+            <xsl:apply-templates/>
         </xref>
     </xsl:template>
     
