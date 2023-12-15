@@ -152,7 +152,7 @@ def import_article(client, journal, article_dict, editorial=False, galleys=True)
         return
     import_author_assignments(article, article_dict)
     if galleys:
-        import_article_galleys(article, pub_article_dict, journal, client)
+        import_article_galleys(pub_article_dict, journal, client, article)
     if editorial:
         import_manuscripts(client, article, article_dict)
         import_editor_assignments(article, article_dict)
@@ -413,7 +413,17 @@ def import_article_metadata(article_dict, journal, client):
     return article
 
 
-def import_article_galleys(article, publication, journal, client):
+def import_article_galleys(publication, journal, client, article=None):
+    if not article:
+        ojs_id = publication["submissionId"]
+        try:
+            article = identifiers_models.Identifier.objects.get(
+                id_type="ojs_id",
+                identifier=ojs_id,
+                article__journal=journal,
+            ).article
+        except identifiers_models.Identifier.DoesNotExist:
+            logger.error("No article found for OJS ID: %s", ojs_id)
     for galley in publication["galleys"]:
         if galley["urlRemote"]:
             article.is_remote = True
