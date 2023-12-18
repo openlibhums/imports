@@ -424,6 +424,8 @@ def import_article_galleys(publication, journal, client, article=None):
             ).article
         except identifiers_models.Identifier.DoesNotExist:
             logger.error("No article found for OJS ID: %s", ojs_id)
+    if not article:
+        return
     for galley in publication["galleys"]:
         if galley["urlRemote"]:
             article.is_remote = True
