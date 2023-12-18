@@ -441,6 +441,9 @@ def import_article_galleys(publication, journal, client, article=None):
             # We have added a custom attribute to the galleys that flag
             # if the galley is actually a supplementary file
             if galley_file and galley.get("isSupplementary", False):
+                if galley_file.label == "file" and galley.get("label"):
+                    galley_file.label = galley["label"]
+                    galley_file.save()
                 doi = galley["file"].get("pub-id::doi")
                 if doi:
                     core_models.SupplementaryFiles.objects.filter(
@@ -487,7 +490,7 @@ def import_reviews(client, article, article_dict):
             ).account
         except models.OJSAccount.DoesNotExist:
             user_dict = client.get_user(review_dict["reviewerId"])
-            reviewer = import_user(user_dict, article.journal)
+            reviewer, _ = import_user(user_dict, article.journal)
 
         review_defaults = dict(
             review_type="traditional",
