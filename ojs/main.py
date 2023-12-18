@@ -249,14 +249,12 @@ def import_ojs3_metrics(client, journal, ojs_ids=None):
     for record in metrics:
         ojs3_importers.import_article_metrics(client, journal, record)
 
-def import_ojs3_galleys(
-        client, journal, ojs_id=None,
-):
+
+def import_ojs3_galleys(client, journal, ojs_id=None):
     if ojs_id:
         articles = [client.get_article(ojs_id)]
     else:
         articles = client.get_articles()
-    articles = client.get_articles()
     for d in articles:
         pub_article_dict = ojs3_importers.get_pub_article_dict(d, client)
         ojs3_importers.import_article_galleys(pub_article_dict, journal, client)

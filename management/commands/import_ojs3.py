@@ -60,7 +60,7 @@ class Command(BaseCommand):
         elif options["users"]:
             ojs.import_ojs3_users(client, journal)
         elif options["just_galleys"]:
-            ojs.import_ojs3_galleys(client, journal)
+            ojs.import_ojs3_galleys(client, journal, options["ojs_id"])
         else:
             ojs.import_ojs3_articles(
                 client, journal,
