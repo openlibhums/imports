@@ -45,7 +45,8 @@
                 <xsl:call-template name="article-title-block" />
                 <xsl:apply-templates select="wml:contentMeta/wml:creators"/>
                 <xsl:apply-templates select="wml:contentMeta/wml:affiliationGroup"/>
-                <xsl:apply-templates select="wml:publicationMeta[@level='unit']/wml:eventGroup/wml:event"/>
+                <!--<xsl:apply-templates select="wml:publicationMeta[@level='part']/wml:eventGroup/wml:event"/> -->
+                <xsl:apply-templates select="wml:publicationMeta[@level='part']/wml:coverDate"/>
                 <xsl:call-template name="issue-meta-block" />
                 <xsl:call-template name="page-numbers-block" />
                 <xsl:call-template name="permissions-block"/>
@@ -157,9 +158,22 @@
             <xsl:value-of select="wml:orgDiv|wml:orgName|wml:address/wml:country" separator=", "/>
         </aff>
     </xsl:template>
-    
+    <!-- firstOnline date can be inaccurate, for example when an article was added to Wiley after being published in other platforms
     <xsl:template match="wml:publicationMeta[@level='unit']/wml:eventGroup/wml:event[@type='firstOnline']">
         <xsl:variable name="pubdate" select="@date"/>
+        <pub-date publication-format="electronic">
+            <xsl:attribute name="iso-8601-date"><xsl:value-of select="$pubdate"/></xsl:attribute>
+            <xsl:for-each select="reverse(tokenize($pubdate, '-'))">
+                <xsl:variable name="pos" select="position()"/>
+                <xsl:element name="{$jats-date-parts/part[@idx=$pos]}"><xsl:value-of select="."/></xsl:element>
+            </xsl:for-each>
+        </pub-date>
+    </xsl:template>
+    -->
+    
+    <xsl:template match="wml:publicationMeta[@level='part']/wml:coverDate">
+        <!-- this is the issue date and probably most reliable publication date for articles -->
+        <xsl:variable name="pubdate" select="concat(@startDate,'-02')"/>
         <pub-date publication-format="electronic">
             <xsl:attribute name="iso-8601-date"><xsl:value-of select="$pubdate"/></xsl:attribute>
             <xsl:for-each select="reverse(tokenize($pubdate, '-'))">
