@@ -487,14 +487,34 @@
     </xsl:template>
     
     <xsl:template name="table-caption">
-        <xsl:apply-templates select="wml:label"/>
-        <xsl:if test="wml:title">
-            <caption>
-                <xsl:apply-templates select="wml:title"/>
-            </caption>
-        </xsl:if>
-        
+        <!-- WileyML supports use of a <label> + <title> or <label> + <titleGroup> -->
+        <xsl:choose>
+            <xsl:when test="wml:title">
+                <xsl:apply-templates select="wml:label"/>
+                <caption>
+                    <xsl:apply-templates select="wml:title"/>
+                </caption>
+            </xsl:when>
+            <xsl:when test="wml:titleGroup/wml:title[@type='tabularName']">
+                <label>
+                    <!-- when using titleGroup, part of the label lives inside a title of type tabularName ... -->
+                    <xsl:value-of select="wml:titleGroup/wml:title[@type='tabularName']"/>
+                    <xsl:text>&#160;</xsl:text>
+                    <xsl:value-of select="wml:label"/>
+                </label>
+                <caption>
+                    <xsl:apply-templates select="wml:titleGroup/wml:title[@type='main']"/>
+                </caption>
+            </xsl:when>
+            <xsl:when test="wml:titleGroup/wml:title">
+                <xsl:apply-templates select="wml:label"/>
+                <caption>
+                    <xsl:apply-templates select="wml:titleGroup/wml:title"/>
+                </caption>
+            </xsl:when>
+        </xsl:choose>  
     </xsl:template>
+    
     <xsl:template match="wml:tabular/wml:table|wml:tabularFixed/wml:table">
         <xsl:if test="./wml:tgroup/wml:colspec">
             <table>
