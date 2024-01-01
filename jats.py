@@ -62,6 +62,7 @@ def import_jats_article(
     meta["title"] = get_jats_title(metadata_soup)
     meta["abstract"] = get_jats_abstract(metadata_soup)
     meta["issue"], meta["volume"] = get_jats_issue(jats_soup)
+    meta["issue_doi"] = get_jats_issue_doi(jats_soup)
     meta["keywords"] = get_jats_keywords(metadata_soup)
     meta["section_name"] = get_jats_section_name(jats_soup)
     meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
@@ -223,6 +224,13 @@ def get_jats_issue(soup):
     volume = volume.text if volume else 0
 
     return (int(issue), int(volume))
+
+
+def get_jats_issue_doi(soup):
+    issue_doi_soup = soup.find("issue-id", attrs={"pub-id-type": "doi"})
+    if issue_doi_soup:
+        return issue_doi_soup.text
+    return None
 
 
 def get_jats_pub_date(soup):
@@ -489,7 +497,11 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 volume=metadata["volume"],
                 issue=metadata["issue"],
                 journal=journal,
-                defaults={"issue_type": issue_type}
+                defaults={
+                    "issue_type": issue_type,
+                    "doi": metadata["issue_doi"],
+                    "date": article.date_published.date,
+                }
             )
         issue.articles.add(article)
         article.primary_issue = issue
