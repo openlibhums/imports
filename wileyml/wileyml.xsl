@@ -679,6 +679,9 @@
             <xsl:apply-templates select="wml:label[1]"/>
             <xsl:apply-templates select="wml:title[1]"/>
             <xsl:apply-templates select="wml:list|wml:p"/>
+            <xsl:if test="./text()">
+                <p><xsl:value-of select="./text()"/></p>
+            </xsl:if>
         </list-item>
     </xsl:template>
 
