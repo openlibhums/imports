@@ -456,10 +456,25 @@
             <xsl:if test="@xml:id">
                 <xsl:attribute name="id"><xsl:value-of select="@xml:id"/></xsl:attribute>                
             </xsl:if>
-            <xsl:apply-templates select="wml:label"/>
+            <xsl:call-template name="figure-label"/>
             <xsl:apply-templates select="wml:caption"/>
             <xsl:apply-templates select="wml:mediaResourceGroup/wml:mediaResource[@rendition='webOriginal']"/>
         </fig>
+    </xsl:template>
+    
+    <xsl:template name="figure-label">
+        <xsl:choose>
+            <xsl:when test="wml:title[@type='figureName']">
+                <label>
+                    <xsl:value-of select="wml:title[@type='figureName']"/>
+                    &#160;
+                    <xsl:value-of select="wml:label"/>
+                </label>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:apply-templates select="wml:label"/>
+            </xsl:otherwise>
+        </xsl:choose>
     </xsl:template>
     
     <xsl:template match="wml:body//wml:figure/wml:caption">
