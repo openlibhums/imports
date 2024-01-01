@@ -671,7 +671,7 @@
     <!-- Start JATS back -->
     <!--remove nodes from body that will go in back -->
     <xsl:template match="wml:body//wml:appendix"/>
-    <!--<xsl:template match="wml:body/wml:noteGroup"/>-->
+    <xsl:template match="wml:body/wml:noteGroup"/>
     <xsl:template match="wml:body//wml:bibliography"/>
     
     
