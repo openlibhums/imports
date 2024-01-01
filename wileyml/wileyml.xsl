@@ -210,7 +210,23 @@
     </xsl:template>
     
     <xsl:template match="wml:titleGroup/wml:title[@type='main']"> 
-        <xsl:value-of select="text()" />
+        <xsl:apply-templates />
+    </xsl:template> 
+    
+    <xsl:template match="wml:titleGroup//wml:b">
+        <bold><xsl:apply-templates/></bold>
+    </xsl:template>
+    
+    <xsl:template match="wml:titleGroup//wml:i">
+        <italic><xsl:apply-templates/></italic>
+    </xsl:template>
+    
+    <xsl:template match="wml:titleGroup//wml:sup">
+        <sup><xsl:apply-templates/></sup>
+    </xsl:template>
+    
+    <xsl:template match="wml:titleGroup//wml:sub">
+        <sub><xsl:apply-templates/></sub>
     </xsl:template>
     
     <xsl:template name="permissions-block">
