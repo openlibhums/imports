@@ -201,11 +201,18 @@ def get_jats_journal_metadata(soup):
 
 
 def get_jats_title(soup):
-    title = soup.find("article-title")
-    if title:
-        return title.text
+    title_soup = soup.find("article-title")
+    italics = None
+    if title_soup:
+        title_str = "".join(str(child) for child in title_soup.children)
+        clean_title = title_str.replace(
+            "italic>", "i>",
+        ).replace(
+            "bold>", "b>",
+        )
+        return clean_title
     else:
-        return ""
+        return "[Untitled]"
 
 
 def get_jats_abstract(soup):
@@ -500,7 +507,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 defaults={
                     "issue_type": issue_type,
                     "doi": metadata["issue_doi"],
-                    "date": article.date_published.date,
+                    "date": article.date_published,
                 }
             )
         issue.articles.add(article)
