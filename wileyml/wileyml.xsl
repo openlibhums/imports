@@ -223,23 +223,23 @@
         </article-id>
     </xsl:template>
     
-    <xsl:template match="wml:titleGroup/wml:title[@type='main']"> 
+    <xsl:template match="wml:header//wml:titleGroup/wml:title[@type='main']"> 
         <xsl:apply-templates />
     </xsl:template> 
     
-    <xsl:template match="wml:titleGroup//wml:b">
+    <xsl:template match="wml:contentMeta/wml:titleGroup//wml:b">
         <bold><xsl:apply-templates/></bold>
     </xsl:template>
     
-    <xsl:template match="wml:titleGroup//wml:i">
+    <xsl:template match="wml:contentMeta/wml:titleGroup//wml:i">
         <italic><xsl:apply-templates/></italic>
     </xsl:template>
     
-    <xsl:template match="wml:titleGroup//wml:sup">
+    <xsl:template match="wml:contentMeta/wml:titleGroup//wml:sup">
         <sup><xsl:apply-templates/></sup>
     </xsl:template>
     
-    <xsl:template match="wml:titleGroup//wml:sub">
+    <xsl:template match="wml:contentMeta/wml:titleGroup//wml:sub">
         <sub><xsl:apply-templates/></sub>
     </xsl:template>
     
@@ -797,7 +797,7 @@
     </xsl:template>
     <xsl:template match="wml:citation/wml:journalTitle|wml:citation/wml:chapterTitle|wml:citation/wml:otherTitle">
         <source>
-            <xsl:apply-templates/>
+            <xsl:apply-templates/>&#160;
         </source>
     </xsl:template>
     
