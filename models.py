@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+from utils import notify_helpers
+
 
 class WordPressImport(models.Model):
     url = models.URLField(
@@ -129,3 +131,36 @@ class OJSFile(models.Model):
         'core.File',
         on_delete=models.CASCADE,
     )
+
+
+class AutomatedImportNotification(models.Model):
+    email = models.EmailField(
+        help_text='Email address of user to receive notification '
+                  'of automatic import logs.',
+    )
+
+    def send_notification(self, articles, errors, request):
+        log_dict = {
+            'level': 'Info',
+            'action_type': 'Contact Production Staff',
+            'types': 'Email',
+            'target': None
+        }
+        message = f"""
+        <p>The following ZIP files were being imported:<p>
+        <p>{ articles }</p>>
+        <p>The following errors were detected during import:
+        <p>{ errors }</p>
+        <p>
+        Regards
+        <br />
+        Janeway
+        </p>
+        """
+        notify_helpers.send_email_with_body_from_user(
+            request,
+            'Janeway Article Import Notification',
+            self.email,
+            message,
+            log_dict=log_dict,
+        )

@@ -52,9 +52,14 @@ def import_users(xml_content, journal):
             print(f'Account with email {email} updated.')
         if interests:
             for interest in interests.split(','):
-                new_interest, c = core_models.Interest.objects.get_or_create(
-                    name=interest,
-                )
+                try:
+                    new_interest, c = core_models.Interest.objects.get_or_create(
+                        name=interest,
+                    )
+                except core_models.Interest.MultipleObjectsReturned:
+                    new_interest = core_models.Interest.objects.filter(
+                        name=interest,
+                    ).first()
                 account.interest.add(new_interest)
         if user_groups:
             role_slugs = common.map_ojs_roles_to_janeway_role_slugs(

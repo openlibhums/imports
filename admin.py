@@ -73,11 +73,16 @@ class CSVImportArticleAdmin(utils_admin_utils.ArticleFKModelAdmin):
     date_hierarchy = ('imported')
 
 
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'email')
+
+
 for pair in [
     (models.ExportFile, ExportFileAdmin),
     (models.CSVImport, CSVImportAdmin),
     (models.CSVImportCreateArticle, CSVImportArticleAdmin),
     (models.CSVImportUpdateArticle, CSVImportArticleAdmin),
     (models.OJSFile,),
+    (models.AutomatedImportNotification, NotificationAdmin),
 ]:
     admin.site.register(*pair)

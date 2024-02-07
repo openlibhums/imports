@@ -147,7 +147,6 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                         else:
                             supplements.append(file_path)
 
-
                     if jats_path:
                         # Check nested dirs relative to xml like ./figures
                         for dir_ in dirs:
@@ -170,7 +169,7 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                 except Exception as err:
                     logger.warning(err)
                     logger.warning(traceback.format_exc())
-                    errors.append((filenames, err))
+                    errors.append((jats_path, err))
 
     return articles, errors
 
@@ -837,7 +836,7 @@ def save_preprint(
         return preprint
 
 
-def import_html_reviews(preprint, review_files, owner):
+def import_html_reviews(preprint, review_files, owner, number=None):
     review_round, _ = review_models.ReviewRound.objects.get_or_create(
         round_number=1,
         article=preprint.article,
@@ -846,6 +845,7 @@ def import_html_reviews(preprint, review_files, owner):
         journal=preprint.article.journal,
     ).first()
     for review_file in review_files:
+        print(f"Importing {review_file}")
         with open(review_file, 'r') as r_file:
             contents = r_file.read()
             try:
@@ -878,7 +878,7 @@ def import_html_reviews(preprint, review_files, owner):
                 assignment=review_assignment,
                 original_element=default_element,
                 defaults={
-                    'answer': contents.strip().replace('\n', ''),
+                    'answer': answer,
                     'author_can_see': True,
                 }
             )

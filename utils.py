@@ -348,7 +348,6 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                 actions[article.pk] = f'Article {article.title} ({article.pk}) updated.'
 
             except Exception as e:
-                import pdb;pdb.set_trace()
                 errors.append(
                     {
                         'article': primary_row.get('Article title'),
