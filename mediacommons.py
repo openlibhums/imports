@@ -75,21 +75,25 @@ def import_article(journal, owner, data):
         if i == 0:
             article.primary_issue = issue
             article.save()
-        for idx, editor_data in enumerate(issue_data["editors"], 1):
-            user = update_or_create_account(editor_data)
-            journal_models.IssueEditor.objects.get_or_create(
-                account=user,
-                issue=issue,
-                role="Editor",
-                sequence=idx,
-            )
         for idx, editor_data in enumerate(issue_data["coeditors"], 1):
             user = update_or_create_account(editor_data)
             journal_models.IssueEditor.objects.get_or_create(
                 account=user,
                 issue=issue,
-                role="Co-editor",
-                sequence=idx,
+                defaults=dict(
+                    role="Co-editor",
+                    sequence=idx,
+                )
+            )
+        for idx, editor_data in enumerate(issue_data["editors"], 1):
+            user = update_or_create_account(editor_data)
+            journal_models.IssueEditor.objects.get_or_create(
+                account=user,
+                issue=issue,
+                defaults=dict(
+                    role="Editor",
+                    sequence=idx,
+                )
             )
 
     for review_data in data["reviews"]:
