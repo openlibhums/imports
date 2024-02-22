@@ -1,7 +1,6 @@
 import re
 
 from core.workflow import log_stage_change
-<<<<<<< HEAD
 from core import models as core_models
 from utils.logger import get_logger
 
