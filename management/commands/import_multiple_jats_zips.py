@@ -2,6 +2,7 @@ import os
 import mimetypes
 
 from django.core.management.base import BaseCommand
+from django.core.management import call_command
 
 from utils.logger import get_logger
 from journal import models as jm
@@ -58,6 +59,7 @@ class Command(BaseCommand):
                         successes.append(
                             f'Imported {article}',
                         )
+                        call_command('register_crossref_doi', article[1].pk)
                     for error in errors:
                         all_errors.append(
                             {

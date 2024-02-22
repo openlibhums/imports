@@ -490,6 +490,13 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 journal=journal,
                 defaults={"issue_type": issue_type}
             )
+            journal_models.SectionOrdering.objects.update_or_create(
+                issue=issue,
+                section=section,
+                defaults={
+                    "order": 0,
+                }
+            )
         issue.articles.add(article)
         article.primary_issue = issue
         article.save()
