@@ -68,12 +68,13 @@ class Command(BaseCommand):
                             }
                         )
 
-            if zip_files:
+            if zip_files and persist:
                 to_notify = models.AutomatedImportNotification.objects.all()
                 request = Request()
                 press = pm.Press.objects.first()
                 request.press = press
                 request.site_type = press
+                request.repository = None
 
                 for n in to_notify:
                     n.send_notification(
