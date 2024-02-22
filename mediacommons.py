@@ -130,6 +130,12 @@ def update_or_create_article_by_id(journal, owner, pub_id, data):
             defaults={"article": article},
         )
 
+    identifier, c = id_models.Identifier.objects.update_or_create(
+        id_type="mediacommons_url",
+        identifier=data["article_path"],
+        defaults={"article": article},
+    )
+
     section = sm_models.Section.objects.filter(journal=journal).first()
     for tag in data["tags"] or []:
         keyword, c = sm_models.Keyword.objects.get_or_create(word=tag)
