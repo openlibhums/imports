@@ -55,7 +55,20 @@ def import_article(journal, owner, data):
         else:
             logger.info("Updated issue %s", issue)
 
-        issue.articles.add(article)
+        try:
+            issue.articles.add(article)
+        except IntegrityError:
+            pass
+
+        ordering, _ = journal_models.ArticleOrdering.objects.update_or_create(
+            issue=issue,
+            article=article,
+            section=article.section,
+            defaults={
+                "order": data["article_order_within"]
+            }
+        )
+
         if not issue.date:
             issue.date = article.date_published
             issue.save()
