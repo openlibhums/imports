@@ -1,10 +1,20 @@
-{% if video_url %}
+{% if embeds %}
 <sec>
-<title>Video Article</title>
+{% for url in embeds %}
 <fig>
-<media mimetype="video" position="anchor" specific-use="online" xlink:href="{{ video_url }}"/>
+<media
+    {% if "soundcloud.com/player" in url %}
+    mimetype="audio"
+    {% else %}
+    mimetype="video"
+    {% endif %}
+    position="anchor"
+    specific-use="online"
+    xlink:href="{{ url }}"
+/>
 </fig>
 <p></p>
+{% endfor %}
 <p></p>
 </sec>
 {% endif %}
@@ -20,12 +30,16 @@
 {% for review in reviews %}
 {% with reviews.reviewers|last as reviewer %}
 <sec>
-    {% if reviewer.name %}
-    <title> Review by {{ reviewer.name }}</title>
-    {% else %}
-    <title> Anonymous Review </title>
+  <title>
+    {% if review.title %}
+        {{ review.title }}
+    {% elif reviewer.name %}
+        Review by {{ reviewer.name }}
+    {% else %
+        Anonymous Review
     {% endif %}
-    <p>{{ review.body|safe }}</p>
+  </title>
+  <sec>{{ review.body|safe }}</sec>
 </sec>
 {% endwith %}
 {% endfor %}

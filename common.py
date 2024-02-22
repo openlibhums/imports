@@ -1,6 +1,7 @@
 import re
 
 from core.workflow import log_stage_change
+<<<<<<< HEAD
 from core import models as core_models
 from utils.logger import get_logger
 
@@ -15,7 +16,6 @@ def create_article_workflow_log(article):
     for element in journal_workflow.elements.all():
         if not article.workflowlog_set.filter(element=element).exists():
             log_stage_change(article, element)
- 
 
 def get_text_or_none(soup, element_name):
     if soup.find(element_name):
@@ -51,7 +51,7 @@ def int_string_to_bool(string):
     elif string == "1":
         return True
 
-      
+
 def get_filename_from_headers(response):
     logger.debug("Parsing filename from headers")
     try:
@@ -62,4 +62,3 @@ def get_filename_from_headers(response):
     except IndexError:
         logger.debug("No Filename provided in headers")
     return None
-

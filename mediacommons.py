@@ -3,6 +3,7 @@ An import procedure written for the export of InTransition from mediacommons
 owner, Available from: https://github.com/NYULibraries/intransition
 """
 import datetime
+import os
 from os.path import basename
 import uuid
 
@@ -12,9 +13,12 @@ from core import (
         models as core_models,
 )
 from dateutil import parser as dateparser
+from django.conf import settings
 from django.core.files.base import ContentFile
+from django.db.utils import IntegrityError
 from django.template.loader import render_to_string
 from django.utils import timezone
+from lxml import etree
 from identifiers import models as id_models
 from journal import models as journal_models
 import requests
@@ -27,6 +31,12 @@ from plugins.imports.utils import DummyRequest
 
 
 logger = get_logger(__name__)
+
+
+HTML_TO_JATS_XSLT = os.path.join(
+    settings.BASE_DIR,
+    'plugins/imports/xslt/html-to-jats-1.2.xsl'
+)
 
 
 def import_article(journal, owner, data):
@@ -46,28 +56,45 @@ def import_article(journal, owner, data):
         else:
             logger.info("Updated issue %s", issue)
 
-        issue.articles.add(article)
+        try:
+            issue.articles.add(article)
+        except IntegrityError:
+            pass
+
+        ordering, _ = journal_models.ArticleOrdering.objects.update_or_create(
+            issue=issue,
+            article=article,
+            section=article.section,
+            defaults={
+                "order": data["article_order_within"]
+            }
+        )
+
         if not issue.date:
             issue.date = article.date_published
             issue.save()
         if i == 0:
             article.primary_issue = issue
             article.save()
-        for idx, editor_data in enumerate(issue_data["editors"], 1):
-            user = update_or_create_account(editor_data)
-            journal_models.IssueEditor.objects.get_or_create(
-                account=user,
-                issue=issue,
-                role="Editor",
-                sequence=idx,
-            )
         for idx, editor_data in enumerate(issue_data["coeditors"], 1):
             user = update_or_create_account(editor_data)
             journal_models.IssueEditor.objects.get_or_create(
                 account=user,
                 issue=issue,
-                role="Co-editor",
-                sequence=idx,
+                defaults=dict(
+                    role="Co-editor",
+                    sequence=idx,
+                )
+            )
+        for idx, editor_data in enumerate(issue_data["editors"], 1):
+            user = update_or_create_account(editor_data)
+            journal_models.IssueEditor.objects.get_or_create(
+                account=user,
+                issue=issue,
+                defaults=dict(
+                    role="Editor",
+                    sequence=idx,
+                )
             )
 
     for review_data in data["reviews"]:
@@ -104,6 +131,12 @@ def update_or_create_article_by_id(journal, owner, pub_id, data):
             defaults={"article": article},
         )
 
+    identifier, c = id_models.Identifier.objects.update_or_create(
+        id_type="mediacommons_url",
+        identifier=data["article_path"],
+        defaults={"article": article},
+    )
+
     section = sm_models.Section.objects.filter(journal=journal).first()
     for tag in data["tags"] or []:
         keyword, c = sm_models.Keyword.objects.get_or_create(word=tag)
@@ -114,6 +147,7 @@ def update_or_create_article_by_id(journal, owner, pub_id, data):
     article.stage = "Published"
     article.date_published = dateparser.parse(data["date"])
     article.owner = owner
+    article.peer_reviewed = bool(data.get("reviews", False))
     if data["representative_image"]:
         content_file = fetch_remote_file(data["representative_image"])
         request = DummyRequest(user=owner, journal=journal)
@@ -129,6 +163,9 @@ def update_or_create_issue(journal, data):
     pub_date = datetime.datetime(int(year), 1, 2)
     issue_type = journal_models.IssueType.objects.get(
         code="issue", journal=journal)
+    large_image = None
+    if data["representative_image"]:
+        large_image = fetch_remote_file(data["representative_image"])
     issue, created = journal_models.Issue.objects.update_or_create(
         journal=journal,
         issue=number,
@@ -136,7 +173,9 @@ def update_or_create_issue(journal, data):
         defaults={
             "date": pub_date,
             "issue_title": data["title"],
-            "issue_type": issue_type
+            "issue_type": issue_type,
+            "large_image": large_image,
+            "issue_description": data["body"],
         },
     )
 
@@ -183,6 +222,7 @@ def update_or_create_account(data):
             last_name=last_name,
             enable_public_profile=True,
             profile_image=pic_file,
+            biography=data.get("biography") or None,
         ),
     )
     return account
@@ -245,16 +285,21 @@ def make_xml_galley(article, owner, data):
         galley.images.all().delete()
         galley.delete()
 
+    body_as_jats = html_to_jats(data["body"])
+    for review in data["reviews"]:
+        # JATSify HTML review body
+        review["body"] = html_to_jats(review["body"])
     context = {
-        "video_url": data["embed"][0] if data["embed"] else None,
+        "embeds": [e for e in data["embed"]] if data["embed"] else None,
         "reviews": data["reviews"],
-        "body": data["body"]
+        "body": body_as_jats,
     }
+
     jats_body = render_to_string("import/mediacommons/article.xml", context)
+
     jats_context = {
         "include_declaration": True,
-        "body": jats_body,
-        "article": article,
+        "body": jats_body, "article": article,
     }
     jats = render_to_string("encoding/article_jats_1_2.xml", jats_context)
 
@@ -286,3 +331,20 @@ def fetch_remote_file(url, filename=None):
         filename = basename(url)
     content_file.name = filename
     return content_file
+
+
+def html_to_jats(html_string):
+    """Transforms incoming html string into JATS"""
+    html_tree = etree.HTML(html_string)
+
+    # Prepare XSLT
+    xml_parser = etree.XMLParser()
+    xslt_tree = etree.parse(HTML_TO_JATS_XSLT, xml_parser)
+    xsl_transform = etree.XSLT(xslt_tree)
+
+    # Perform transformation
+    jats_xml_tree = xsl_transform(html_tree)
+    return str(jats_xml_tree)
+
+def extract_images(galley, body):
+    pass
