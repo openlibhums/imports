@@ -221,6 +221,7 @@ def update_or_create_account(data):
             last_name=last_name,
             enable_public_profile=True,
             profile_image=pic_file,
+            biography=data.get("biography") or None,
         ),
     )
     return account
