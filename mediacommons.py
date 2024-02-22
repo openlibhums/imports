@@ -172,7 +172,9 @@ def update_or_create_issue(journal, data):
         defaults={
             "date": pub_date,
             "issue_title": data["title"],
-            "issue_type": issue_type
+            "issue_type": issue_type,
+            "large_image": large_image,
+            "issue_description": data["body"],
         },
     )
 
