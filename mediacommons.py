@@ -38,6 +38,11 @@ HTML_TO_JATS_XSLT = os.path.join(
     'plugins/imports/xslt/html-to-jats-1.2.xsl'
 )
 
+def import_article_xml(journal, owner,data):
+    pub_id = data["id"]
+    article = get_article_by_id(journal, pub_id)
+    make_xml_galley(article, owner, data)
+
 
 def import_article(journal, owner, data):
     pub_id = data["id"]
@@ -108,17 +113,22 @@ def import_article(journal, owner, data):
     common.create_article_workflow_log(article)
 
 
-def update_or_create_article_by_id(journal, owner, pub_id, data):
+def get_article_by_id(journal, pub_id):
     article = None
-    created = False
     try:
         identifier = id_models.Identifier.objects.get(
             id_type="mediacommons",
             identifier=pub_id,
+            article__journal=journal,
         )
         article = identifier.article
     except id_models.Identifier.DoesNotExist:
-        pass
+        return None
+    return article
+
+def update_or_create_article_by_id(journal, owner, pub_id, data):
+    created = False
+    article = get_article_by_id(journal, pub_id)
 
     if not article:
         article = sm_models.Article.objects.create(
