@@ -5,6 +5,7 @@ owner, Available from: https://github.com/NYULibraries/intransition
 import datetime
 import os
 from os.path import basename
+from urllib.parse import urlparse
 import uuid
 
 from core import (
@@ -12,6 +13,7 @@ from core import (
         logic as core_logic,
         models as core_models,
 )
+from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -26,7 +28,7 @@ from review import models as rw_models
 from submission import models as sm_models
 from utils.logger import get_logger
 
-from plugins.imports import common
+from plugins.imports import common, jats
 from plugins.imports.utils import DummyRequest
 
 
@@ -38,10 +40,10 @@ HTML_TO_JATS_XSLT = os.path.join(
     'plugins/imports/xslt/html-to-jats-1.2.xsl'
 )
 
-def import_article_xml(journal, owner,data):
+def import_article_xml(journal, owner, data):
     pub_id = data["id"]
     article = get_article_by_id(journal, pub_id)
-    make_xml_galley(article, owner, data)
+    galley, image_uris = make_xml_galley(article, owner, data)
 
 
 def import_article(journal, owner, data):
@@ -295,6 +297,7 @@ def make_xml_galley(article, owner, data):
         galley.images.all().delete()
         galley.delete()
 
+    data["body"], image_uris = rewrite_image_paths(data["body"])
     body_as_jats = html_to_jats(data["body"])
     for review in data["reviews"]:
         # JATSify HTML review body
@@ -311,9 +314,9 @@ def make_xml_galley(article, owner, data):
         "include_declaration": True,
         "body": jats_body, "article": article,
     }
-    jats = render_to_string("encoding/article_jats_1_2.xml", jats_context)
+    jats_str = render_to_string("encoding/article_jats_1_2.xml", jats_context)
 
-    django_file = ContentFile(jats.encode("utf-8"))
+    django_file = ContentFile(jats_str.encode("utf-8"))
     django_file.name = "article.xml"
     jw_file = files.save_file_to_article(
         django_file, article, owner, label="XML", is_galley=True,
@@ -325,6 +328,8 @@ def make_xml_galley(article, owner, data):
         file = jw_file,
     )
     article.galley_set.add(galley)
+    jats.load_jats_images(image_uris, galley, DummyRequest(owner))
+    return galley, image_uris
 
 
 def fetch_remote_file(url, filename=None):
@@ -356,5 +361,22 @@ def html_to_jats(html_string):
     jats_xml_tree = xsl_transform(html_tree)
     return str(jats_xml_tree)
 
-def extract_images(galley, body):
-    pass
+
+def rewrite_image_paths(html_string):
+    """ Parses the HTML string, rewrites their paths to janeway paths.
+    :param html_string: The HTML to rewrite:
+    :type html_string: str
+    :return: A tuple of the new HTML as a string and a list of URLs replaced
+    :rytpe: tuple(str, list(str))
+    """
+    soup = BeautifulSoup(html_string, 'html.parser')
+    urls = []
+    for img_tag in soup.find_all('img'):
+        img_src = img_tag.get('src')
+        if img_src:
+            urls.append(img_src)
+            parsed_url = urlparse(img_src)
+            filename = os.path.basename(parsed_url.path)
+            janeway_path = f"{filename}"
+            img_tag['src'] = janeway_path
+    return str(soup), urls

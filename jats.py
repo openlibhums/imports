@@ -17,6 +17,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
+import requests
 
 from core import files
 from core import models as core_models
@@ -622,23 +623,27 @@ def default_email(seed):
 
 
 def load_jats_images(images, galley, request):
-    for img_path in images:
-        _, filename = os.path.split(img_path)
+    for img_uri in images:
+        _, filename = os.path.split(img_uri)
         missing_images = galley.has_missing_image_files()
         all_images = galley.all_images()
         if filename in all_images:
-            with open(img_path, 'rb') as image:
+            if img_uri.startswith("http"):
+                # fetch remote image
+                content_file = fetch_remote_image(img_uri)
+            else:
+                image = open(img_uri, 'rb')
                 content_file = ContentFile(image.read())
-                content_file.name = filename
+            content_file.name = filename
 
-                if filename in missing_images:
-                    save_galley_image(galley, request, content_file)
-                else:
-                    to_replace = galley.images.get(original_filename=filename)
-                    files.overwrite_file(
-                        content_file, to_replace,
-                        ('articles', galley.article.pk)
-                    )
+            if filename in missing_images:
+                save_galley_image(galley, request, content_file)
+            else:
+                to_replace = galley.images.get(original_filename=filename)
+                files.overwrite_file(
+                    content_file, to_replace,
+                    ('articles', galley.article.pk)
+                )
 
 
 def import_jats_preprint_zipped(zip_file, repository=None, owner=None, persist=True, stage=None):
@@ -907,3 +912,19 @@ def import_html_reviews(preprint, review_files, owner):
                 identifier=review_doi,
                 review=review_assignment,
             )
+
+
+def fetch_remote_image(url):
+    try:
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            image_blob = response.content
+            content_file = ContentFile(image_blob)
+
+            return content_file
+        else:
+            response.raise_for_status()
+    except Exception as e:
+        logger.error(f"Failed to download image from {url}: {e}")
+        logger.exception(e)
+    return None
