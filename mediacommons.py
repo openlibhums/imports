@@ -299,12 +299,10 @@ def make_xml_galley(article, owner, data):
 
     data["body"], image_uris = rewrite_image_paths(data["body"])
     body_as_jats = html_to_jats(data["body"])
-    for review in data["reviews"]:
-        # JATSify HTML review body
-        review["body"] = html_to_jats(review["body"])
+    reviews = prepare_review_data(data["reviews"])
     context = {
         "embeds": [e for e in data["embed"]] if data["embed"] else None,
-        "reviews": data["reviews"],
+        "reviews": reviews,
         "body": body_as_jats,
     }
 
@@ -330,6 +328,33 @@ def make_xml_galley(article, owner, data):
     article.galley_set.add(galley)
     jats.load_jats_images(image_uris, galley, DummyRequest(owner))
     return galley, image_uris
+
+
+def prepare_review_data(mc_reviews):
+    reviews = []
+    for mc_review in mc_reviews:
+        if not mc_review.get("body"):
+            continue
+        review_body = html_to_jats(mc_review["body"])
+        reviewer_names = None
+        if mc_review.get("reviewers"):
+            reviewer_emails = [r.get("mail") for r in mc_review["reviewers"] if r]
+            # Try grabbing names from Janeway
+            if reviewer_emails:
+                reviewer_names = [
+                    core_models.Account.objects.get(email=email).full_name()
+                    for email in reviewer_emails if email
+                ]
+            else:
+                # Try grabbing names from source JSON
+                reviewer_names = [r.get("name") for r in mc_review["reviewers"] if r]
+
+        if reviewer_names:
+            review_title = f"Review by {', '.join(reviewer_names)}"
+        else:
+            review_title = mc_review["title"]
+        reviews.append({"title": review_title, "body": review_body})
+    return reviews
 
 
 def fetch_remote_file(url, filename=None):

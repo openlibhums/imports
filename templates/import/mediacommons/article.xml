@@ -28,20 +28,16 @@
 <sec>
     <title>Reviews </title>
 {% for review in reviews %}
-{% with reviews.reviewers|last as reviewer %}
 <sec>
   <title>
     {% if review.title %}
         {{ review.title }}
-    {% elif reviewer.name %}
-        Review by {{ reviewer.name }}
-    {% else %
+    {% else %}
         Anonymous Review
     {% endif %}
   </title>
   <sec>{{ review.body|safe }}</sec>
 </sec>
-{% endwith %}
 {% endfor %}
 </sec>
 {% endif %}
