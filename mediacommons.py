@@ -332,13 +332,22 @@ def make_xml_galley(article, owner, data):
 
 def prepare_review_data(mc_reviews):
     reviews = []
+    seen_reviewers = set()
     for mc_review in mc_reviews:
         if not mc_review.get("body"):
             continue
         review_body = html_to_jats(mc_review["body"])
         reviewer_names = None
         if mc_review.get("reviewers"):
-            reviewer_emails = [r.get("mail") for r in mc_review["reviewers"] if r]
+            reviewer_emails = []
+            for reviewer_dict in mc_review["reviewers"]:
+                email = None
+                if reviewer_dict:
+                    email = reviewer_dict.get("mail")
+                # Handle a bug in Mediacommons where reviewers leak from previous reviews
+                if email and email not in seen_reviewers:
+                    reviewer_emails.append(email)
+                    seen_reviewers.add(email)
             # Try grabbing names from Janeway
             if reviewer_emails:
                 reviewer_names = [
