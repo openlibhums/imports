@@ -363,7 +363,8 @@ def prepare_review_data(mc_reviews):
         else:
             review_title = mc_review["title"]
         reviews.append({"title": review_title, "body": review_body})
-    return reviews
+    # Reviews were provided in reverse order...
+    return reviews[::-1]
 
 
 def fetch_remote_file(url, filename=None):
