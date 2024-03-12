@@ -18,6 +18,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
+from plugins.imports import models
 from core import files
 from core import models as core_models
 from core.models import Account
@@ -85,7 +86,7 @@ def import_jats_article(
         meta["date_accepted"] = get_jats_acc_date(history_soup)
 
     authors_soup = metadata_soup.find("contrib-group")
-    author_notes = metadata_soup.find("author_notes")
+    author_notes = metadata_soup.find("author-notes")
     if authors_soup:
         meta["authors"] = get_jats_authors(
             authors_soup,
@@ -277,13 +278,15 @@ def get_jats_acc_date(soup):
 
 def get_jats_keywords(soup):
     jats_keywords_soup = soup.find("kwd-group")
+
+    # This was previously a set but is now a list to preserve keyword order.
     if jats_keywords_soup:
-        return {
+        return [
             keyword.text.strip()
             for keyword in jats_keywords_soup.find_all("kwd")
-        }
+        ]
     else:
-        return set()
+        return list()
 
 
 def get_jats_section_name(soup):
@@ -333,6 +336,28 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                 corresp_email = author_notes.find("email")
                 if corresp_email:
                     author_data["email"] = corresp_email.text
+
+            else:
+                # Check and alternative route for identifying corresp
+                # authors
+                corresp_ref = author.find(
+                    'xref', {'ref-type': 'corresp'}
+                )
+                if corresp_ref:
+                    author_data["correspondence"] = True
+
+                    if author_notes:
+                        xref_rid = corresp_ref.get('rid')
+                        corr_note = author_notes.find(
+                            'corresp', {'id': xref_rid}
+                        )
+                        if corr_note:
+                            corresp_email = corr_note.find(
+                                'email'
+                            )
+                            if corresp_email:
+                                author_data["email"] = corresp_email.text
+
             authors.append(author_data)
     return authors
 
@@ -371,12 +396,19 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
         journal = get_lost_found_journal()
 
     with transaction.atomic():
-        section, _ = submission_models.Section.objects \
-            .get_or_create(
-                journal=journal,
-                name=metadata["section_name"],
-        )
-        section.save()
+        try:
+            section_map = models.SectionMap.objects.get(
+                article_type=metadata["section_name"],
+                section__journal=journal,
+            )
+            if section_map:
+                section = section_map.section
+        except models.SectionMap.DoesNotExist:
+            section, _ = submission_models.Section.objects \
+                .get_or_create(
+                    journal=journal,
+                    name=metadata["section_name"],
+            )
 
         article = get_article(metadata.get("identifiers", {}), journal)
         if not article:
@@ -707,7 +739,7 @@ def import_jats_preprint(
     meta["license_url"], meta["license_text"] = get_jats_license(jats_soup)
     meta["authors"] = []
     authors_soup = metadata_soup.find("contrib-group")
-    author_notes = metadata_soup.find("author_notes")
+    author_notes = jats_soup.find("author-notes")
     if authors_soup:
         meta["authors"] = get_jats_authors(
             authors_soup,

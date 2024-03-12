@@ -77,6 +77,17 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ('pk', 'email')
 
 
+class CitationFormatAdmin(admin.ModelAdmin):
+    list_display = ('journal', 'format')
+    raw_id_fields = ('journal',)
+
+
+class SectionMapAdmin(admin.ModelAdmin):
+    list_display = ('section', 'article_type')
+    search_fields = ('article_type', 'section__name')
+    raw_id_fields = ('section',)
+
+
 for pair in [
     (models.ExportFile, ExportFileAdmin),
     (models.CSVImport, CSVImportAdmin),
@@ -84,5 +95,7 @@ for pair in [
     (models.CSVImportUpdateArticle, CSVImportArticleAdmin),
     (models.OJSFile,),
     (models.AutomatedImportNotification, NotificationAdmin),
+    (models.CitationFormat, CitationFormatAdmin),
+    (models.SectionMap, SectionMapAdmin),
 ]:
     admin.site.register(*pair)

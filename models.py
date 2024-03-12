@@ -164,3 +164,31 @@ class AutomatedImportNotification(models.Model):
             message,
             log_dict=log_dict,
         )
+
+
+class CitationFormat(models.Model):
+    journal = models.OneToOneField(
+        'journal.Journal',
+        on_delete=models.CASCADE,
+    )
+    format = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"{self.journal.name}: {self.format}"
+
+
+class SectionMap(models.Model):
+    section = models.ForeignKey(
+        'submission.Section',
+        on_delete=models.CASCADE,
+    )
+    article_type = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"{self.article_type} mapped to {self.section.name}"
