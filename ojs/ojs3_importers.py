@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.template.defaultfilters import linebreaksbr
 from django.utils import timezone
 from django.utils.html import strip_tags
+from django_countries import countries
 
 from cms import models as cms_models
 from copyediting import models as copyediting_models
@@ -685,10 +686,10 @@ def import_user(user_dict, journal):
         account.orcid = orcid
     if user_dict["disabled"] is True:
         account.active = False
+    # Assign a country if the code is recognised in ISO-3166-1
     if user_dict["country"]:
-        account.country = core_models.Country.objects.filter(
-            name=user_dict["country"]
-        ).first()
+        valid_alpha2 = countries.alpha2(user_dict['country'])
+        account.country = valid_alpha2
 
     import_user_roles(user_dict, account, journal)
     for interest in user_dict["interests"]:

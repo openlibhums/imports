@@ -12,6 +12,7 @@ from django.utils import timezone, translation
 from django.utils.html import strip_tags
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
+from django_countries import countries
 
 from core import models as core_models, files as core_files
 from copyediting import models as copyediting_models
@@ -1123,15 +1124,12 @@ def get_or_create_account(data, update=False):
         account.biography = data.get('bio')
         account.orcid = extract_orcid(data.get("orcid"))
 
-
+        # Assign a country if the code is recognised in ISO-3166-1
         if data.get('country'):
-            try:
-                country = core_models.Country.objects.get(
-                    code=data.get('country'))
-                account.country = country
+            valid_alpha2 = countries.alpha2(data.get('country'))
+            if valid_alpha2:
+                account.country = valid_alpha2
                 account.save()
-            except core_models.Country.DoesNotExist:
-                pass
 
         account.save()
     return account, created
