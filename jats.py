@@ -211,7 +211,7 @@ def get_jats_title(soup):
 def get_jats_abstract(soup):
     abstract = soup.find("abstract")
     if abstract:
-        return abstract.text
+        return f"<p>{abstract.text}</p>"
     else:
         return ""
 
