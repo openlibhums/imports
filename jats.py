@@ -71,6 +71,7 @@ def import_jats_article(
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
+    meta["custom_how_to_cite"] = get_custom_how_to_cite(metadata_soup)
     try:
         meta["first_page"] = int(metadata_soup.find("fpage").text)
     except (ValueError, AttributeError):
@@ -362,6 +363,19 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
     return authors
 
 
+def get_custom_how_to_cite(metadata_soup):
+    custom_meta_tags = metadata_soup.find_all('custom-meta')
+    for custom_meta_tag in custom_meta_tags:
+        meta_name_tag = custom_meta_tag.find('meta-name')
+        if meta_name_tag:
+            meta_name_value = meta_name_tag.string
+            if meta_name_value in ['How to cite', 'How To Cite']:
+                meta_value_tag = custom_meta_tag.find('meta-value')
+                if meta_value_tag:
+                    return meta_value_tag.text
+    return ''
+
+
 def get_orcid(author_soup):
     contrib_ids = author_soup.findAll('contrib-id')
     for ci in contrib_ids:
@@ -424,7 +438,9 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 is_import=True,
                 owner=owner,
                 first_page=metadata["first_page"],
-                last_page=metadata["last_page"]
+                last_page=metadata["last_page"],
+                custom_how_to_cite=metadata['custom_how_to_cite'],
+                article_agreement='This article is a JATS import.',
             )
             article.section = section
             article.save()
@@ -439,6 +455,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             article.rights = metadata["rights"]
             article.first_page = metadata["first_page"]
             article.last_page = metadata["last_page"]
+            article.custom_how_to_cite = metadata["custom_how_to_cite"]
             article.save()
 
         if metadata["identifiers"]["doi"]:
