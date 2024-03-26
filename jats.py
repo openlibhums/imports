@@ -337,7 +337,6 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                 corresp_email = author_notes.find("email")
                 if corresp_email:
                     author_data["email"] = corresp_email.text
-
             else:
                 # Check and alternative route for identifying corresp
                 # authors
@@ -492,7 +491,6 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                         "orcid": author["orcid"],
                     },
                 )
-
             fa = submission_models.FrozenAuthor.objects.create(
                 article=article,
                 author=account,
@@ -502,6 +500,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 frozen_orcid=author["orcid"],
                 frozen_email=author['email'],
                 order=idx,
+                display_email=True if author['correspondence'] else False,
             )
             if account and author["correspondence"]:
                 article.correspondence_author = account
