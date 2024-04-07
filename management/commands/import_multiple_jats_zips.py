@@ -35,6 +35,7 @@ class Command(BaseCommand):
         parser.add_argument('-n', '--notify-author', action="store_true",
                             default=False)
         parser.add_argument('-m', '--crossref-mailto', type=str)
+        parser.add_argument('-s', '--section_from_subject', action="store_true")
 
     def handle(self, *args, **options):
         successes = []
@@ -64,6 +65,10 @@ class Command(BaseCommand):
                         journal,
                         owner=owner,
                         persist=persist,
+                        get_section_from_subject=options.get(
+                            'section_from_subject',
+                            False,
+                        )
                     )
 
                     for article in articles:
@@ -115,7 +120,12 @@ class Command(BaseCommand):
                 if options.get('notify_author'):
                     for article_set in articles:
                         article = article_set[1]
-                        if article.correspondence_author:
+
+                        jm.FixedPubCheckItems.objects.get_or_create(
+                            article=article,
+                        )
+
+                        if article.correspondence_author and not article.fixedpubcheckitems.notify_the_author:
                             request.user = owner
                             request.journal = article.journal
                             request.site_type = article.journal
@@ -149,3 +159,5 @@ class Command(BaseCommand):
                                     'peer_reviewers': False,
                                 }
                             )
+                            article.fixedpubcheckitems.notify_the_author = True
+                            article.fixedpubcheckitems.save()

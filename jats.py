@@ -43,6 +43,7 @@ def import_jats_article(
         jats_contents, journal=None,
         persist=True, filename=None, owner=None,
         images=None, request=None, stage=None,
+        get_section_from_subject=False,
 ):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
@@ -64,7 +65,7 @@ def import_jats_article(
     meta["abstract"] = get_jats_abstract(metadata_soup)
     meta["issue"], meta["volume"] = get_jats_issue(jats_soup)
     meta["keywords"] = get_jats_keywords(metadata_soup)
-    meta["section_name"] = get_jats_section_name(jats_soup)
+    meta["section_name"] = get_jats_section_name(jats_soup, get_section_from_subject)
     meta["date_published"] = get_jats_pub_date(jats_soup) or datetime.date.today()
     meta["license_url"], meta["license_text"] = get_jats_license(jats_soup)
     meta["rights"] = get_jats_rights_statement(jats_soup)
@@ -117,7 +118,10 @@ def import_jats_article(
     return article
 
 
-def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=None):
+def import_jats_zipped(
+        zip_file, journal=None, owner=None,
+        persist=True, stage=None, get_section_from_subject=False,
+):
     """ Import a batch of Zipped JATS articles and their associated files
     :param zip_file: The zipped jats to be imported
     :param journal: Journal in which to import the articles
@@ -164,6 +168,7 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                                 jats_file.read(), journal, persist,
                                 jats_filename, owner, supplements,
                                 stage=stage,
+                                get_section_from_subject=get_section_from_subject,
                             )
                             articles.append((jats_filename, article))
                         if pdf_path:
@@ -290,7 +295,11 @@ def get_jats_keywords(soup):
         return list()
 
 
-def get_jats_section_name(soup):
+def get_jats_section_name(soup,get_section_from_subject):
+    if get_section_from_subject:
+        subject = soup.find("subject")
+        if subject:
+            return subject.text
     return soup.find("article").attrs.get("article-type")
 
 
@@ -455,6 +464,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             article.first_page = metadata["first_page"]
             article.last_page = metadata["last_page"]
             article.custom_how_to_cite = metadata["custom_how_to_cite"]
+            article.section = section
             article.save()
 
         if metadata["identifiers"]["doi"]:
