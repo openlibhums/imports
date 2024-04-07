@@ -36,6 +36,7 @@ class Command(BaseCommand):
                             default=False)
         parser.add_argument('-m', '--crossref-mailto', type=str)
         parser.add_argument('-s', '--section_from_subject', action="store_true")
+        parser.add_argument('-r', '--remove_zips', action="store_true")
 
     def handle(self, *args, **options):
         successes = []
@@ -100,6 +101,9 @@ class Command(BaseCommand):
                                 'error': error[1],
                             }
                         )
+
+                    if options.get('remove_zips', False):
+                        os.unlink(zip_file)
 
             if zip_files and persist:
                 to_notify = models.AutomatedImportNotification.objects.all()
