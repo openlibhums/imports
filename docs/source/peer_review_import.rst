@@ -5,7 +5,7 @@ The article review import tool allows you to create peer reviews by uploading a 
 
 .. warning:: This tool only allows the import of reviews as files, as such you may need an administrator to load the files onto the server for you.
 
-To import peer reviews accounts:
+To import peer reviews:
 
 1. Download the :download:`article review import template <_static/peer_review_import_template.csv>`.
 2. Enter your peer review details, one per row.
