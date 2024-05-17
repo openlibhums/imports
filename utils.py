@@ -1160,6 +1160,8 @@ def datetime_parser(date_time_str):
 
 
 def get_aware_datetime(unparsed_string, use_noon_if_no_time = True):
+    if not unparsed_string:
+        return None
 
     if use_noon_if_no_time and re.fullmatch(
         '[0-9]{4}-[0-9]{2}-[0-9]{2}',
