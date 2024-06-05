@@ -439,7 +439,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 title=metadata["title"],
                 abstract=metadata["abstract"],
                 date_published=metadata["date_published"],
-                date_accepted=metadata["date_submitted"],
+                date_accepted=metadata["date_accepted"],
                 date_submitted=metadata["date_submitted"],
                 rights=metadata["rights"],
                 stage=stage or submission_models.STAGE_PUBLISHED,
@@ -458,7 +458,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             article.abstract = metadata["abstract"]
             article.date_published = metadata["date_published"]
             article.date_published = metadata["date_published"]
-            article.date_accepted = metadata["date_submitted"]
+            article.date_accepted = metadata["date_accepted"]
             article.date_submitted = metadata["date_submitted"]
             article.rights = metadata["rights"]
             article.first_page = metadata["first_page"]
