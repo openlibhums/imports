@@ -1,10 +1,10 @@
 PLUGIN_NAME = 'Import Plugin'
 DESCRIPTION = 'This plugin is a collection of import scripts.'
 AUTHOR = 'Birkbeck Centre for Technology and Publishing'
-VERSION = '1.9'
+VERSION = '1.10'
 SHORT_NAME = 'imports'
 MANAGER_URL = 'imports_index'
-JANEWAY_VERSION = "1.5.1"
+JANEWAY_VERSION = "1.7.0"
 
 from utils import models
 
