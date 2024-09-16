@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
+from utils import notify_helpers
+
 
 class WordPressImport(models.Model):
     url = models.URLField(
@@ -129,3 +131,64 @@ class OJSFile(models.Model):
         'core.File',
         on_delete=models.CASCADE,
     )
+
+
+class AutomatedImportNotification(models.Model):
+    email = models.EmailField(
+        help_text='Email address of user to receive notification '
+                  'of automatic import logs.',
+    )
+
+    def send_notification(self, articles, errors, request):
+        log_dict = {
+            'level': 'Info',
+            'action_type': 'Contact Production Staff',
+            'types': 'Email',
+            'target': None
+        }
+        message = f"""
+        <p>The following ZIP files were being imported:<p>
+        <p>{ articles }</p>>
+        <p>The following errors were detected during import:
+        <p>{ errors }</p>
+        <p>
+        Regards
+        <br />
+        Janeway
+        </p>
+        """
+        notify_helpers.send_email_with_body_from_user(
+            request,
+            'Janeway Article Import Notification',
+            self.email,
+            message,
+            log_dict=log_dict,
+        )
+
+
+class CitationFormat(models.Model):
+    journal = models.OneToOneField(
+        'journal.Journal',
+        on_delete=models.CASCADE,
+    )
+    format = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"{self.journal.name}: {self.format}"
+
+
+class SectionMap(models.Model):
+    section = models.ForeignKey(
+        'submission.Section',
+        on_delete=models.CASCADE,
+    )
+    article_type = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    def __str__(self):
+        return f"{self.article_type} mapped to {self.section.name}"
