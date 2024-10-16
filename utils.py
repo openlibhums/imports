@@ -573,27 +573,22 @@ def update_keywords(keywords, article):
 
 def get_author_fields(row):
     """
-    Returns all author fields except author order
+    Returns a list of all author fields except author order
     """
 
-    field_names = [
-        'Author salutation',
-        'Author given name',
-        'Author middle name',
-        'Author surname',
-        'Author suffix',
-        'Author institution',
-        'Author department',
-        'Author biography',
-        'Author email',
-        'Author ORCID',
-        'Author is corporate (Y/N)',
+    return [
+        row.get('Author salutation', ''),
+        row.get('Author given name', ''),
+        row.get('Author middle name', ''),
+        row.get('Author surname', ''),
+        row.get('Author suffix', ''),
+        row.get('Author institution', ''),
+        row.get('Author department', ''),
+        row.get('Author biography', ''),
+        row.get('Author email', ''),
+        row.get('Author ORCID', ''),
+        row.get('Author is corporate (Y/N)', ''),
     ]
-
-    author_fields = []
-    for field_name in field_names:
-        author_fields.append(row.get(field_name))
-    return author_fields
 
 
 def handle_author_import(row, article, author_order):
@@ -878,7 +873,7 @@ def import_author(author_fields, article):
         author.name_suffix = suffix
         author.institution = institution
         author.department = department
-        author.biography = bio or None
+        author.biography = bio
         author.orcid = orcid_from_url(orcid)
 
     author.add_account_role('author', article.journal)
