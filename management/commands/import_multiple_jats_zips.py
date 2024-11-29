@@ -116,7 +116,7 @@ class Command(BaseCommand):
 
                 for n in to_notify:
                     n.send_notification(
-                        [os.path.basename(z) for z in zip_files],
+                        articles,
                         all_errors,
                         request,
                     )

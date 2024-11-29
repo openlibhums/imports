@@ -146,17 +146,18 @@ class AutomatedImportNotification(models.Model):
             'types': 'Email',
             'target': None
         }
+        articles_urls = '<br />'.join(article.url for article in articles)
         message = f"""
-        <p>The following ZIP files were being imported:<p>
-        <p>{ articles }</p>>
-        <p>The following errors were detected during import:
-        <p>{ errors }</p>
-        <p>
-        Regards
-        <br />
-        Janeway
-        </p>
-        """
+            <p>The following articles were imported:</p>
+            <p>{articles_urls}</p>
+            <p>The following errors were detected during import:</p>
+            <p>{errors}</p>
+            <p>
+            Regards<br />
+            Janeway
+            </p>
+            """
+
         notify_helpers.send_email_with_body_from_user(
             request,
             'Janeway Article Import Notification',
