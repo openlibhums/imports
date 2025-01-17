@@ -229,8 +229,15 @@ def get_jats_abstract(soup):
 
 
 def get_jats_issue(soup):
-    issue = soup.find("issue")
-    issue = issue.text if issue else 0
+    raw_issue = soup.find("issue")
+    issue = raw_issue.text if raw_issue else 0
+    # Handle merged issues as gracefully as possible
+
+    if issue and isinstance(issue, str) and issue.isdigit is False:
+        try:
+            issue = issue.split("-")[0]
+        except (IndexError, ValueError):
+            issue = 0
 
     volume = soup.find("volume")
     volume = volume.text if volume else 0
