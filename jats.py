@@ -72,6 +72,7 @@ def import_jats_article(
     meta["authors"] = []
     meta["date_submitted"] = None
     meta["date_accepted"] = None
+    meta["issn_override"] = None
     try:
         meta["first_page"] = int(metadata_soup.find("fpage").text)
     except (ValueError, AttributeError):
@@ -96,6 +97,9 @@ def import_jats_article(
         )
 
     meta["identifiers"] = get_jats_identifiers(metadata_soup)
+    if meta["journal"].get("issn") != journal.issn:
+        meta["issn_override"] = meta["journal"].get("issn")
+        meta["publication_title"] = meta["journal"].get("title")
 
     if not persist:
         return meta
@@ -409,7 +413,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 is_import=True,
                 owner=owner,
                 first_page=metadata["first_page"],
-                last_page=metadata["last_page"]
+                last_page=metadata["last_page"],
             )
             article.section = section
             article.save()
@@ -424,6 +428,8 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             article.rights = metadata["rights"]
             article.first_page = metadata["first_page"]
             article.last_page = metadata["last_page"]
+            article.publication_title = metadata["publication_title"]
+            article.ISSN_override = metadata["issn_override"]
             article.save()
 
         if metadata["identifiers"]["doi"]:
