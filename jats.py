@@ -344,7 +344,7 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
             author_data = {
                 "first_name": author.find("given-names").text,
                 "last_name": author.find("surname").text,
-                "email": email,
+                "email": email or "",
                 "correspondence": False,
                 "institution": institution,
                 "orcid": get_orcid(author) or "",
