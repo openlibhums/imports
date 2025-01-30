@@ -886,7 +886,7 @@ def import_author(author_fields, article):
         author.suffix = suffix
         author.institution = institution
         author.department = department
-        author.biography = bio
+        author.biography = bio or ""
         author.orcid = orcid_from_url(orcid)
 
     author.save()
