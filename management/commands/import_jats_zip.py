@@ -17,6 +17,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('zip_file')
         parser.add_argument('-j', '--journal_code')
+        parser.add_argument('-i', '--issue_type_code', default="issue")
         parser.add_argument('-o', '--owner_id', default=1)
         parser.add_argument('-d', '--dry-run', action="store_true", default=False)
 
@@ -37,6 +38,7 @@ class Command(BaseCommand):
         articles = import_jats_zipped(
             options["zip_file"], journal,
             owner=owner, persist=persist,
+            issue_type_code=options["issue_type_code"],
         )
         for article in articles:
             if not persist:
