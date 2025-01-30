@@ -43,6 +43,7 @@ def import_jats_article(
         jats_contents, journal=None,
         persist=True, filename=None, owner=None,
         images=None, request=None, stage=None,
+        issue_type_code="issue",
 ):
     """ JATS import entrypoint
     :param jats_contents: (str) the JATS XML to be imported
@@ -121,11 +122,18 @@ def import_jats_article(
     return article
 
 
-def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=None):
+def import_jats_zipped(
+        zip_file, journal=None, owner=None,
+        persist=True, stage=None,
+        issue_type_code="issue",
+    ):
     """ Import a batch of Zipped JATS articles and their associated files
     :param zip_file: The zipped jats to be imported
     :param journal: Journal in which to import the articles
     :param owner: An instance of core.models.Account
+    :param persist: Whether to commit data disk and database or do a dry run.
+    :param stage: The article stage to which the articles should be sent.
+    :param issue_type_code: optional code of a journal.models.IssueType
     """
     errors = []
     articles = []
@@ -169,6 +177,7 @@ def import_jats_zipped(zip_file, journal=None, owner=None, persist=True, stage=N
                                 jats_file.read(), journal, persist,
                                 jats_filename, owner, supplements,
                                 stage=stage,
+                                issue_type_code=issue_type_code,
                             )
                             articles.append((jats_filename, article))
                         if pdf_path:
@@ -511,7 +520,7 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
 
         if not issue:
             issue_type = journal_models.IssueType.objects.get(
-                code="issue",
+                code=issue_type_code,
                 journal=journal,
             )
             issue, _ = journal_models.Issue.objects.get_or_create(
