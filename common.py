@@ -16,11 +16,19 @@ def create_article_workflow_log(article):
         if not article.workflowlog_set.filter(element=element).exists():
             log_stage_change(article, element)
 
+
 def get_text_or_none(soup, element_name):
     if soup.find(element_name):
         return soup.find(element_name).text
     else:
         return None
+
+
+def get_text_or_empty_string(soup, element_name):
+    if soup.find(element_name):
+        return soup.find(element_name).text
+    else:
+        return ""
 
 
 def map_ojs_roles_to_janeway_role_slugs(ojs_roles):

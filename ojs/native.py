@@ -32,11 +32,11 @@ def import_users(xml_content, journal):
         user_groups_soup = user.findAll('user_group_ref')
         user_groups = [group.text for group in user_groups_soup]
         defaults = {
-            'first_name': common.get_text_or_none(user, 'givenname'),
-            'last_name': common.get_text_or_none(user, 'familyname'),
-            'institution': common.get_text_or_none(user, 'affiliation'),
+            'first_name': common.get_text_or_empty_string(user, 'givenname'),
+            'last_name': common.get_text_or_empty_string(user, 'familyname'),
+            'institution': common.get_text_or_empty_string(user, 'affiliation'),
             'country': country,
-            'biography': common.get_text_or_none(user, 'biography'),
+            'biography': common.get_text_or_empty_string(user, 'biography'),
             'is_active': True,
             'email': email,
         }
@@ -183,6 +183,16 @@ def import_articles(article_soup, journal, owner, stage, issue):
     for article in article_soup:
         publication_soup = article.find('publication')
 
+        # Handle crap incoming data where "published" articles somehow
+        # don't have pub dates
+        soup_pub_date = publication_soup.attrs.get('date_published')
+        if soup_pub_date:
+            pub_date = utils.get_aware_datetime(
+                soup_pub_date,
+            )
+        else:
+            pub_date = None
+
         article_dict = {
             'title': get_title(article),
             'abstract': common.get_text_or_none(article, 'abstract'),
@@ -195,9 +205,7 @@ def import_articles(article_soup, journal, owner, stage, issue):
             ),
             'rights': common.get_text_or_none(article, 'copyrightholder'),
             'page_numbers': common.get_text_or_none(article, 'pages'),
-            'date_published': utils.get_aware_datetime(
-                publication_soup.attrs.get('date_published'),
-            ),
+            'date_published': pub_date,
             'section': get_section(publication_soup, journal),
         }
 
@@ -227,7 +235,7 @@ def import_articles(article_soup, journal, owner, stage, issue):
                 abstract=article_dict.get('abstract'),
                 section=article_dict.get('section'),
                 rights=article_dict.get('rights'),
-                license=article_dict.get('license'),
+                license=article_dict.get('license') or None,
                 page_numbers=article_dict.get('page_numbers'),
                 date_submitted=article_dict.get('date_submitted'),
                 date_published=article_dict.get('date_published'),
@@ -287,15 +295,16 @@ def get_license(license_url, journal):
         if license_url.endswith("/"):
             license_url = license_url[:-1]
         license_url = license_url.replace("http:", "https:")
-    _license, _ = submission_models.Licence.objects.get_or_create(
-        journal=journal,
-        url=license_url,
-        defaults={
-            "name": "Imported License",
-            "short_name": "imported",
-        }
-    )
-    return _license
+        _license, _ = submission_models.Licence.objects.get_or_create(
+            journal=journal,
+            url=license_url,
+            defaults={
+                "name": "Imported License",
+                "short_name": "imported",
+            }
+        )
+        return _license
+    return ''
 
 
 def get_identifiers(publication_soup):
