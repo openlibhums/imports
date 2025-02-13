@@ -34,15 +34,15 @@ def get_text_or_empty_string(soup, element_name):
 def map_ojs_roles_to_janeway_role_slugs(ojs_roles):
     role_slugs = list()
 
-    if 'Reviewer' in ojs_roles:
+    if 'reviewer' in ojs_roles:
         role_slugs.append('reviewer')
-    if 'Author' in ojs_roles:
+    if 'author' in ojs_roles:
         role_slugs.append('author')
-    if 'Journal Manager' in ojs_roles:
+    if 'manager' in ojs_roles:
         role_slugs.append('journal-manager')
-    if 'Editor' in ojs_roles:
+    if 'editor' in ojs_roles:
         role_slugs.append('editor')
-    if 'Reader' in ojs_roles:
+    if 'reader' in ojs_roles:
         role_slugs.append('reader')
 
     return role_slugs
