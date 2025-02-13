@@ -31,6 +31,9 @@ def import_users(xml_content, journal):
         interests = common.get_text_or_none(user, 'review_interests')
         user_groups_soup = user.findAll('user_group_ref')
         user_groups = [group.text for group in user_groups_soup]
+        if not user_groups:
+            roles_soup = user.findAll('role')
+            user_groups = [role['type'] for role in roles_soup]
         defaults = {
             'first_name': common.get_text_or_empty_string(user, 'givenname'),
             'last_name': common.get_text_or_empty_string(user, 'familyname'),
