@@ -314,11 +314,7 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
         if author.find("aff"):
             institution = author.find("aff").text
 
-
-        # in some cases the aff may be outside <contrib> in this case
-        # we can look for something like:
-        # <xref ref-type="aff" rid="aff1">1</xref>
-
+        # fallback: check <xref ref-type="aff" rid="...">
         if not institution:
             aff_xref = author.find('xref', {'ref-type': 'aff'})
             if aff_xref:
@@ -331,6 +327,14 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                         except AttributeError:
                             pass
                         institution = aff.text.strip()
+
+        # fallback: check <address><institution>
+        if not institution:
+            address = author.find("address")
+            if address:
+                inst_tag = address.find("institution")
+                if inst_tag:
+                    institution = inst_tag.text.strip()
 
         if author.find("surname"):
             email_jats = author.find("email")
@@ -466,9 +470,9 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
                 author=account,
                 first_name=author["first_name"],
                 last_name=author["last_name"],
-                institution=author["institution"] or journal.name,
-                frozen_orcid=author["orcid"],
-                frozen_email=author['email'],
+                institution=author["institution"] or "",
+                frozen_orcid=author.get("email") or "",
+                frozen_email = author.get("email") or "",
                 order=idx,
             )
             if account and author["correspondence"]:
@@ -497,20 +501,27 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             article.save()
 
         if not issue:
-            issue_type = journal_models.IssueType.objects.get(
-                code="issue",
-                journal=journal,
-            )
-            issue, _ = journal_models.Issue.objects.get_or_create(
-                volume=metadata["volume"],
-                issue=metadata["issue"],
-                journal=journal,
-                defaults={
-                    "issue_type": issue_type,
-                    "doi": metadata["issue_doi"],
-                    "date": article.date_published,
-                }
-            )
+            try:
+                issue_type = journal_models.IssueType.objects.get(
+                    code="issue",
+                    journal=journal,
+                )
+                issue, _ = journal_models.Issue.objects.get_or_create(
+                    volume=metadata["volume"],
+                    issue=metadata["issue"],
+                    journal=journal,
+                    defaults={
+                        "issue_type": issue_type,
+                        "doi": metadata["issue_doi"],
+                        "date": article.date_published,
+                    },
+                )
+            except journal_models.Issue.MultipleObjectsReturned:
+                issue = journal_models.Issue.objects.filter(
+                    volume=metadata["volume"],
+                    issue=metadata["issue"],
+                    journal=journal,
+                ).first()
         issue.articles.add(article)
         article.primary_issue = issue
         article.save()
