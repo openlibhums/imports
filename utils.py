@@ -254,28 +254,41 @@ def prepare_reader_rows(reader):
 
 
 def prep_update(row):
+    """Prepare or update issue data from a row, handling duplicates gracefully."""
 
     try:
-        journal = journal_models.Journal.objects.get(code=row.get('Journal code'))
+        journal = journal_models.Journal.objects.get(
+            code=row.get('Journal code'),
+        )
         issue_type = journal_models.IssueType.objects.get(
             code="issue",
             journal=journal,
         )
         issue_date = None
         if row.get("Issue pub date"):
-            issue_date = get_aware_datetime(row.get('Issue pub date'))
-        issue, created = journal_models.Issue.objects.get_or_create(
-            journal=journal,
-            volume=row.get('Volume number') or 0,
-            issue=row.get('Issue number') or 0,
-            defaults={
-                'issue_title': row.get('Issue title'),
-                'issue_type': issue_type,
-                'date': issue_date or now().date(),
-            }
-        )
+            issue_date = get_aware_datetime(
+                row.get('Issue pub date'),
+            )
 
-        if not created:
+        volume = row.get('Volume number') or 0
+        issue_number = row.get('Issue number') or 0
+
+        issue = journal_models.Issue.objects.filter(
+            journal=journal,
+            volume=volume,
+            issue=issue_number,
+        ).first()
+
+        if not issue:
+            issue = journal_models.Issue.objects.create(
+                journal=journal,
+                volume=volume,
+                issue=issue_number,
+                issue_title=row.get('Issue title'),
+                issue_type=issue_type,
+                date=issue_date or now().date(),
+            )
+        else:
             if issue_date:
                 issue.date = issue_date
             issue.issue_title = row.get('Issue title')
@@ -288,7 +301,9 @@ def prep_update(row):
     article = None
     if article_id:
         try:
-            article = submission_models.Article.objects.get(pk=article_id)
+            article = submission_models.Article.objects.get(
+                pk=article_id,
+            )
         except submission_models.Article.DoesNotExist:
             pass
 
