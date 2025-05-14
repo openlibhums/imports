@@ -1,6 +1,7 @@
 from django.test import TestCase, override_settings
 from django.http import HttpRequest
 from django.conf import settings
+from django.shortcuts import reverse
 
 from rest_framework import routers
 
@@ -38,7 +39,8 @@ class TestViews(TestCase):
                 plugin_element_name,
                 cls.plugin_request,
             )
-            cls.journal_one.workflow().elements.add(element)
+            if element:
+                cls.journal_one.workflow().elements.add(element)
 
         router = routers.DefaultRouter()
         router.register(r'exportfiles', views.ExportFilesViewSet, basename='exportfile')
@@ -46,10 +48,10 @@ class TestViews(TestCase):
         plugins = plugin_installed_apps.load_plugin_apps(settings.BASE_DIR)
         cls.elements = core_models.BASE_ELEMENTS
 
-    @override_settings(URLCONFIG='domain')
+    @override_settings(URL_CONFIG='domain')
     def test_export_stages(self):
         importable_stages = [
-            submission_models.STAGE_UNASSIGNED,
+            submission_models.STAGE_UNDER_REVIEW,
             submission_models.STAGE_EDITOR_COPYEDITING,
             submission_models.STAGE_READY_FOR_PUBLICATION,
             submission_models.STAGE_PUBLISHED,
@@ -60,6 +62,8 @@ class TestViews(TestCase):
             element.stage for element in self.journal_one.workflow().elements.all()
         ]
 
+        print(exportable_stage_choices)
+
         csv_data = dict_from_csv_string(CSV_DATA_1)
         for stage in importable_stages:
             csv_data[1]['Stage'] = stage
@@ -68,8 +72,9 @@ class TestViews(TestCase):
         self.client.force_login(self.test_user)
         for stage in exportable_stage_choices:
             response = self.client.get(
-                '/plugins/imports/articles/all/',
+                reverse('import_export_articles_all'),
                 SERVER_NAME='testserver',
                 data = {'stage':stage},
+                follow = True,
             )
             self.assertEqual(200, response.status_code)

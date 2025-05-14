@@ -143,15 +143,14 @@ def import_article_metadata(article_dict, journal, client):
                          key=lambda x: x.get("sequence", 1)):
         author_record, _ = get_or_create_account(author)
         author_record.add_account_role("author", journal)
-
-        # Add authors to m2m and create an order record
-        article.authors.add(author_record)
-        order, _ = submission_models.ArticleAuthorOrder.objects.get_or_create(
-            article=article,
-            author=author_record,
+        order = author.get("sequence", 999)
+        create_frozen_record(
+            author_record,
+            article,
+            emails,
+            author_dict=author,
+            order=order,
         )
-        order.order = author.get("sequence", 999)
-        create_frozen_record(author_record, article, emails, author_dict=author)
 
     # Set the primary author
     email = clean_email(article_dict.get('correspondence_author'))
@@ -184,7 +183,7 @@ def import_article_metadata(article_dict, journal, client):
     return article, created
 
 
-def create_frozen_record(author, article, emails=None, author_dict=None):
+def create_frozen_record(author, article, emails=None, author_dict=None, order=999):
     """ Creates a frozen record for the article from author metadata
 
     We create a frozen record that is not linked to a user
@@ -193,14 +192,10 @@ def create_frozen_record(author, article, emails=None, author_dict=None):
     authors which would then update itself instead of creating a new record
     :param author: an instance of core.models.Account
     :param article: an instance of submission.models.Article
-    :param emails: a set cotaining the author emails seen in this article
+    :param emails: a set cotaining the author emails seen in this article#
+    :author_dict: a dictionary containing author information
+    :param order: a positive integer
     """
-    try:
-        order = submission_models.ArticleAuthorOrder.objects.get(
-            article=article, author=author).order
-    except submission_models.ArticleAuthorOrder.DoesNotExist:
-        order = 1
-
     frozen_dict = {
         'article': article,
         'first_name': author.first_name,

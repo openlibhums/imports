@@ -250,16 +250,11 @@ def import_articles(article_soup, journal, owner, stage, issue):
                 author,
                 update=True,
             )
-            article_obj.authors.add(author_record)
-            order, _ = submission_models.ArticleAuthorOrder.objects.get_or_create(
-                article=article_obj,
-                author=author_record,
-            )
-            order.order = author.get("sequence", 999)
             importers.create_frozen_record(
                 author_record,
                 article_obj,
                 emails,
+                order=author.get("sequence", None)
             )
 
     return articles_imported, articles_updated

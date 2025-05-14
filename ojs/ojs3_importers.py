@@ -23,7 +23,11 @@ from submission import models as sm_models
 from utils.logger import get_logger
 from utils import setting_handler
 
-from plugins.typesetting import plugin_settings as typesetting_settings
+try:
+    from plugins.typesetting import plugin_settings as typesetting_settings
+except ImportError:
+    pass
+
 from plugins.imports import models
 
 # Submission stages
@@ -196,12 +200,13 @@ def import_author_assignments(article, article_dict):
         try:
             account = models.OJSAccount.objects.get(
                 ojs_id=author_id, journal=article.journal).account
-            article.authors.add(account)
+            account.snapshot_self(article)
             if i == 0:
                 article.owner = account
                 article.correspondence_author = account
                 article.save()
         except models.OJSAccount.DoesNotExist:
+            logger.error("Author does not exist %s", author_id)
             logger.error("Author does not exist %s", author_id)
 
 

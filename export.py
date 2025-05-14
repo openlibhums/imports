@@ -121,38 +121,49 @@ def export_html(request, article, article_files):
     return files.serve_temp_file(zip_path, zip_file_name)
 
 
-def add_author_information(row, author, frozen, article):
+def add_author_information(row, author, article):
     """
     Adds author information to article row dictionary.
     """
+    author_account = author.author
 
-    if frozen:
-        if author.author:
-            row['Author salutation'] = author.author.salutation
-        else:
-            row['Author salutation'] = ''
+    if author.name_suffix:
+        suffix = author.name_suffix
+    elif author_account and author_account.suffix:
+        suffix = author_account.suffix
     else:
-        row['Author salutation'] = author.salutation
+        suffix = ''
+
+    if author.name_prefix:
+        prefix = author.name_prefix
+    elif author_account and author_account.salutation:
+        prefix = author_account.salutation
+    else:
+        prefix = ''
+
+    row['Author salutation'] = prefix
     row['Author given name'] = author.first_name
     row['Author middle name'] = author.middle_name
     row['Author surname'] = author.last_name
-    row['Author suffix'] = author.name_suffix if frozen and author.author else ''
-    row['Author email'] = author.author.email if frozen and author.author else author.email
-    if frozen and author.author and author.author.orcid:
-        row['Author ORCID'] = "https://orcid.org/" + author.author.orcid
+    row['Author suffix'] = suffix
+    row['Author email'] = (
+        author_account.email if author_account else author.email
+    )
+
+    if author_account and author_account.orcid:
+        row['Author ORCID'] = f"https://orcid.org/{author_account.orcid}"
     elif author.orcid:
-        row['Author ORCID'] = "https://orcid.org/" + author.orcid
+        row['Author ORCID'] = f"https://orcid.org/{author.orcid}"
     else:
         row['Author ORCID'] = ''
+
     row['Author institution'] = author.institution
     row['Author department'] = author.department
     row['Author biography'] = author.biography
-    if frozen:
-        row['Author is primary (Y/N)'] = 'Y' if author.author and author.author == article.correspondence_author else 'N'
-        row['Author is corporate (Y/N)'] = 'Y' if author.is_corporate else 'N'
-    else:
-        row['Author is primary (Y/N)'] = 'Y' if author == article.correspondence_author else 'N'
-        row['Author is corporate (Y/N)'] = 'N'
+    row['Author is primary (Y/N)'] = (
+        'Y' if author_account and author_account == article.correspondence_author else 'N'
+    )
+    row['Author is corporate (Y/N)'] = 'Y' if author.is_corporate else 'N'
 
     return row
 
@@ -235,34 +246,13 @@ def generate_rows_for_article(article):
 
     export_custom_submission_fields(row, article)
 
-    if article.frozen_authors():
-        author_list = article.frozen_authors()
-        frozen = True
-    else:
-        author_list = article.authors.all()
-        frozen = False
-
     author_dict = {}
 
-    for author in author_list:
-        if frozen:
-            order = author.order
-        else:
-            try:
-                order = submission_models.ArticleAuthorOrder.objects.get(
-                    article=article,
-                    author=author
-                ).order
-            except submission_models.ArticleAuthorOrder.DoesNotExist:
-                order = next(filterfalse(
-                    set(author_dict.keys()).__contains__,
-                    count(1)
-                ))
-        author_dict[order] = author
+    for author in article.frozen_authors():
+       author_dict[author.order] = author
 
-    for order in sorted(list(author_dict.keys())):
-        author = author_dict[order]
-        row = add_author_information(row, author, frozen, article)
+    for author in article.frozen_authors():
+        row = add_author_information(row, author, article)
         body_rows.append(row)
         row = {}
 

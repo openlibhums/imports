@@ -166,7 +166,7 @@ def read_saved_author_data(author):
     """
 
     author_data = {
-        author.salutation,
+        author.name_prefix,
         author.first_name,
         author.middle_name,
         author.last_name,
@@ -272,7 +272,8 @@ class TestImportAndUpdate(TestCase):
                 plugin_element_name,
                 cls.mock_request,
             )
-            cls.journal_one.workflow().elements.add(element)
+            if element:
+                cls.journal_one.workflow().elements.add(element)
         csv_data_2 = CSV_DATA_1
         cls.errors, cls.actions = run_import(
             csv_data_2,
@@ -742,7 +743,7 @@ class TestImportAndUpdate(TestCase):
         self.maxDiff = None
         clear_cache()
         article = submission_models.Article.objects.get(id=self.set_up_article_pk)
-        saved_author_emails = sorted([a.email for a in article.authors.all()])
+        saved_author_emails = sorted([a.email for a in article.frozenauthor_set.all()])
         expected_author_emails = [
             'unrealperson3@example.com',
             'unrealperson5@example.com',
@@ -773,7 +774,7 @@ class TestImportAndUpdate(TestCase):
         }
 
         article = submission_models.Article.objects.get(id=self.set_up_article_pk)
-        first_author = article.authors.all().first()
+        first_author = article.frozenauthor_set.all().first()
         saved_author_data = read_saved_author_data(first_author)
         self.assertEqual(expected_author_data, saved_author_data)
 
@@ -870,8 +871,8 @@ class TestImportAndUpdate(TestCase):
         csv_data_7[1]['Article title'] = 'Title'
         csv_data_7[1]['Article abstract'] = 'Abstract'
         csv_data_7[1]['Keywords'] = 'Keywords2f, a09srh14!$'
-        csv_data_7[1]['Rights'] = 'Rights£%^^£&'
-        csv_data_7[1]['Licence'] = 'License£%^^£&'
+        csv_data_7[1]['Rights'] = 'Rights£%^^£'
+        csv_data_7[1]['Licence'] = 'License£%^^£'
         # csv_data_7[1]['Language'] = 'fra'
         csv_data_7[1]['Peer reviewed (Y/N)'] = 'I think so, but not sure'
         # csv_data_7[1]['Author salutation'] = 'Dr.'

@@ -108,13 +108,16 @@ def import_reviews(request, reader):
     for row in reader:
         id_type, identifier, *review_row = row
         try:
-            article = id_models.Identifier.objects.get(
-                article__journal=request.journal,
-                id_type=id_type,
-                identifier=identifier,
-            ).article
-        except id_models.Identifier.DoesNotExist:
-            pass
+            article = submission_models.Article.objects.get(
+                pk=identifier,
+                journal=request.journal,
+            )
+        except submission_models.Article.DoesNotExist:
+            from django.contrib import messages
+            messages.warning(
+                request,
+                f"Identifier '{identifier}' does not exist."
+            )
         else:
             import_article_review(article, review_row)
 
@@ -512,7 +515,6 @@ def update_article(article, issue, prepared_row, folder_path):
     updated_authors = []
     # If there is any author data in the first row, create or update authors
     if any(get_author_fields(row)):
-
         # Import author from the primary row and then the secondary rows
         updated_authors = []
         author_order = 0
@@ -522,10 +524,6 @@ def update_article(article, issue, prepared_row, folder_path):
             author_order += 1
             updated_authors.extend(handle_author_import(author_row, article, author_order))
 
-    # Remove authors as needed in case of update
-    for previous_author in article.authors.all():
-        if previous_author not in updated_authors:
-            article.authors.remove(previous_author)
 
     # Remove frozen authors as needed in case of update
     for previous_frozen_author in article.frozen_authors():
@@ -870,21 +868,16 @@ def import_author(author_fields, article):
         author.first_name = first_name
         author.middle_name = middle_name
         author.last_name = last_name
-        author.name_suffix = suffix
+        author.suffix = suffix
         author.institution = institution
         author.department = department
         author.biography = bio
         author.orcid = orcid_from_url(orcid)
 
-    author.add_account_role('author', article.journal)
     author.save()
-
-    article.authors.add(author)
-    article.save()
     author.snapshot_self(article)
-
+    article.save()
     frozen_author = update_frozen_author(author, author_fields, article)
-
     return author, frozen_author
 
 def update_frozen_author(author, author_fields, article):
