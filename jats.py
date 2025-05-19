@@ -89,6 +89,9 @@ def import_jats_article(
 
     authors_soup = metadata_soup.find("contrib-group")
     author_notes = metadata_soup.find("author-notes")
+    if author_notes:
+        meta["coi"] = get_jats_coi_statement(author_notes)
+
     if authors_soup:
         meta["authors"] = get_jats_authors(
             authors_soup,
@@ -557,6 +560,10 @@ def save_article(metadata, journal=None, issue=None, owner=None, stage=None):
             )
         issue.articles.add(article)
         article.primary_issue = issue
+
+        if metadata.get("coi", None):
+            article.competing_interests = metadata.get("coi")
+
         article.save()
 
         return article
@@ -766,6 +773,7 @@ def import_jats_preprint(
     meta["authors"] = []
     authors_soup = metadata_soup.find("contrib-group")
     author_notes = jats_soup.find("author-notes")
+
     if authors_soup:
         meta["authors"] = get_jats_authors(
             authors_soup,
@@ -953,3 +961,15 @@ def import_html_reviews(preprint, review_files, owner, number=None):
                 identifier=review_doi,
                 review=review_assignment,
             )
+
+
+def get_jats_coi_statement(author_notes):
+    coi_fn = author_notes.find(
+        "fn",
+        attrs={"fn-type": "coi-statement"},
+    )
+    if not coi_fn:
+        return None
+
+    # Return inner HTML of <fn> (not including the <fn> tag itself)
+    return "".join(str(child) for child in coi_fn.contents).strip()
