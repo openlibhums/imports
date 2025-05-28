@@ -196,6 +196,8 @@ def create_frozen_record(author, article, emails=None, author_dict=None, order=9
     :author_dict: a dictionary containing author information
     :param order: a positive integer
     """
+    if int(order) < 0:
+        order = 999
     frozen_dict = {
         'article': article,
         'first_name': author.first_name,
@@ -1107,16 +1109,19 @@ def get_or_create_account(data, update=False):
                 return None, created
 
     if created or update:
-        account.salutation = data.get("salutation")
+        account.salutation = data.get("salutation", '')
         if account.salutation and len(account.salutation) > 9:
             # OJS does not sanitise this field.
-            account.salutation = None
+            account.salutation = ''
         account.first_name = data.get('first_name')
         account.middle_name = data.get('middle_name')
         account.last_name = data.get('last_name')
         account.institution = data.get('affiliation', ' ') or ' '
-        account.biography = data.get('bio')
+        account.biography = data.get('bio', '')
         account.orcid = extract_orcid(data.get("orcid"))
+
+        if not data['last_name']:
+            account.last_name = '[No Last Name]'
 
 
         if data.get('country'):

@@ -1,8 +1,10 @@
 import bs4
 from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 
 from django.utils.html import strip_tags
 from django.core.files.base import ContentFile
+from django.utils.timezone import make_aware
 
 from plugins.imports import common, models
 from plugins.imports.ojs.importers import GALLEY_TYPES
@@ -13,6 +15,9 @@ from journal import models as journal_models
 from submission import models as submission_models
 from utils import shared
 from identifiers import models as ident_models
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def import_users(xml_content, journal):
@@ -69,11 +74,18 @@ def import_users(xml_content, journal):
     return accounts
 
 
-def import_issues(xml_content, journal, owner, stage):
+def import_issues(
+    xml_content,
+    journal,
+    owner,
+    stage,
+):
     souped_xml = bs4.BeautifulSoup(xml_content, 'lxml')
 
-    # find each of the import sections we need
     issue_soup = souped_xml.findAll('issue')
+
+    all_imported = list()
+    all_updated = list()
 
     for issue in issue_soup:
         section_soup = issue.findAll('section')
@@ -81,6 +93,7 @@ def import_issues(xml_content, journal, owner, stage):
 
         issue = import_issue(issue, journal)
         import_sections(section_soup, journal)
+
         articles_imported, articles_updated = import_articles(
             article_soup,
             journal,
@@ -88,7 +101,11 @@ def import_issues(xml_content, journal, owner, stage):
             stage,
             issue,
         )
-        return articles_imported, articles_updated
+
+        all_imported.extend(articles_imported)
+        all_updated.extend(articles_updated)
+
+    return all_imported, all_updated
 
 
 def import_issue(issue_soup, journal):
@@ -96,9 +113,12 @@ def import_issue(issue_soup, journal):
     issue_number = common.get_text_or_none(issue_soup, 'number')
     year = common.get_text_or_none(issue_soup, 'year')
     description = common.get_text_or_none(issue_soup, 'description')
-    date_published = utils.get_aware_datetime(
-        common.get_text_or_none(issue_soup, 'date_published')
-    )
+
+    raw_date = common.get_text_or_none(issue_soup, 'date_published')
+    try:
+        date_published = utils.get_aware_datetime(raw_date)
+    except TypeError:
+        date_published = make_aware(datetime.now() + timedelta(days=365 * 10))
 
     issue_type = journal_models.IssueType.objects.get(
         code='issue',
@@ -107,7 +127,7 @@ def import_issue(issue_soup, journal):
 
     issue, created = journal_models.Issue.objects.update_or_create(
         journal=journal,
-        volume=volume_number,
+        volume=volume_number or 0,
         issue=issue_number or 0,
         date=date_published,
         issue_type=issue_type,
@@ -195,11 +215,14 @@ def import_articles(article_soup, journal, owner, stage, issue):
             ),
             'rights': common.get_text_or_none(article, 'copyrightholder'),
             'page_numbers': common.get_text_or_none(article, 'pages'),
-            'date_published': utils.get_aware_datetime(
-                publication_soup.attrs.get('date_published'),
-            ),
             'section': get_section(publication_soup, journal),
         }
+
+        pub_date = publication_soup.attrs.get('date_published')
+        if pub_date:
+            article_dict['date_published'] = utils.get_aware_datetime(
+                publication_soup.attrs.get('date_published'),
+            )
 
         identifiers = get_identifiers(publication_soup)
         keywords = get_keywords(publication_soup)
@@ -282,6 +305,8 @@ def get_license(license_url, journal):
         if license_url.endswith("/"):
             license_url = license_url[:-1]
         license_url = license_url.replace("http:", "https:")
+    if not license_url:
+        license_url = 'https://example.org'
     _license, _ = submission_models.Licence.objects.get_or_create(
         journal=journal,
         url=license_url,
@@ -405,27 +430,40 @@ def create_galleys(article_obj, publication_soup):
     galley_soup = publication_soup.findAll('article_galley')
 
     for galley in galley_soup:
-        submission_file_ref = galley.find(
+        submission_file_tag = galley.find(
             'submission_file_ref',
-        ).attrs.get('id')
+        )
+
+        if submission_file_tag is None:
+            logger.warning("No <submission_file_ref> tag found in galley: %s", galley)
+            continue
+
+        submission_file_ref = submission_file_tag.attrs.get('id')
+
         import_file = models.OJSFile.objects.filter(
             journal=article_obj.journal,
             ojs_id=submission_file_ref,
         ).first()
+
         label = common.get_text_or_none(galley, 'name')
-        galley, c = core_models.Galley.objects.update_or_create(
+
+        galley, created = core_models.Galley.objects.update_or_create(
             article=article_obj,
             file=import_file.file,
             label=label,
             type=GALLEY_TYPES.get(label, "other"),
         )
-        if not c:
+
+        if not created:
             galley.file = import_file.file
             galley.save()
 
 
 def get_title(article):
     title = common.get_text_or_none(article, 'title')
-    title = title.replace('<p>', '')
-    title = title.replace('</p>', '')
+    if title:
+        title = title.replace('<p>', '')
+        title = title.replace('</p>', '')
+    else:
+        title = ''
     return title

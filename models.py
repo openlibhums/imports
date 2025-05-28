@@ -92,7 +92,7 @@ class OJS3Section(models.Model):
         null=True,
         blank=True,
     )
-    ojs_ref = models.CharField(max_length=10, blank=True, null=True)
+    ojs_ref = models.CharField(max_length=50, blank=True, null=True)
     journal = models.ForeignKey('journal.Journal', on_delete=models.CASCADE)
     section = models.ForeignKey(
         'submission.Section', blank=True, null=True,
