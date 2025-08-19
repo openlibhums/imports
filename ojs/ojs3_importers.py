@@ -694,7 +694,11 @@ def import_user(user_dict, journal):
 
     import_user_roles(user_dict, account, journal)
     for interest in user_dict["interests"]:
-        account.interest.get_or_create(name=interest["interest"])
+        try:
+            account.interest.get_or_create(name=interest["interest"])
+        except Exception as err:
+            logger.error(f"Failed to import interest: {err}")
+            logger.error(err)
 
     _, c = models.OJSAccount.objects.get_or_create(
         journal=journal,
@@ -706,7 +710,6 @@ def import_user(user_dict, journal):
             "Linked user %s with ojs id %s on %s",
             account, user_dict["id"], journal,
         )
-
     return account, created
 
 
