@@ -37,7 +37,7 @@ class Command(BaseCommand):
                             default=False,
                             help="Do not import article galleys")
         parser.add_argument(
-            '--ojs-stages',
+            '--ojs-statuses',
             type=int,
             nargs='*',  # This allows for zero or more arguments
             help="""
@@ -66,7 +66,7 @@ class Command(BaseCommand):
         elif options["metrics"]:
             ojs.import_ojs3_metrics(client, journal)
         elif options["issue_id"]:
-            ojs.import_ojs3_issues(client, journal, issue_id=options["issue_id"], ojs_stages=options["ojs_stages"])
+            ojs.import_ojs3_issues(client, journal, issue_id=options["issue_id"], ojs_statuses=options["ojs_statuses"])
         elif options["unpublished_issues"]:
             ojs.import_ojs3_unpublished_issues(client, journal)
         elif options["users"]:
@@ -79,5 +79,5 @@ class Command(BaseCommand):
                 ojs_id=options["ojs_id"],
                 editorial=options["editorial"],
                 galleys=not options["ignore_galleys"],
-                ojs_stages=options["ojs_stages"],
+                ojs_statuses=options["ojs_statuses"],
             )

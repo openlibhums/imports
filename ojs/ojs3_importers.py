@@ -238,7 +238,7 @@ def import_editor_assignments(article, article_dict):
             }
         )
 
-def import_issue(client, journal, issue_dict, ojs_stages=None):
+def import_issue(client, journal, issue_dict, ojs_statuses=None):
     issue, c = get_or_create_issue(issue_dict, journal)
     if c:
         logger.info("Created Issue %s from OJS ID %s", issue, issue_dict["id"])
@@ -249,7 +249,7 @@ def import_issue(client, journal, issue_dict, ojs_stages=None):
         section = import_section(section_dict, issue, client)
 
     for order, article_dict in enumerate(issue_dict["articles"]):
-        if ojs_stages and article_dict["stageId"] not in ojs_stages:
+        if ojs_statuses and article_dict["status"] not in ojs_statuses:
             continue
         article_dict["publication"] = get_pub_article_dict(article_dict, client)
         article, c = get_or_create_article(article_dict, journal)
