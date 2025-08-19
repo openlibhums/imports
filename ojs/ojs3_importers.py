@@ -1204,8 +1204,6 @@ def set_stage(article, article_dict):
     ojs_stage_id = article_dict["stageId"]
 
     # Handle articles that have been loaded through a plugin
-    if ojs_stage_id == WORKFLOW_STAGE_ID_SUBMISSION and article_dict["publications"]:
-        ojs_stage_id = WORKFLOW_STAGE_ID_PREPUB
     for id, stage_dict in WORKFLOW_STAGE_MAP.items():
         # Create all workflow logs for previoys stages
         if id <= ojs_stage_id and stage_dict["workflow"]:
