@@ -178,13 +178,15 @@ def import_journal_settings(ojs_client, journal):
 def import_ojs3_articles(
         client, journal, ojs_id=None,
         editorial=False, raise_on_exc=False,
-        galleys=True,
+        galleys=True, ojs_stages=None,
 ):
     if ojs_id:
         articles = [client.get_article(ojs_id)]
     else:
         articles = client.get_articles()
     for d in articles:
+        if ojs_stages and d["stageId"] not in ojs_stages:
+            continue
         try:
             ojs3_importers.import_article(
                 client, journal, d,
@@ -197,13 +199,19 @@ def import_ojs3_articles(
             logger.exception(e)
 
 
-def import_ojs3_issues(client, journal, issue_id=None):
+def import_ojs3_issues(
+        client, journal, issue_id=None,
+        ojs_stages=None,
+    ):
     if issue_id:
         issues = [client.get_issue(issue_id)]
     else:
         issues = client.get_issues()
     for issue_dict in issues:
-        ojs3_importers.import_issue(client, journal, issue_dict)
+        ojs3_importers.import_issue(
+                client, journal, issue_dict,
+                ojs_stages=ojs_stages,
+        )
 
 
 def import_ojs3_unpublished_issues(client, journal):
