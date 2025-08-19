@@ -1099,7 +1099,7 @@ def delocalise(localised, lang_code=None):
             return with_value[settings.LANGUAGE_CODE]
         return next(iter(with_value.values()))
 
-    return None
+    return ""
 
 def get_localised(localised, prefix=None):
     """ Gets a localised OJS object in a format understandable by janeway
