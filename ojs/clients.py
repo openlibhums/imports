@@ -78,7 +78,7 @@ class PaginatedResults():
         url_parts[4] = urlparse.urlencode(query)
 
         return urlparse.urlunparse(url_parts)
-        
+
 
 class OJS2PaginatedResults(PaginatedResults):
     OFFSET_KEY = "limit"
@@ -479,14 +479,14 @@ class OJS3APIClient(OJSBaseClient):
     def get_published_articles(self):
         return self.get_articles(stages=[self.STATUS_PUBLISHED, self.STATUS_QUEUED])
 
-    def get_articles(self, stages=None):
+    def get_articles(self, ojs_statuses=None):
         request_url = (
             self.journal_url
             + self.API_PATH
             + self.SUBMISSIONS_PATH % ''
         )
-        if stages:
-            params = {"stages": stages}
+        if ojs_statuses:
+            params = {"status": ",".join(str(i) for i in ojs_statuses)}
             request_url += "?%s" % urlparse.urlencode(params)
         client = self.fetch
         paginator = OJS3PaginatedResults(request_url, client)
