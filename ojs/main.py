@@ -266,3 +266,18 @@ def import_ojs3_galleys(client, journal, ojs_id=None):
     for d in articles:
         pub_article_dict = ojs3_importers.get_pub_article_dict(d, client)
         ojs3_importers.import_article_galleys(pub_article_dict, journal, client)
+
+
+def import_ojs3_announcements(client, journal, posted_by, dry_run=False):
+    announcements = client.get_announcements()
+
+    # If this is a dry run send the announcements back as this is a dry CLI run.
+    # Otherwise, run the import and return the announcement objects from Janeway.
+    if dry_run:
+        return announcements
+    else:
+        return ojs3_importers.import_announcements(
+            announcements,
+            journal,
+            posted_by
+        )

@@ -386,6 +386,7 @@ class OJS3APIClient(OJSBaseClient):
     ISSUE_GALLEY_PATH = "/issue/download/{issue}/{galley}"
     PUBLICATIONS_PATH = SUBMISSIONS_PATH + '/publications/%s'
     PUBLIC_PATH = '/public/journals/%s/'
+    ANNOUCEMENTS_PATH = '/announcements/'
     HEADERS = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -659,6 +660,16 @@ class OJS3APIClient(OJSBaseClient):
         if ojs_ids:
             query_params["submissionIds"] = ','.join(ojs_ids)
         request_url += "?%s" % urlparse.urlencode(query_params)
+        paginator = OJS3PaginatedResults(request_url, self.fetch)
+        for result in paginator:
+            yield result
+
+    def get_announcements(self):
+        request_url = (
+            self.journal_url
+            + self.API_PATH
+            + self.ANNOUCEMENTS_PATH
+        )
         paginator = OJS3PaginatedResults(request_url, self.fetch)
         for result in paginator:
             yield result

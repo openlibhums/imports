@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.template.defaultfilters import linebreaksbr
 from django.utils import timezone
 from django.utils.html import strip_tags
+from django.contrib.contenttypes.models import ContentType
 
 from cms import models as cms_models
 from copyediting import models as copyediting_models
@@ -22,6 +23,7 @@ from review import models as review_models
 from submission import models as sm_models
 from utils.logger import get_logger
 from utils import setting_handler
+from comms import models as comms_models
 
 from plugins.typesetting import plugin_settings as typesetting_settings
 from plugins.imports import models
@@ -1218,3 +1220,48 @@ def set_stage(article, article_dict):
 
     article.stage = stage
     article.save()
+
+
+def import_announcements(
+    announcements,
+    journal,
+    posted_by
+):
+    content_type = ContentType.objects.get_for_model(journal)
+    created_announcements = []
+
+    for ann in announcements:
+        title = delocalise(ann.get("title") or {}) or "Untitled"
+        body = delocalise(
+            ann.get("descriptionShort") or ann.get("description") or {},
+        ) or ""
+
+        if ann.get("datePosted"):
+            posted_dt = timezone.make_aware(
+                dateparser.parse(ann["datePosted"]).replace(hour=12),
+            )
+        else:
+            posted_dt = timezone.now()
+
+        start_display = posted_dt.date()
+        end_display = None
+        if ann.get("dateExpire"):
+            end_display = dateparser.parse(ann["dateExpire"]).date()
+
+        announcement, created = comms_models.NewsItem.objects.get_or_create(
+            content_type=content_type,
+            object_id=journal.pk,
+            title=title,
+            posted=posted_dt,
+            defaults=dict(
+                body=body,
+                posted_by=posted_by,
+                start_display=start_display,
+                end_display=end_display,
+                custom_byline=journal.name,
+            ),
+        )
+        if created:
+            created_announcements.append(announcement)
+
+    return created_announcements
