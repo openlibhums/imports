@@ -545,18 +545,22 @@ class OJS3APIClient(OJSBaseClient):
 
         return self.get_submission_files(submission_id, **query_params)
 
-    def get_review_files(self, submission_id, review_ids=None, round_ids=None, revisions=False):
+    def get_review_files(self, submission_id, review_ids=None, round_ids=None, revisions=False, stages=None):
         query_params = {}
+        if stages:
+            stages = ",".join(str(i) for i in stages)
         if review_ids:
             query_params["reviewIds"] = ','.join(str(i) for i in review_ids)
-            query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_ATTACHMENT
+            query_params["fileStages"] = stages or self.SUBMISSION_FILE_REVIEW_ATTACHMENT
 
         elif round_ids:
             query_params["reviewRoundIds"] = ','.join(str(i) for i in round_ids)
             if revisions:
-                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_REVISION
+                query_params["fileStages"] = stages or self.SUBMISSION_FILE_REVIEW_REVISION
             else:
-                query_params["fileStages"] = self.SUBMISSION_FILE_REVIEW_FILE
+                query_params["fileStages"] = stages or self.SUBMISSION_FILE_REVIEW_FILE
+        elif stages:
+            query_params["fileStages"] = stages
 
         return self.get_submission_files(submission_id, **query_params)
 

@@ -663,7 +663,19 @@ def import_reviewer_files(client, submission_id, assignment, review_id):
         reviewer_file = import_file(file_json, client, assignment.article, label)
         assignment.review_file = reviewer_file
         assignment.save()
-
+    if not assignment.review_file:
+        # We've noticed some installs don't populate review_file.review_id.
+        # Instead, the review id was in submission_file, using the assoc_id with the review id
+        # Since the API doesn't support filtering on this attribute, we process all the files here
+        review_attachment_files = client.get_review_files(
+            submission_id, stages=[client.SUBMISSION_FILE_REVIEW_ATTACHMENT]
+        )
+        for file_json in review_attachment_files:
+            if file_json["assocId"] == review_id:
+                reviewer_file = import_file(
+                    file_json, client, assignment.article, label)
+                assignment.review_file = reviewer_file
+                assignment.save()
 
 
 def import_user(user_dict, journal):
