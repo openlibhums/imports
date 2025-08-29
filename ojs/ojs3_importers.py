@@ -1275,3 +1275,29 @@ def import_announcements(
             created_announcements.append(announcement)
 
     return created_announcements
+
+
+def import_review_attachments(client, journal, article_dict):
+    
+    article = sm_models.Article.get_article(journal, "ojs_id", article_dict["id"])
+    for review_dict in article_dict["reviewAssignments"]:
+        try:
+            reviewer = models.OJSAccount.objects.get(
+                ojs_id=review_dict["reviewerId"],
+                journal=article.journal,
+            ).account
+        except models.OJSAccount.DoesNotExist:
+            user_dict = client.get_user(review_dict["reviewerId"])
+            reviewer, _ = import_user(user_dict, article.journal)
+
+        assignment = review_models.ReviewAssignment.objects.get(
+            article=article,
+            reviewer=reviewer,
+            review_round=review_models.ReviewRound.objects.get(
+                article=article,
+                round_number=review_dict["round"],
+            )
+        )
+        import_reviewer_files(
+            client, article_dict["id"], assignment, review_dict["id"]
+        )
