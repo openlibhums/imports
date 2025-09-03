@@ -1104,10 +1104,10 @@ def get_proofing_assignments_for_journal(journal):
         pass
 
     try:
-        from plugins.typesetting import plugin_settings, models as typesetting_models
+        from typesetting import models as typesetting_models
         typesetting_workflow_element = core_models.WorkflowElement.objects.get(
             journal=journal,
-            stage=plugin_settings.STAGE,
+            stage=submission_models.STAGE_TYPESETTING_PLUGIN,
         )
         if journal.element_in_workflow(typesetting_workflow_element.element_name):
             return 'typesetting', typesetting_models.GalleyProofing.objects.filter(

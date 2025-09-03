@@ -23,11 +23,6 @@ from submission import models as sm_models
 from utils.logger import get_logger
 from utils import setting_handler
 
-try:
-    from plugins.typesetting import plugin_settings as typesetting_settings
-except ImportError:
-    pass
-
 from plugins.imports import models
 
 # Submission stages
@@ -585,13 +580,7 @@ def import_production(client, article, article_dict):
             prod_ready_files.append(prod_ready_file)
 
     if prod_ready_files:
-        typesetting_plugin = article.journal.element_in_workflow(
-            "Typesetting Plugin")
-        if typesetting_plugin:
-            stage = typesetting_settings.STAGE
-            create_workflow_log( article, typesetting_settings.STAGE)
-        else:
-            create_workflow_log(article, sm_models.STAGE_TYPESETTING)
+        create_workflow_log(article, sm_models.STAGE_TYPESETTING_PLUGIN)
 
 
 def add_to_projected_issue(article, article_dict):
