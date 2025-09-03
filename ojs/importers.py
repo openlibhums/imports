@@ -25,10 +25,6 @@ from utils import setting_handler
 from utils.logger import get_logger
 
 from plugins.imports import utils
-try:
-    from plugins.typesetting import plugin_settings as typesetting_settings
-except ImportError:
-    typesetting_settings = None
 
 logger = get_logger(__name__)
 # Set date time to 12 UTC to ensure correct date for timezone
@@ -674,7 +670,7 @@ def import_typesetting(article_dict, article, client, with_galleys=None):
 
 
 def import_typesetting_plugin(article_dict, article, client, with_galleys=True):
-    from plugins.typesetting import models as typesetting_models
+    from typesetting import models as typesetting_models
     layout = article_dict.get('layout')
     task = None
     typesetter = None
@@ -952,12 +948,7 @@ def calculate_article_stage(article_dict, article):
         article_dict["layout"]["galleys"]
         or article_dict["layout"]["layout_file"]
     ):
-        if typesetting_plugin:
-            stage = typesetting_settings.STAGE
-            create_workflow_log(article, stage)
-        else:
-            stage = submission_models.STAGE_TYPESETTING
-            create_workflow_log(article, stage)
+        create_workflow_log(article, submission_models.STAGE_TYPESETTING_PLUGIN)
 
     if article_dict.get("proofing"):
         if not typesetting_plugin:
