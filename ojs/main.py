@@ -301,3 +301,24 @@ def import_ojs3_review_attachments(
                 raise
             logger.error("review_attachment Import Failed: %s", e)
             logger.exception(e)
+
+def import_ojs3_review_comments(
+    client, journal, ojs_id=None,
+    ojs_statuses=None, raise_on_exc=False,
+):
+    # Only needed if something went wrong and we need to re-import review comments
+    if ojs_id:
+        ojs_articles = [client.get_article(ojs_id)]
+    else:
+        ojs_articles = client.get_articles(ojs_statuses)
+    for d in ojs_articles:
+        try:
+            logger.info("Importing review comments: %s", d["id"])
+            ojs3_importers.import_review_comments(
+                client, journal, d,
+            )
+        except Exception as e:
+            if raise_on_exc:
+                raise
+            logger.error("Review Comment Import Failed: %s", e)
+            logger.exception(e)

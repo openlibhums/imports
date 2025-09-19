@@ -22,5 +22,6 @@ from plugins.imports.ojs.main import (
     import_ojs3_galleys,
     import_ojs3_announcements,
     import_ojs3_review_attachments,
+    import_ojs3_review_comments,
 )
 from plugins.imports.ojs.clients import OJSJanewayClient

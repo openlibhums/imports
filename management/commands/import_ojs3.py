@@ -21,6 +21,8 @@ class Command(BaseCommand):
                             help="Imports only issues")
         parser.add_argument('--review-attachments', action="store_true", default=False,
                             help="Imports only review attachments, (articles and reviews must exist)")
+        parser.add_argument('--review-comments', action="store_true", default=False,
+                            help="Imports only review comments, (articles and reviews must exist)")
         parser.add_argument('--unpublished-issues', action="store_true", default=False,
                             help="Imports only future issues")
         parser.add_argument('--just-galleys', action="store_true", default=False,
@@ -75,6 +77,8 @@ class Command(BaseCommand):
             ojs.import_ojs3_users(client, journal)
         elif options["review_attachments"]:
             ojs.import_ojs3_review_attachments(client, journal, options["ojs_id"], options["ojs_statuses"])
+        elif options["review_comments"]:
+            ojs.import_ojs3_review_comments(client, journal, options["ojs_id"], options["ojs_statuses"])
         elif options["just_galleys"]:
             ojs.import_ojs3_galleys(client, journal, options["ojs_id"])
         else:
