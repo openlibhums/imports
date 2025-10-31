@@ -38,6 +38,9 @@ from plugins.imports.utils import DummyRequest
 
 logger = get_logger(__name__)
 
+# Hyphen, minus, en dash and em dash
+DASH_CHARS_RE = re.compile('[—–−-]')
+
 
 def import_jats_article(
         jats_contents, journal=None,
@@ -244,8 +247,9 @@ def get_jats_issue(soup):
 
     if issue and isinstance(issue, str) and issue.isdigit is False:
         try:
-            issue = issue.split("-")[0]
+            issue = int(re.split(DASH_CHARS_RE, issue)[0])
         except (IndexError, ValueError):
+            logger.warning(f"Failed to parse issue '{issue}', setting to 0")
             issue = 0
 
     volume = soup.find("volume")
