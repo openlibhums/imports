@@ -38,8 +38,8 @@ from plugins.imports.utils import DummyRequest
 
 logger = get_logger(__name__)
 
-# Hyphen, minus, en dash and em dash
-DASH_CHARS_RE = re.compile('[—–−-]')
+# Dash, Hyphen, minus, en dash and em dash
+DASH_CHARS_RE = re.compile('[—–−‐-]')
 
 
 def import_jats_article(
