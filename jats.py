@@ -343,7 +343,7 @@ def get_jats_authors(soup, metadata_soup, author_notes=None):
                 "email": email,
                 "correspondence": False,
                 "institution": institution,
-                "orcid": get_orcid(author),
+                "orcid": get_orcid(author) or "",
             }
             if author.attrs.get("corresp") == "yes" and author_notes:
                 author_data["correspondence"] = True
