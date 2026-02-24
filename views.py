@@ -60,6 +60,11 @@ def import_load(request):
 
     if request.POST and request.FILES:
         file = request.FILES.get('file')
+        errors = utils.validate_csv_file(file)
+        if errors:
+            for error in errors:
+                messages.add_message(request, messages.ERROR, error)
+            return redirect(request.get_full_path())
         filename, path = files.save_file_to_temp(file)
         reverse_url = '{url}?type={request_type}'.format(
             url=reverse(
@@ -227,6 +232,11 @@ def article_images(request):
 
     if request.POST and request.FILES.get('file'):
         file = request.FILES.get('file')
+        errors = utils.validate_csv_file(file)
+        if errors:
+            for error in errors:
+                messages.add_message(request, messages.ERROR, error)
+            return redirect(reverse('imports_article_images'))
         filename, path = files.save_file_to_temp(file)
         reverse_url = '{url}?filename={filename}'.format(url=reverse('imports_article_images'),
                                                         filename=filename)

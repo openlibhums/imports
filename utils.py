@@ -651,6 +651,26 @@ def handle_file_import(row, article, folder_path):
                 article.data_figure_files.add(file)
 
 
+def validate_csv_file(uploaded_file):
+    """
+    Checks that an uploaded file has a .csv extension and is UTF-8 encoded.
+    Returns a list of error strings (empty list if valid).
+    Resets the file pointer after reading so the file can still be saved.
+    """
+    errors = []
+    _, ext = os.path.splitext(uploaded_file.name)
+    if ext.lower() != '.csv':
+        errors.append('Invalid file type: expected a .csv file.')
+    try:
+        content = uploaded_file.read()
+        content.decode('utf-8')
+    except UnicodeDecodeError:
+        errors.append('File is not UTF-8 encoded. Please save your CSV as UTF-8 and try again.')
+    finally:
+        uploaded_file.seek(0)
+    return errors
+
+
 def verify_headers(path, errors):
     with open(path, 'r', encoding='utf-8-sig') as verify_headers_file:
         reader = csv.DictReader(verify_headers_file)
