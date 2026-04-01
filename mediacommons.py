@@ -284,7 +284,7 @@ def import_review_data(article, review_data):
 def import_author(article, author_data, idx):
         author = update_or_create_account(author_data)
         author.add_account_role("author", article.journal)
-        author.snapshot_self(article)
+        author.snapshot_as_author(article)
 
 def make_xml_galley(article, owner, data):
     for galley in article.galley_set.all():

@@ -195,7 +195,7 @@ def import_author_assignments(article, article_dict):
         try:
             account = models.OJSAccount.objects.get(
                 ojs_id=author_id, journal=article.journal).account
-            account.snapshot_self(article)
+            account.snapshot_as_author(article)
             if i == 0:
                 article.owner = account
                 article.correspondence_author = account

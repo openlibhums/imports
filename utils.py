@@ -910,7 +910,7 @@ def import_author(author_fields, article):
         author.orcid = orcid_from_url(orcid)
 
     author.save()
-    author.snapshot_self(article)
+    author.snapshot_as_author(article)
     article.save()
     frozen_author = update_frozen_author(author, author_fields, article)
     return author, frozen_author
