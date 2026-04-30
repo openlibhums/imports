@@ -1040,8 +1040,9 @@ def load_article_images(request, reader):
         image = requests.get(row[2], stream=True)
         if image.status_code == 200:
 
-            content_disposition = image.headers['content-disposition']
-            filename = re.findall("filename=\"(.+)\"", content_disposition)[0]
+            content_disposition = image.headers.get('content-disposition', '')
+            filename_match = re.findall("filename=\"(.+)\"", content_disposition)
+            filename = filename_match[0] if filename_match else row[2].split('/')[-1]
 
             name, extension = os.path.splitext(filename)
             uuid_filename = '{0}{1}'.format(uuid.uuid4(), extension)
