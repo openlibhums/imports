@@ -6,6 +6,7 @@ import zipfile
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 from django.urls import reverse
 from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
@@ -406,7 +407,15 @@ def export_articles_all(request):
     """
     A view that displays all articles in a journal and allows export.
     """
-    stage = request.GET.get('stage')
+    filter_form = forms.ArticleExportFilterForm(
+        request.GET or None,
+        journal=request.journal,
+    )
+    stage = None
+    issue = None
+    if filter_form.is_valid():
+        stage = filter_form.cleaned_data.get('stage')
+        issue = filter_form.cleaned_data.get('issue')
 
     if request.POST:
         article_id = request.POST.get('article_id')
@@ -440,27 +449,48 @@ def export_articles_all(request):
         )
         articles = articles.filter(stage__in=workflow_element.stages)
 
+    if issue:
+        articles = articles.filter(issues=issue)
+
+    if request.POST and 'export_all' in request.POST:
+        for article in articles:
+            article.export_files = article.exportfile_set.all()
+        csv_path, csv_name = export.export_using_import_format(articles)
+        return export.zip_export_files(request.journal, articles, csv_path)
+
+    paginate_by = request.GET.get('paginate_by', '25')
+    if paginate_by == 'all':
+        per_page = articles.count() or 1
+    else:
+        try:
+            per_page = int(paginate_by)
+        except (TypeError, ValueError):
+            paginate_by, per_page = '25', 25
+
+    paginator = Paginator(articles, per_page)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
     workflow_type, proofing_assignments = utils.get_proofing_assignments_for_journal(
         request.journal,
     )
 
-    for article in articles:
+    for article in page_obj:
         article.export_files = article.exportfile_set.all()
-        article.export_file_pks = [ef.file.pk for ef in article.exportfile_set.all()]
+        article.export_file_pks = [ef.file.pk for ef in article.export_files]
 
         if proofing_assignments:
             article.proofing_files = utils.proofing_files(workflow_type, proofing_assignments, article)
 
-    if request.POST:
-        if 'export_all' in request.POST:
-            csv_path, csv_name = export.export_using_import_format(articles)
-            return export.zip_export_files(request.journal, articles, csv_path)
-
     template = 'import/articles_all.html'
     context = {
-        'articles_in_stage': articles,
+        'articles_in_stage': page_obj,
+        'page_obj': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'paginate_by': paginate_by,
         'stages': submission_models.STAGE_CHOICES,
+        'filter_form': filter_form,
         'selected_stage': stage,
+        'selected_issue': issue,
     }
 
     return render(request, template, context)
