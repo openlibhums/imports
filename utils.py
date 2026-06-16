@@ -185,12 +185,14 @@ def import_user(request, row, reset_pwd=False):
     if created and reset_pwd:
         core_logic.start_reset_process(request, user)
     try:
-        review_interests = row[8]
-        re.split('[,;]+', review_interests)
+        review_interests = re.split('[,;]+', row[8])
     except (IndexError, AttributeError):
         review_interests = []
 
     for term in review_interests:
+        term = term.strip()
+        if not term:
+            continue
         interest, _ = core_models.Interest.objects.get_or_create(name=term)
         user.interest.add(interest)
 
