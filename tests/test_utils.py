@@ -1200,3 +1200,38 @@ class TestImportAndUpdate(TestCase):
 
         self.assertEqual(rows[0][field_name], field_answer)
 
+
+class TestImportUser(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal_one, cls.journal_two = helpers.create_journals()
+        cls.test_user = helpers.create_user(
+            username='importuser_admin@example.com',
+        )
+        cls.mock_request = HttpRequest()
+        cls.mock_request.user = cls.test_user
+        cls.mock_request.journal = cls.journal_one
+
+    def test_review_interests_parsed_not_split_per_character(self):
+        row = [
+            'Prof',                              # 0 salutation
+            'Unreal',                            # 1 first_name
+            'J.',                                # 2 middle_name
+            'Person99',                          # 3 last_name
+            'importuser_reviewer@example.com',   # 4 email
+            'Cancer Center',                     # 5 department
+            'University of Michigan',            # 6 institution
+            'US',                                # 7 country code
+            'dinosaurs, Socratic teaching',     # 8 review interests
+        ]
+
+        user, _ = utils.import_user(self.mock_request, row)
+
+        saved_interests = sorted(
+            interest.name for interest in user.interest.all()
+        )
+        self.assertEqual(
+            ['Socratic teaching', 'dinosaurs'],
+            saved_interests,
+        )
