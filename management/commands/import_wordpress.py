@@ -442,6 +442,8 @@ class WordPressImporter:
                 label="HTML",
                 is_galley=True,
             )
+            saved_file.mime_type = "text/html"
+            saved_file.save()
             core_models.Galley.objects.create(
                 article=article,
                 file=saved_file,
