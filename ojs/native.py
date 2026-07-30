@@ -107,7 +107,7 @@ def import_issue(issue_soup, journal):
 
     issue, created = journal_models.Issue.objects.update_or_create(
         journal=journal,
-        volume=volume_number,
+        volume=volume_number or 0,
         issue=issue_number or 0,
         date=date_published,
         issue_type=issue_type,
@@ -289,7 +289,7 @@ def get_license(license_url, journal):
         license_url = license_url.replace("http:", "https:")
     _license, _ = submission_models.Licence.objects.get_or_create(
         journal=journal,
-        url=license_url,
+        url=license_url or "",
         defaults={
             "name": "Imported License",
             "short_name": "imported",

@@ -1112,15 +1112,15 @@ def get_or_create_account(data, update=False):
                 return None, created
 
     if created or update:
-        account.salutation = data.get("salutation")
-        if account.salutation and len(account.salutation) > 9:
+        account.salutation = data.get("salutation") or ""
+        if len(account.salutation) > 9:
             # OJS does not sanitise this field.
-            account.salutation = None
-        account.first_name = data.get('first_name')
-        account.middle_name = data.get('middle_name')
-        account.last_name = data.get('last_name')
+            account.salutation = ""
+        account.first_name = data.get('first_name') or ''
+        account.middle_name = data.get('middle_name') or ''
+        account.last_name = data.get('last_name') or ''
         account.institution = data.get('affiliation', ' ') or ' '
-        account.biography = data.get('bio')
+        account.biography = data.get('bio') or data.get('biography') or ''
         account.orcid = extract_orcid(data.get("orcid"))
 
 
