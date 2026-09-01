@@ -154,6 +154,7 @@ def import_action(request, filename):
                         folder_path,
                         owner=request.user,
                         import_id=filename,
+                        fetch_timeout=utils.REMOTE_FETCH_TIMEOUT,
                     )
 
         else:

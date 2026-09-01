@@ -64,6 +64,11 @@ DEFAULT_REQUEST_HEADERS = {
     'Chrome/39.0.2171.95 Safari/537.36'
 }
 
+# (connect, read) timeouts for remote fetches made from a web worker,
+# where a stalled remote server would otherwise hang the request
+# indefinitely; CLI imports pass no timeout and wait as long as needed
+REMOTE_FETCH_TIMEOUT = (10, 120)
+
 
 class DummyRequest():
     """ Used as to mimic request interface for `save_galley`"""
@@ -318,6 +323,7 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
     actions = {}
     return_articles = kwargs.get('return_articles')
     mock_import_stages = kwargs.get('mock_import_stages')
+    fetch_timeout = kwargs.get('fetch_timeout')
     csv_import = None
     prepared_reader_rows = prepare_reader_rows(reader)
     if import_id:
@@ -366,7 +372,6 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                 actions[article.pk] = f'Article {article.title} ({article.pk}) updated.'
 
             except Exception as e:
-                import pdb;pdb.set_trace()
                 errors.append(
                     {
                         'article': primary_row.get('Article title'),
@@ -417,7 +422,11 @@ def update_article_metadata(reader, folder_path=None, owner=None, import_id=None
                 )
         if (primary_row and primary_row.get("PDF URI")):
             try:
-                import_galley_from_uri( article, primary_row["PDF URI"])
+                import_galley_from_uri(
+                    article,
+                    primary_row["PDF URI"],
+                    fetch_timeout=fetch_timeout,
+                )
             except Exception as e:
                 errors.append({
                         'article': primary_row.get('Article title'),
@@ -529,7 +538,7 @@ def update_article(article, issue, prepared_row, folder_path):
 
     updated_authors = []
     # If there is any author data in the first row, create or update authors
-    if any(get_author_fields(row)):
+    if has_author_data(row):
         # Import author from the primary row and then the secondary rows
         updated_authors = []
         author_order = 0
@@ -602,6 +611,16 @@ def get_author_fields(row):
         row.get('Author ORCID', ''),
         row.get('Author is corporate (Y/N)', ''),
     ]
+
+
+def has_author_data(row):
+    """
+    Determines whether a row holds author data to import.
+    A negative 'Author is corporate (Y/N)' flag does not constitute
+    author data on its own, so authorless rows don't gain a blank author.
+    """
+    *fields, is_corporate = get_author_fields(row)
+    return any(fields) or is_corporate == 'Y'
 
 
 def handle_author_import(row, article, author_order):
@@ -950,7 +969,7 @@ def import_corporate_author(author_fields, article):
     )
     return author, frozen_author
 
-def import_galley_from_uri(article, uri, figures_uri=None):
+def import_galley_from_uri(article, uri, figures_uri=None, fetch_timeout=None):
     parsed = urlparse(uri)
     django_file = None
     if parsed.scheme == "file":
@@ -961,7 +980,12 @@ def import_galley_from_uri(article, uri, figures_uri=None):
         django_file = ContentFile(blob)
         django_file.name = os.path.basename(path)
     elif parsed.scheme in {"http", "https"}:
-        response = requests.get(uri, headers=DEFAULT_REQUEST_HEADERS)
+        request_kwargs = {
+            'headers': DEFAULT_REQUEST_HEADERS,
+        }
+        if fetch_timeout is not None:
+            request_kwargs['timeout'] = fetch_timeout
+        response = requests.get(uri, **request_kwargs)
         response.raise_for_status()
         filename = get_filename_from_headers(response)
         if not filename:
