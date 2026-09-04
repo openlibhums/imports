@@ -191,7 +191,14 @@ def import_article_metrics(client, journal, data):
 
 
 def import_author_assignments(article, article_dict):
-    for i, author_id in enumerate(article_dict["authors"]):
+    author_ids = article_dict.get("authors")
+    if not author_ids:
+        logger.warning(
+            "No authors to assign for article %s (OJS ID %s)",
+            article, article_dict.get("id"),
+        )
+        return
+    for i, author_id in enumerate(author_ids):
         try:
             account = models.OJSAccount.objects.get(
                 ojs_id=author_id, journal=article.journal).account
@@ -310,6 +317,11 @@ def import_issue(client, journal, issue_dict):
                 )
                 issue_galley.file = file_obj
                 issue_galley.save()
+        else:
+            logger.warning(
+                "Skipping empty or unavailable issue galley %s for issue %s",
+                galley_id, issue,
+            )
 
     issue.save()
     if issue_dict.get("isCurrent"):
@@ -465,7 +477,11 @@ def import_article_galleys(publication, journal, client, article=None):
                     },
                 )
             else:
-                logger.error("Unable to fetch Galley %s" % galley["file"])
+                logger.warning(
+                    "Skipping galley with empty or unavailable file %s "
+                    "for article %s",
+                    galley["file"].get("url"), article,
+                )
 
 
 def import_reviews(client, article, article_dict):
@@ -750,6 +766,11 @@ def import_file(file_json, client, article, label=None, file_name=None, owner=No
             )
 
         return janeway_file
+    else:
+        logger.warning(
+            "Skipping empty or unavailable file %s for article %s",
+            file_json["url"], article,
+        )
 
 
 def get_or_create_issue(issue_dict, journal):

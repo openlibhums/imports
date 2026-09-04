@@ -436,6 +436,11 @@ class OJS3APIClient(OJSBaseClient):
             return
         response_filename = common.get_filename_from_headers(response)
         blob = response.content
+        if not blob:
+            logger.warning(
+                "Fetched file from %s is empty, ignoring", url,
+            )
+            return None
         content_file = ContentFile(blob)
         if exc_mimes:
             mime = check_in_memory_mime(content_file)

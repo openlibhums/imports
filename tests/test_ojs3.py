@@ -1,13 +1,50 @@
+import copy
 from io import StringIO
+from unittest import mock
 
+import requests
 from django.test import TestCase
 from django.core.files.base import ContentFile
 
 from core import models as core_models
+from core import workflow as core_workflow
 from identifiers import models as id_models
+from journal import models as journal_models
 from utils.testing import helpers
 
 from plugins.imports import ojs
+from plugins.imports.ojs import clients, ojs3_importers
+
+
+def create_import_workflow(journal):
+    """ Builds a workflow covering every stage the OJS3 importer logs
+
+    create_default_workflow only installs the first four base elements, which
+    leaves no element for STAGE_TYPESETTING. The importer logs against that
+    stage for OJS submissions sat in production.
+    """
+    workflow = core_workflow.create_default_workflow(journal)
+    for index, element in enumerate(core_models.BASE_ELEMENTS):
+        workflow_element, _ = core_models.WorkflowElement.objects.get_or_create(
+            journal=journal,
+            element_name=element["name"],
+            handshake_url=element["handshake_url"],
+            stage=element["stage"],
+            jump_url=element["jump_url"],
+            article_url=element["article_url"],
+            defaults={"order": index},
+        )
+        workflow.elements.add(workflow_element)
+    return workflow
+
+
+def build_response(content=b"", status_code=200, url="http://ojs.test/file"):
+    """ Builds a requests.Response without touching the network """
+    response = requests.Response()
+    response.status_code = status_code
+    response._content = content
+    response.url = url
+    return response
 
 
 
@@ -64,6 +101,144 @@ class OJS3ImportArticles(TestCase):
             id_type="doi", identifier='10.0001/test'
         ).article
         #self.assertEqual(article.title_de, "titel")
+
+
+class OJS3ImportAuthorAssignments(TestCase):
+    """ OJS submissions can be served without an "authors" key """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+        create_import_workflow(cls.journal)
+        cls.article = helpers.create_article(cls.journal)
+        cls.article_dict_no_authors = {"id": 17660}
+        cls.article_dict_empty_authors = {"id": 17660, "authors": []}
+
+    def test_missing_authors_key_does_not_raise(self):
+        ojs3_importers.import_author_assignments(
+            self.article, self.article_dict_no_authors,
+        )
+
+    def test_empty_authors_list_does_not_raise(self):
+        ojs3_importers.import_author_assignments(
+            self.article, self.article_dict_empty_authors,
+        )
+
+    def test_missing_authors_key_does_not_abort_article_import(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertEqual(article.galley_set.count(), 1)
+
+
+class OJS3APIClientFetchFile(TestCase):
+    """ Empty responses must not be turned into zero byte files """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ojs_client = clients.OJS3APIClient("http://ojs.test/journal")
+        cls.url = "http://ojs.test/journal/article/download/1/1"
+
+    def test_empty_response_returns_none(self):
+        with mock.patch.object(
+            self.ojs_client.session, "get",
+            return_value=build_response(b"", url=self.url),
+        ):
+            self.assertIsNone(self.ojs_client.fetch_file(self.url))
+
+    def test_error_response_returns_none(self):
+        with mock.patch.object(
+            self.ojs_client.session, "get",
+            return_value=build_response(b"", 404, url=self.url),
+        ):
+            self.assertIsNone(self.ojs_client.fetch_file(self.url))
+
+    def test_populated_response_returns_content_file(self):
+        with mock.patch.object(
+            self.ojs_client.session, "get",
+            return_value=build_response(b"content", url=self.url),
+        ):
+            content_file = self.ojs_client.fetch_file(self.url)
+
+        self.assertEqual(content_file.read(), b"content")
+
+
+class OJS3ImportEmptyArticleGalleys(TestCase):
+    """ A galley whose file is missing on OJS must be skipped """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+        create_import_workflow(cls.journal)
+
+    def test_empty_galley_file_creates_no_galley(self):
+        mock_client = MockOJS3EmptyFileClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertFalse(article.galley_set.exists())
+
+    def test_empty_galley_file_creates_no_file(self):
+        mock_client = MockOJS3EmptyFileClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertFalse(
+            core_models.File.objects.filter(article_id=article.pk).exists()
+        )
+
+
+class OJS3ImportIssueGalleys(TestCase):
+    """ An issue galley missing on OJS must be skipped """
+
+    ISSUE_DICT = {
+        "articles": [],
+        "coverImageUrl": {},
+        "datePublished": "2021-02-23",
+        "description": {"en_US": "description"},
+        "galleys": [{"id": 4321}],
+        "id": 2477,
+        "isCurrent": False,
+        "number": "1",
+        "sections": [],
+        "title": {"en_US": "Issue Title"},
+        "volume": 1,
+        "year": 2021,
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+
+    def test_empty_issue_galley_creates_no_issue_galley(self):
+        mock_client = MockOJS3EmptyFileClient()
+        issue = ojs3_importers.import_issue(
+            mock_client, self.journal, copy.deepcopy(self.ISSUE_DICT),
+        )
+
+        self.assertFalse(
+            journal_models.IssueGalley.objects.filter(issue=issue).exists()
+        )
+
+    def test_populated_issue_galley_is_imported(self):
+        mock_client = MockOJS3Client()
+        issue = ojs3_importers.import_issue(
+            mock_client, self.journal, copy.deepcopy(self.ISSUE_DICT),
+        )
+
+        self.assertTrue(
+            journal_models.IssueGalley.objects.filter(issue=issue).exists()
+        )
 
 
 class MockOJS3Client():
@@ -332,10 +507,33 @@ class MockOJS3Client():
         yield self.USER_DICT
 
     def get_articles(self):
-        yield self.PUBLISHED_ARTICLE
+        yield copy.deepcopy(self.PUBLISHED_ARTICLE)
 
     def get_publication(self, *args, **kwargs):
-        return self.PUBLICATION
+        return copy.deepcopy(self.PUBLICATION)
 
     def fetch_file(self, *args, **kwargs):
-        return ContentFile(b'test')
+        return ContentFile(b'test', name='test.pdf')
+
+    def get_issue_galley(self, *args, **kwargs):
+        return ContentFile(b'test', name='issue.pdf')
+
+
+class MockOJS3EmptyFileClient(MockOJS3Client):
+    """ Mimics an OJS install whose galley files are missing from disk
+
+    File fetches run through the real OJS3APIClient file handling so that the
+    empty response is dealt with where the importer would deal with it, rather
+    than being short circuited by the mock.
+    """
+
+    def __init__(self):
+        self.api_client = clients.OJS3APIClient("http://ojs.test/journal")
+        self.api_client.session = mock.Mock()
+        self.api_client.session.get.return_value = build_response(b"")
+
+    def fetch_file(self, url="http://ojs.test/file", *args, **kwargs):
+        return self.api_client.fetch_file(url, *args, **kwargs)
+
+    def get_issue_galley(self, issue_id, galley_id):
+        return self.api_client.get_issue_galley(issue_id, galley_id)
