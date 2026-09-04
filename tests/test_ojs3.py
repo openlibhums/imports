@@ -343,7 +343,25 @@ class OJS3ImportMissingWorkflowElement(TestCase):
         ).article
         self.assertEqual(article.stage, submission_models.STAGE_PUBLISHED)
 
-    def test_missing_workflow_element_creates_no_log(self):
+    def test_typesetting_stage_falls_back_to_plugin_element(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertTrue(
+            core_models.WorkflowLog.objects.filter(
+                article=article,
+                element__stage=submission_models.STAGE_TYPESETTING_PLUGIN,
+            ).exists()
+        )
+
+    def test_absent_element_creates_no_log_without_aborting(self):
+        core_models.WorkflowElement.objects.filter(
+            journal=self.journal,
+            stage=submission_models.STAGE_TYPESETTING_PLUGIN,
+        ).delete()
         mock_client = MockOJS3Client()
         ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
 
@@ -353,7 +371,10 @@ class OJS3ImportMissingWorkflowElement(TestCase):
         self.assertFalse(
             core_models.WorkflowLog.objects.filter(
                 article=article,
-                element__stage=submission_models.STAGE_TYPESETTING,
+                element__stage__in=[
+                    submission_models.STAGE_TYPESETTING,
+                    submission_models.STAGE_TYPESETTING_PLUGIN,
+                ],
             ).exists()
         )
 

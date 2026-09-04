@@ -1193,12 +1193,16 @@ def handle_review_comment(article, review_obj, form, comment, public=True):
 
 
 def create_workflow_log(article, stage):
-    try:
-        element = core_models.WorkflowElement.objects.get(
-            journal=article.journal,
-            stage=stage,
-        )
-    except core_models.WorkflowElement.DoesNotExist:
+    # Journals on the typesetting plugin register their typesetting element
+    # under STAGE_TYPESETTING_PLUGIN rather than the legacy stage constant.
+    stages = [stage]
+    if stage == sm_models.STAGE_TYPESETTING:
+        stages.append(sm_models.STAGE_TYPESETTING_PLUGIN)
+    element = core_models.WorkflowElement.objects.filter(
+        journal=article.journal,
+        stage__in=stages,
+    ).first()
+    if not element:
         logger.warning(
             "Journal %s has no workflow element for stage %s: "
             "skipping workflow log for article %s",
