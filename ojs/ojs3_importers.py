@@ -677,8 +677,8 @@ def import_user(user_dict, journal):
     account, created = core_models.Account.objects.get_or_create(
         email=user_dict["email"],
         defaults = {
-            "first_name": delocalise(user_dict["givenName"]),
-            "last_name": delocalise(user_dict["familyName"]),
+            "first_name": delocalise_or_empty(user_dict.get("givenName")),
+            "last_name": delocalise_or_empty(user_dict.get("familyName")),
         }
     )
     if created:
@@ -911,9 +911,9 @@ def create_frozen_record(author, article):
     account = None
     frozen_dict = {
         'article': article,
-        'first_name': delocalise(author["givenName"]),
-        'last_name': delocalise(author["familyName"]),
-        'institution': delocalise(author["affiliation"]) or '',
+        'first_name': delocalise_or_empty(author.get("givenName")),
+        'last_name': delocalise_or_empty(author.get("familyName")),
+        'institution': delocalise_or_empty(author.get("affiliation")),
         'order': author["seq"],
     }
     frozen, created = sm_models.FrozenAuthor.objects.get_or_create(
@@ -1111,6 +1111,18 @@ def delocalise(localised, lang_code=None):
 
     return None
 
+
+def delocalise_or_empty(localised):
+    """ Delocalises an optional OJS value, coercing missing values to ''
+
+    OJS allows an author or user to be recorded with only some of their name
+    parts, in which case the others are null or absent from the payload. The
+    matching Janeway fields are not nullable, so store an empty string.
+    :param localised: A localised OJS object, or None
+    """
+    return delocalise(localised or {}) or ''
+
+
 def get_localised(localised, prefix=None):
     """ Gets a localised OJS object in a format understandable by janeway
     e.g: {"en_US": "value"} => {"en" => "value"}
@@ -1181,10 +1193,18 @@ def handle_review_comment(article, review_obj, form, comment, public=True):
 
 
 def create_workflow_log(article, stage):
-    element = core_models.WorkflowElement.objects.get(
-        journal=article.journal,
-        stage=stage,
-    )
+    try:
+        element = core_models.WorkflowElement.objects.get(
+            journal=article.journal,
+            stage=stage,
+        )
+    except core_models.WorkflowElement.DoesNotExist:
+        logger.warning(
+            "Journal %s has no workflow element for stage %s: "
+            "skipping workflow log for article %s",
+            article.journal, stage, article.pk,
+        )
+        return None, False
 
     return core_models.WorkflowLog.objects.get_or_create(
         article=article,

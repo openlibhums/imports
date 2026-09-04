@@ -10,6 +10,7 @@ from core import models as core_models
 from core import workflow as core_workflow
 from identifiers import models as id_models
 from journal import models as journal_models
+from submission import models as submission_models
 from utils.testing import helpers
 
 from plugins.imports import ojs
@@ -238,6 +239,136 @@ class OJS3ImportIssueGalleys(TestCase):
 
         self.assertTrue(
             journal_models.IssueGalley.objects.filter(issue=issue).exists()
+        )
+
+
+class OJS3ImportAuthorsWithoutFamilyName(TestCase):
+    """ An OJS author can be recorded with a given name and nothing else """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+        create_import_workflow(cls.journal)
+
+    def test_null_family_name_imports_article(self):
+        mock_client = MockOJS3NullNamePartsClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        self.assertTrue(
+            id_models.Identifier.objects.filter(
+                id_type="doi", identifier='10.0001/test',
+            ).exists()
+        )
+
+    def test_null_family_name_is_stored_as_empty_string(self):
+        mock_client = MockOJS3NullNamePartsClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertEqual(article.frozenauthor_set.get().last_name, "")
+
+    def test_null_family_name_keeps_given_name(self):
+        mock_client = MockOJS3NullNamePartsClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertEqual(
+            article.frozenauthor_set.get().first_name, "Rachel Hannah",
+        )
+
+    def test_missing_name_part_keys_import_article(self):
+        mock_client = MockOJS3MissingNamePartsClient()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertEqual(article.frozenauthor_set.get().last_name, "")
+
+    def test_full_name_is_imported_unchanged(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        frozen_author = article.frozenauthor_set.get()
+        self.assertEqual(
+            (frozen_author.first_name, frozen_author.last_name),
+            ("author_name", "family_name"),
+        )
+
+
+class OJS3ImportMissingWorkflowElement(TestCase):
+    """ A journal workflow may lack an element the OJS stage map requests
+
+    A default Janeway workflow carries no element for STAGE_TYPESETTING, which
+    the importer logs against for OJS submissions sat in production.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+
+    def test_default_workflow_has_no_typesetting_element(self):
+        self.assertFalse(
+            core_models.WorkflowElement.objects.filter(
+                journal=self.journal,
+                stage=submission_models.STAGE_TYPESETTING,
+            ).exists()
+        )
+
+    def test_missing_workflow_element_does_not_abort_import(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        self.assertTrue(
+            id_models.Identifier.objects.filter(
+                id_type="doi", identifier='10.0001/test',
+            ).exists()
+        )
+
+    def test_missing_workflow_element_still_sets_stage(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertEqual(article.stage, submission_models.STAGE_PUBLISHED)
+
+    def test_missing_workflow_element_creates_no_log(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertFalse(
+            core_models.WorkflowLog.objects.filter(
+                article=article,
+                element__stage=submission_models.STAGE_TYPESETTING,
+            ).exists()
+        )
+
+    def test_installed_workflow_elements_are_still_logged(self):
+        mock_client = MockOJS3Client()
+        ojs.import_ojs3_articles(mock_client, self.journal, raise_on_exc=True)
+
+        article = id_models.Identifier.objects.get(
+            id_type="doi", identifier='10.0001/test',
+        ).article
+        self.assertTrue(
+            core_models.WorkflowLog.objects.filter(
+                article=article,
+                element__stage=submission_models.STAGE_EDITOR_COPYEDITING,
+            ).exists()
         )
 
 
@@ -537,3 +668,26 @@ class MockOJS3EmptyFileClient(MockOJS3Client):
 
     def get_issue_galley(self, issue_id, galley_id):
         return self.api_client.get_issue_galley(issue_id, galley_id)
+
+
+class MockOJS3NullNamePartsClient(MockOJS3Client):
+    """ Mimics an OJS author whose family name and affiliation are null """
+
+    def get_publication(self, *args, **kwargs):
+        publication = super().get_publication(*args, **kwargs)
+        author = publication["authors"][0]
+        author["givenName"] = {"en_US": "Rachel Hannah"}
+        author["familyName"] = {"en_US": None}
+        author["affiliation"] = {"en_US": None}
+        return publication
+
+
+class MockOJS3MissingNamePartsClient(MockOJS3NullNamePartsClient):
+    """ Mimics an OJS payload that omits the empty name parts altogether """
+
+    def get_publication(self, *args, **kwargs):
+        publication = super().get_publication(*args, **kwargs)
+        author = publication["authors"][0]
+        del author["familyName"]
+        del author["affiliation"]
+        return publication
