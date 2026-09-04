@@ -209,7 +209,6 @@ def import_author_assignments(article, article_dict):
                 article.save()
         except models.OJSAccount.DoesNotExist:
             logger.error("Author does not exist %s", author_id)
-            logger.error("Author does not exist %s", author_id)
 
 
 def import_manuscripts(client, article, article_dict):
@@ -222,28 +221,30 @@ def import_manuscripts(client, article, article_dict):
 
 
 def import_editor_assignments(article, article_dict):
-    for editor_id in set(article_dict["editors"]):
-        account = models.OJSAccount.objects.get(
-            ojs_id=editor_id, journal=article.journal).account
-        review_models.EditorAssignment.objects.get_or_create(
-            article=article,
-            editor=account,
-            defaults={
-                "editor_type": "editor",
-                "assigned": article.date_submitted,
-            }
-        )
-    for editor_id in set(article_dict["section-editors"]):
-        account = models.OJSAccount.objects.get(
-            ojs_id=editor_id, journal=article.journal).account
-        review_models.EditorAssignment.objects.get_or_create(
-            article=article,
-            editor=account,
-            defaults={
-                "editor_type": "section-editor",
-                "assigned": article.date_submitted,
-            }
-        )
+    editor_types = {
+        "editor": article_dict.get("editors") or [],
+        "section-editor": article_dict.get("section-editors") or [],
+    }
+    for editor_type, editor_ids in editor_types.items():
+        for editor_id in set(editor_ids):
+            try:
+                account = models.OJSAccount.objects.get(
+                    ojs_id=editor_id, journal=article.journal).account
+            except models.OJSAccount.DoesNotExist:
+                logger.warning(
+                    "No OJS account for %s %s on journal %s: "
+                    "skipping editor assignment for article %s",
+                    editor_type, editor_id, article.journal.code, article.pk,
+                )
+                continue
+            review_models.EditorAssignment.objects.get_or_create(
+                article=article,
+                editor=account,
+                defaults={
+                    "editor_type": editor_type,
+                    "assigned": article.date_submitted,
+                }
+            )
 
 def import_issue(client, journal, issue_dict):
     issue, c = get_or_create_issue(issue_dict, journal)
@@ -557,8 +558,9 @@ def import_copyedits(client, article, article_dict):
     draft_label = "Draft"
     for file_json in draft_files:
         draft = import_file(file_json, client, article, label=draft_label)
-        article.manuscript_files.add(draft)
-        drafts.append(draft)
+        if draft:
+            article.manuscript_files.add(draft)
+            drafts.append(draft)
 
     copyedited_files = client.get_copyediting_files(article_dict["id"])
     copyediting_models.CopyeditAssignment.objects.filter(article=article).delete()
@@ -604,13 +606,18 @@ def add_to_projected_issue(article, article_dict):
     if article_dict["publication"].get("issue"):
         issue_type = journal_models.IssueType.objects.get(
             journal=article.journal, code='issue')
+        # Unpublished articles have no date_published, but Issue.date is
+        # required: follow get_or_create_issue and set it 10 years out.
         issue, c = journal_models.Issue.objects.get_or_create(
             issue=article_dict["publication"]["issue"]["number"],
             volume=article_dict["publication"]["issue"]["volume"],
             journal=article.journal,
             issue_type=issue_type,
             defaults={
-                "date": article.date_published,
+                "date": (
+                    article.date_published
+                    or timezone.now() + relativedelta(years=10)
+                ),
             },
         )
         article.projected_issue = issue
@@ -659,7 +666,8 @@ def import_review_round_files(client, submission_id, round_id, round):
     round.review_files.clear()
     for file_json in files:
         file_for_review = import_file(file_json, client, round.article, label)
-        round.review_files.add(file_for_review)
+        if file_for_review:
+            round.review_files.add(file_for_review)
 
 
 def import_reviewer_files(client, submission_id, assignment, review_id):
@@ -667,8 +675,9 @@ def import_reviewer_files(client, submission_id, assignment, review_id):
     files = client.get_review_files(submission_id, review_ids=[review_id])
     for file_json in files:
         reviewer_file = import_file(file_json, client, assignment.article, label)
-        assignment.review_file = reviewer_file
-        assignment.save()
+        if reviewer_file:
+            assignment.review_file = reviewer_file
+            assignment.save()
 
 
 

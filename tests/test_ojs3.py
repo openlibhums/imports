@@ -6,13 +6,17 @@ import requests
 from django.test import TestCase
 from django.core.files.base import ContentFile
 
+from django.utils import timezone
+
 from core import models as core_models
 from core import workflow as core_workflow
 from identifiers import models as id_models
 from journal import models as journal_models
+from review import models as review_models
 from submission import models as submission_models
 from utils.testing import helpers
 
+from plugins.imports import models as imports_models
 from plugins.imports import ojs
 from plugins.imports.ojs import clients, ojs3_importers
 
@@ -712,3 +716,75 @@ class MockOJS3MissingNamePartsClient(MockOJS3NullNamePartsClient):
         del author["familyName"]
         del author["affiliation"]
         return publication
+
+
+class OJS3ImportEditorialData(TestCase):
+    """ Editorial imports meet data the OJS payload does not guarantee
+
+    Editor assignments may name OJS accounts that were never imported, and
+    projected issues for unpublished articles carry no publication date.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.journal, *_ = helpers.create_journals()
+        helpers.create_roles(["editor", "author"])
+        cls.article = helpers.create_article(cls.journal)
+        cls.article.date_submitted = timezone.now()
+        cls.article.save()
+
+    def test_unknown_editor_assignment_skipped_without_error(self):
+        ojs3_importers.import_editor_assignments(
+            self.article, {"editors": [999999], "section-editors": [999998]},
+        )
+        self.assertFalse(
+            review_models.EditorAssignment.objects.filter(
+                article=self.article,
+            ).exists()
+        )
+
+    def test_missing_editor_keys_tolerated(self):
+        ojs3_importers.import_editor_assignments(self.article, {})
+        self.assertFalse(
+            review_models.EditorAssignment.objects.filter(
+                article=self.article,
+            ).exists()
+        )
+
+    def test_known_editor_assignment_created(self):
+        account = helpers.create_user("gmu_editor@example.com")
+        imports_models.OJSAccount.objects.create(
+            account=account, journal=self.journal, ojs_id=4242,
+        )
+        ojs3_importers.import_editor_assignments(
+            self.article, {"editors": [4242], "section-editors": []},
+        )
+        self.assertTrue(
+            review_models.EditorAssignment.objects.filter(
+                article=self.article,
+                editor=account,
+                editor_type="editor",
+            ).exists()
+        )
+
+    def test_projected_issue_without_date_published(self):
+        article_dict = {
+            "publication": {"issue": {"number": "1", "volume": 7}},
+        }
+        issue = ojs3_importers.add_to_projected_issue(
+            self.article, article_dict,
+        )
+        self.assertIsNotNone(issue)
+        self.assertIsNotNone(issue.date)
+        self.assertEqual(self.article.projected_issue, issue)
+
+    def test_projected_issue_uses_published_date_when_present(self):
+        self.article.date_published = timezone.now()
+        self.article.save()
+        article_dict = {
+            "publication": {"issue": {"number": "2", "volume": 8}},
+        }
+        issue = ojs3_importers.add_to_projected_issue(
+            self.article, article_dict,
+        )
+        self.assertEqual(issue.date, self.article.date_published)
