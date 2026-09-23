@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Fictional WordPress WXR export used by the import_wordpress tests. -->
+<rss version="2.0"
+    xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+    xmlns:content="http://purl.org/rss/1.0/modules/content/"
+    xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+    xmlns:wp="http://wordpress.org/export/1.2/">
+<channel>
+    <title>Journal of Imaginary Studies</title>
+    <link>http://example.org</link>
+    <wp:wxr_version>1.2</wp:wxr_version>
+    <wp:base_site_url>http://example.org</wp:base_site_url>
+    <wp:base_blog_url>http://example.org</wp:base_blog_url>
+
+    <wp:category><wp:term_id>11</wp:term_id><wp:category_nicename>journal</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name><![CDATA[The Journal]]></wp:cat_name></wp:category>
+    <wp:category><wp:term_id>12</wp:term_id><wp:category_nicename>discourse</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name><![CDATA[Discourse]]></wp:cat_name></wp:category>
+    <wp:category><wp:term_id>13</wp:term_id><wp:category_nicename>archive</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name><![CDATA[Archive]]></wp:cat_name></wp:category>
+    <wp:category><wp:term_id>14</wp:term_id><wp:category_nicename>in-latin</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name><![CDATA[In Latin]]></wp:cat_name></wp:category>
+    <wp:category><wp:term_id>15</wp:term_id><wp:category_nicename>events</wp:category_nicename><wp:category_parent>in-latin</wp:category_parent><wp:cat_name><![CDATA[Events]]></wp:cat_name></wp:category>
+    <wp:term><wp:term_id>7</wp:term_id><wp:term_taxonomy>nav_menu</wp:term_taxonomy><wp:term_slug>about</wp:term_slug><wp:term_name><![CDATA[About]]></wp:term_name></wp:term>
+    <wp:term><wp:term_id>8</wp:term_id><wp:term_taxonomy>nav_menu</wp:term_taxonomy><wp:term_slug>journal</wp:term_slug><wp:term_name><![CDATA[Journal]]></wp:term_name></wp:term>
+
+    <!-- Issue and collection posts -->
+    <item>
+        <title>Vol. 2, No. 1</title>
+        <link>http://example.org/journal/vol-2-no-1/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>101</wp:post_id>
+        <wp:post_date>2020-05-15 09:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-05-15 08:00:00</wp:post_date_gmt>
+        <wp:post_name>vol-2-no-1</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>post</wp:post_type>
+        <category domain="category" nicename="journal"><![CDATA[The Journal]]></category>
+        <wp:postmeta><wp:meta_key>release_date</wp:meta_key><wp:meta_value><![CDATA[2020]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>alternative_title</wp:meta_key><wp:meta_value><![CDATA[Volume 2, Number 1]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>description</wp:meta_key><wp:meta_value><![CDATA[Themed issue on clocks.
+
+Second paragraph of the description.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_thumbnail_id</wp:meta_key><wp:meta_value><![CDATA[501]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Number 3</title>
+        <link>http://example.org/archive/number-3/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>102</wp:post_id>
+        <wp:post_date>2022-01-05 09:00:00</wp:post_date>
+        <wp:post_date_gmt>2022-01-05 08:00:00</wp:post_date_gmt>
+        <wp:post_name>number-3</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>post</wp:post_type>
+        <category domain="category" nicename="archive"><![CDATA[Archive]]></category>
+        <wp:postmeta><wp:meta_key>release_date</wp:meta_key><wp:meta_value><![CDATA[Spring-Summer 1999]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Round Table on Colours</title>
+        <link>http://example.org/discourses/round-table-on-colours/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>103</wp:post_id>
+        <wp:post_date>2021-03-02 09:00:00</wp:post_date>
+        <wp:post_date_gmt>2021-03-02 08:00:00</wp:post_date_gmt>
+        <wp:post_name>round-table-on-colours</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>post</wp:post_type>
+        <category domain="category" nicename="discourse"><![CDATA[Discourse]]></category>
+        <wp:postmeta><wp:meta_key>release_date</wp:meta_key><wp:meta_value><![CDATA[March 2021 - May 2021]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>description</wp:meta_key><wp:meta_value><![CDATA[Six voices on colour.]]></wp:meta_value></wp:postmeta>
+    </item>
+
+    <!-- Articles -->
+    <item>
+        <title>The Mirror of Clocks</title>
+        <link>http://example.org/articles/the-mirror-of-clocks/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>201</wp:post_id>
+        <wp:post_date>2020-05-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-05-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>the-mirror-of-clocks</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="journal"><![CDATA[The Journal]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Ada Quill, Bram Voss]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>intro</wp:meta_key><wp:meta_value><![CDATA[<b>Summary:</b>
+
+<b>
+</b><i>A study of clocks.</i>]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[First paragraph with detailsÑwhich matter -- and a "quoted" phrase...
+
+Second paragraph.
+Same paragraph, new line.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text0000</wp:meta_key><wp:meta_value><![CDATA[<h3>Abstract</h3>
+Boilerplate that must not be imported.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>blocks_0_title</wp:meta_key><wp:meta_value><![CDATA[Notes]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>blocks_0_text</wp:meta_key><wp:meta_value><![CDATA[1. Note one
+2. Note two]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>blocks_1_title</wp:meta_key><wp:meta_value><![CDATA[Publication Date]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>blocks_1_text</wp:meta_key><wp:meta_value><![CDATA[<span>June 9, 2020</span>]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>topics_0_text</wp:meta_key><wp:meta_value><![CDATA[Clocks]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>topics_1_text</wp:meta_key><wp:meta_value><![CDATA[Mirrors]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>short_description</wp:meta_key><wp:meta_value><![CDATA[Clocks -- and mirrors]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>pdf</wp:meta_key><wp:meta_value><![CDATA[503]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>hide_citation</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>subpost</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[101]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Editorial Note</title>
+        <link>http://example.org/articles/editorial-note/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>202</wp:post_id>
+        <wp:post_date>2020-06-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-06-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>editorial-note</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="journal"><![CDATA[The Journal]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Cleo Marsh]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[Welcome to the issue.
+
+<img class="logo" src="https://cdn.example.net/badge.png" alt="badge" />
+
+Enjoy.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>subpost</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[101]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Editorial Note: A Reply</title>
+        <link>http://example.org/articles/editorial-note-a-reply/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>203</wp:post_id>
+        <wp:post_date>2020-06-02 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-06-02 09:00:00</wp:post_date_gmt>
+        <wp:post_name>editorial-note-a-reply</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="journal"><![CDATA[The Journal]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Dorian Fell]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[Thanks for the welcome.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>subpost</wp:meta_key><wp:meta_value><![CDATA[1]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[101]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Table of Contents (Number 3)</title>
+        <link>http://example.org/articles/table-of-contents-number-3/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>204</wp:post_id>
+        <wp:post_date>2022-01-10 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2022-01-10 09:00:00</wp:post_date_gmt>
+        <wp:post_name>table-of-contents-number-3</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="archive"><![CDATA[Archive]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[RIVERS
+On Fictional Rivers - Ada Quill]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[102]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>On Fictional Rivers</title>
+        <link>http://example.org/articles/on-fictional-rivers/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>205</wp:post_id>
+        <wp:post_date>1999-04-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>1999-04-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>on-fictional-rivers</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="archive"><![CDATA[Archive]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Ada Quill]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[Rivers that never were.
+
+More rivers.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>hide_citation</wp:meta_key><wp:meta_value><![CDATA[1]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[102]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Colours and Silence</title>
+        <link>http://example.org/articles/colours-and-silence/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>206</wp:post_id>
+        <wp:post_date>2021-04-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2021-04-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>colours-and-silence</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="discourse"><![CDATA[Discourse]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Bram Voss with Cleo Marsh]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[[caption id="attachment_504" align="aligncenter" width="300"]<img src="http://example.org/uploads/palette.jpg" alt="" width="300" height="200" /> A palette[/caption]
+
+Silence follows colour.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[103]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Draft Thoughts</title>
+        <link>http://example.org/articles/draft-thoughts/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>207</wp:post_id>
+        <wp:post_date>2020-07-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-07-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>draft-thoughts</wp:post_name>
+        <wp:status>draft</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="journal"><![CDATA[The Journal]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Ennio Vale]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[Unfinished.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>post_add</wp:meta_key><wp:meta_value><![CDATA[101]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>De Coloribus</title>
+        <link>http://example.org/articles/de-coloribus/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>208</wp:post_id>
+        <wp:post_date>2021-09-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2021-09-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>de-coloribus</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <category domain="category" nicename="events"><![CDATA[Events]]></category>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[Ennio Vale]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[Lorem ipsum dolor sit amet.]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Loose Note</title>
+        <link>http://example.org/articles/loose-note/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>209</wp:post_id>
+        <wp:post_date>2021-10-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2021-10-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>loose-note</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>articles</wp:post_type>
+        <wp:postmeta><wp:meta_key>author</wp:meta_key><wp:meta_value><![CDATA[***]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>text</wp:meta_key><wp:meta_value><![CDATA[A note without a home.]]></wp:meta_value></wp:postmeta>
+    </item>
+
+    <!-- Attachments -->
+    <item>
+        <title>cover</title>
+        <link>http://example.org/cover/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>501</wp:post_id>
+        <wp:post_date>2020-05-15 09:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-05-15 08:00:00</wp:post_date_gmt>
+        <wp:post_name>cover</wp:post_name>
+        <wp:status>inherit</wp:status>
+        <wp:post_parent>101</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>attachment</wp:post_type>
+        <wp:attachment_url>http://example.org/uploads/cover.jpg</wp:attachment_url>
+    </item>
+    <item>
+        <title>rivers</title>
+        <link>http://example.org/rivers/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>502</wp:post_id>
+        <wp:post_date>1999-04-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>1999-04-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>rivers</wp:post_name>
+        <wp:status>inherit</wp:status>
+        <wp:post_parent>205</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>attachment</wp:post_type>
+        <wp:attachment_url>http://example.org/uploads/rivers.pdf</wp:attachment_url>
+    </item>
+    <item>
+        <title>placeholder</title>
+        <link>http://example.org/placeholder/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>503</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>placeholder</wp:post_name>
+        <wp:status>inherit</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>attachment</wp:post_type>
+        <wp:attachment_url>http://example.org/uploads/placeholder.pdf</wp:attachment_url>
+    </item>
+
+    <!-- Pages -->
+    <item>
+        <title>About</title>
+        <link>http://example.org/about/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>301</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>about</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>page</wp:post_type>
+        <wp:postmeta><wp:meta_key>_wp_page_template</wp:meta_key><wp:meta_value><![CDATA[default]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_title</wp:meta_key><wp:meta_value><![CDATA[About the Journal]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_text</wp:meta_key><wp:meta_value><![CDATA[We publish imaginary studies.
+
+Since 1999.]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_contacts_0_text</wp:meta_key><wp:meta_value><![CDATA[<strong>Ada Quill</strong>
+
+Editor]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_blocks_0_text</wp:meta_key><wp:meta_value><![CDATA[<h1></h1>
+<h1><strong>Guidelines</strong></h1>]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_blocks_0_link</wp:meta_key><wp:meta_value><![CDATA[http://example.org/about/guidelines/]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Guidelines</title>
+        <link>http://example.org/about/guidelines/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>302</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>guidelines</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>301</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>page</wp:post_type>
+        <wp:postmeta><wp:meta_key>_wp_page_template</wp:meta_key><wp:meta_value><![CDATA[default]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>sections_0_text</wp:meta_key><wp:meta_value><![CDATA[Send us your work.]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Home</title>
+        <link>http://example.org/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>303</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>home</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>page</wp:post_type>
+        <wp:postmeta><wp:meta_key>_wp_page_template</wp:meta_key><wp:meta_value><![CDATA[page-home.php]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Announcements</title>
+        <link>http://example.org/announcements/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[<p>News from the journal.</p>]]></content:encoded>
+        <wp:post_id>304</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>announcements</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>0</wp:menu_order>
+        <wp:post_type>page</wp:post_type>
+        <wp:postmeta><wp:meta_key>_wp_page_template</wp:meta_key><wp:meta_value><![CDATA[default]]></wp:meta_value></wp:postmeta>
+    </item>
+
+    <!-- Menus -->
+    <item>
+        <title></title>
+        <link>http://example.org/about/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>401</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>401</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>1</wp:menu_order>
+        <wp:post_type>nav_menu_item</wp:post_type>
+        <category domain="nav_menu" nicename="about"><![CDATA[About]]></category>
+        <wp:postmeta><wp:meta_key>_menu_item_type</wp:meta_key><wp:meta_value><![CDATA[post_type]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object</wp:meta_key><wp:meta_value><![CDATA[page]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object_id</wp:meta_key><wp:meta_value><![CDATA[302]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_menu_item_parent</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title></title>
+        <link>http://example.org/about/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>402</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>402</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>2</wp:menu_order>
+        <wp:post_type>nav_menu_item</wp:post_type>
+        <category domain="nav_menu" nicename="about"><![CDATA[About]]></category>
+        <wp:postmeta><wp:meta_key>_menu_item_type</wp:meta_key><wp:meta_value><![CDATA[post_type]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object</wp:meta_key><wp:meta_value><![CDATA[page]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object_id</wp:meta_key><wp:meta_value><![CDATA[301]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_menu_item_parent</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title>Contact</title>
+        <link>http://example.org/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>403</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>403</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>3</wp:menu_order>
+        <wp:post_type>nav_menu_item</wp:post_type>
+        <category domain="nav_menu" nicename="about"><![CDATA[About]]></category>
+        <wp:postmeta><wp:meta_key>_menu_item_type</wp:meta_key><wp:meta_value><![CDATA[custom]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object</wp:meta_key><wp:meta_value><![CDATA[custom]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object_id</wp:meta_key><wp:meta_value><![CDATA[403]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_url</wp:meta_key><wp:meta_value><![CDATA[mailto:editor@example.org]]></wp:meta_value></wp:postmeta>
+    </item>
+    <item>
+        <title></title>
+        <link>http://example.org/announcements/</link>
+        <dc:creator><![CDATA[editor]]></dc:creator>
+        <content:encoded><![CDATA[]]></content:encoded>
+        <wp:post_id>404</wp:post_id>
+        <wp:post_date>2020-01-01 10:00:00</wp:post_date>
+        <wp:post_date_gmt>2020-01-01 09:00:00</wp:post_date_gmt>
+        <wp:post_name>404</wp:post_name>
+        <wp:status>publish</wp:status>
+        <wp:post_parent>0</wp:post_parent>
+        <wp:menu_order>2</wp:menu_order>
+        <wp:post_type>nav_menu_item</wp:post_type>
+        <category domain="nav_menu" nicename="journal"><![CDATA[Journal]]></category>
+        <wp:postmeta><wp:meta_key>_menu_item_type</wp:meta_key><wp:meta_value><![CDATA[post_type]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object</wp:meta_key><wp:meta_value><![CDATA[page]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_object_id</wp:meta_key><wp:meta_value><![CDATA[304]]></wp:meta_value></wp:postmeta>
+        <wp:postmeta><wp:meta_key>_menu_item_menu_item_parent</wp:meta_key><wp:meta_value><![CDATA[0]]></wp:meta_value></wp:postmeta>
+    </item>
+</channel>
+</rss>

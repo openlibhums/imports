@@ -21,6 +21,43 @@ See https://janeway-imports.readthedocs.io/en/latest/import_export_update.html
 This importers can be accessed from the Janeway journal manager under the path `/plugins/imports`
 
 
+## WordPress (WXR) importer
+
+`python manage.py import_wordpress <journal_code> <export.xml>` imports the
+`articles` post type of a WordPress WXR export as articles, the `post` items
+they are attached to (via the `post_add` field) as issues or collections, and
+the published WordPress pages as CMS pages with matching navigation items.
+
+Post text is stored unformatted in the export, so the importer applies the
+equivalent of WordPress' `wpautop` (paragraphs and line breaks) and
+`wptexturize` (curly quotes, dashes, ellipses), expands `[caption]`
+shortcodes and repairs Mac Roman punctuation that was mis-decoded in the
+source ("detailsÑwhich"). Issue dates come from the issue post's
+`release_date` field and the article dates from the "Publication Date" block
+when there is one.
+
+Options:
+
+- `--live-order`: the order in which the live site lists the articles of an
+  issue is a manual sort that is not part of the export. With this flag the
+  importer fetches each issue page from the live site and reproduces it;
+  otherwise articles are listed newest first (with sub-posts under the article
+  they extend).
+- `--download-pdfs`: attach the PDF files uploaded to each article as galleys.
+- `--download-images`: download the images that article bodies embed from the
+  WordPress site, store them as image files of the HTML galley and rewrite the
+  `<img>` sources to the stored copies. Use it when the WordPress site is going
+  to be decommissioned. Images hosted on other sites are left untouched.
+- `--exclude`/`--only`: filter by category, parent post or article (id, slug or
+  title), repeatable and case-insensitive.
+- `--skip-pages`, `--include-unpublished`, `--dry-run`.
+
+The import lives in the `plugins/imports/wordpress` package (`import_wordpress_export()`;
+`consts.py` holds the constants and regular expressions, `text.py` the WordPress text
+formatting, `wxr.py` the export reading helpers and `importer.py` the importer); the
+management command is only its command line interface. The command is idempotent: articles are identified by a `wordpressid`
+identifier and reruns update them in place.
+
 ## Requirements
 In addition to the base Janeway requirements this plugin needs `python-wordpress-xmlrpc` version 2.3.
 
