@@ -8,7 +8,8 @@ from rest_framework import routers
 from core import models as core_models
 from utils.testing import helpers
 from plugins.imports.tests.test_utils import CSV_DATA_1, run_import, dict_from_csv_string
-from plugins.imports import views
+from plugins.imports import views, plugin_settings
+from plugins.imports.tests.test_export import reload_urlconf
 from journal import models as journal_models
 from submission import models as submission_models
 from core import logic as core_logic, plugin_installed_apps
@@ -22,6 +23,8 @@ class TestViews(TestCase):
         cls.press = helpers.create_press()
         cls.journal_one, cls.journal_two = helpers.create_journals()
         cls.journal_one.workflow()
+        plugin_settings.install()
+        reload_urlconf()
         issue_type = journal_models.IssueType.objects.get_or_create(
             journal=cls.journal_one,
             code='issue'
