@@ -23,6 +23,8 @@ CSV_HEADER_ROW = "Article identifier, Article title, Section Name, Volume number
                  "Author first name,Author Middle Name, Author last name, Author Institution, Biography," \
                  "Author Email, Is Corporate (Y/N), "
 
+UNKNOWN_FIELD_HEADER = 'Unknown Field'
+
 
 def html_table_to_csv(html):
     filepath = files.get_temp_file_path_from_name(
@@ -195,6 +197,9 @@ def export_using_import_format(articles):
             default_headers,
             *custom_headers.values()
         ))
+        # Rows may carry keys beyond the current Field names, such as the
+        # "Unknown Field" columns for answers to deleted Fields.
+        export_headers.update(chain.from_iterable(body_rows))
         wr = csv.DictWriter(f, fieldnames=export_headers)
         wr.writeheader()
         for row in body_rows:
@@ -264,8 +269,26 @@ def generate_rows_for_article(article):
 
 
 def export_custom_submission_fields(row, article):
-    for field_answer in article.fieldanswer_set.all():
-        row[field_answer.field.name] = field_answer.answer
+    # FieldAnswer.field is SET_NULL, so answers to a deleted Field remain
+    # with no field. Export them under numbered "Unknown Field" columns so
+    # their values are not lost and several on one article do not collide.
+    field_answers = article.fieldanswer_set.select_related(
+        'field',
+    ).order_by('pk')
+    unknown_field_count = 0
+    for field_answer in field_answers:
+        if field_answer.field:
+            header = field_answer.field.name
+        else:
+            unknown_field_count += 1
+            header = unknown_field_header(unknown_field_count)
+        row[header] = field_answer.answer
+
+
+def unknown_field_header(number):
+    if number == 1:
+        return UNKNOWN_FIELD_HEADER
+    return '{} {}'.format(UNKNOWN_FIELD_HEADER, number)
 
 
 def zip_export_files(journal, articles, csv_path):
