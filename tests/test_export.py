@@ -60,7 +60,7 @@ class TestExport(TestCase):
             code='issue'
         )
         helpers.create_roles(
-            'author',
+            ['author'],
         )
 
         cls.mock_request = HttpRequest()

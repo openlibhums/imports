@@ -259,6 +259,7 @@ class TestImportAndUpdate(TestCase):
             journal=cls.journal_one,
             code='issue'
         )
+        helpers.create_roles(['author'])
         cls.test_user = helpers.create_user(username='unrealperson12@example.com')
         cls.mock_request = HttpRequest()
         cls.mock_request.user = cls.test_user

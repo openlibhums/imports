@@ -924,6 +924,7 @@ def update_frozen_author(author, author_fields, article):
         institution, department, biography, email, orcid, \
         is_corporate, author_order = author_fields
     frozen_author = author.frozen_author(article)
+    frozen_author.name_prefix = salutation
     frozen_author.first_name = first_name
     frozen_author.middle_name = middle_name
     frozen_author.last_name = last_name
