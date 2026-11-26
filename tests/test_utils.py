@@ -10,7 +10,7 @@ import zipfile
 from django.conf import settings
 from django.http import HttpRequest
 from django.test import TestCase
-from django.utils.timezone import make_aware, utc
+from django.utils.timezone import make_aware
 from rest_framework import routers
 
 from core import models as core_models, logic as core_logic, plugin_loader
